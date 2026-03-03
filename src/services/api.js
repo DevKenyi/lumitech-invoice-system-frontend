@@ -2,7 +2,7 @@ import axios from "axios";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ||
-    "https://lumitech-ledger-lumitech-ledger-backend--ed977d-145-223-98-212.traefik.me",
+    "https://ledgerapi.lumitechsystems.com",
   withCredentials: true
 });
 
