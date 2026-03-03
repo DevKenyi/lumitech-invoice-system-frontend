@@ -1,8 +1,8 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://lumitech-ledger-lumitech-ledger-backend--ed977d-145-223-98-212.traefik.me/", 
-  // baseURL: "http://localhost:8081/",
+  baseURL: import.meta.env.production.VITE_API_URL ||
+    "https://lumitech-ledger-lumitech-ledger-backend--ed977d-145-223-98-212.traefik.me/",
   withCredentials: true
 });
 
