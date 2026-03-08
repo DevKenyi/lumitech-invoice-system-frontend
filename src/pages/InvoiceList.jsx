@@ -1,13 +1,15 @@
 // InvoiceList.jsx
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import api from "../services/api";
+import api, { getUserFromToken } from "../services/api";
 import { Plus, FileText, ArrowRight, TrendingUp, Users, LogOut } from "lucide-react";
 
 function InvoiceList() {
   const [invoices, setInvoices] = useState([]);
   const [stats, setStats] = useState({ total: 0, paid: 0, pending: 0 });
   const navigate = useNavigate();
+  const user = getUserFromToken();
+  const role = user?.role || (Array.isArray(user?.roles) ? user.roles[0] : null);
 
   useEffect(() => {
     api.get("/api/invoices")
@@ -62,6 +64,12 @@ function InvoiceList() {
 
             {/* Right Side Buttons */}
             <div className="flex items-center gap-3">
+
+              {user && (
+                <div className="text-sm text-slate-600 mr-2">
+                  {user.username || user.sub || 'User'} • {role || 'Member'}
+                </div>
+              )}
 
               <Link
                 to="/clients/create"

@@ -5,11 +5,14 @@ import api from "../services/api";
 function Login() {
   const [form, setForm] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
 
     try {
       const res = await api.post("/api/auth/login", form);
@@ -19,6 +22,8 @@ function Login() {
       navigate("/");
     } catch (err) {
       setError("Invalid credentials");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -31,7 +36,7 @@ function Login() {
         </h2>
 
         {error && (
-          <p className="text-red-500 text-sm mb-4">{error}</p>
+          <p className="text-red-500 text-sm mb-4 text-center">{error}</p>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -43,7 +48,7 @@ function Login() {
             onChange={(e) =>
               setForm({ ...form, username: e.target.value })
             }
-            className="w-full border rounded-lg px-4 py-2"
+            className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
           />
 
@@ -54,18 +59,27 @@ function Login() {
             onChange={(e) =>
               setForm({ ...form, password: e.target.value })
             }
-            className="w-full border rounded-lg px-4 py-2"
+            className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
           />
 
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
+            disabled={isLoading}
+            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-60 flex items-center justify-center"
           >
-            Login
+            {isLoading ? (
+              <span className="flex items-center gap-2">
+                <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+                Signing in...
+              </span>
+            ) : (
+              "Login"
+            )}
           </button>
 
         </form>
+
       </div>
     </div>
   );
