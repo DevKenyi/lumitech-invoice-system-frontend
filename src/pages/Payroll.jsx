@@ -3,7 +3,8 @@ import api from "../services/api";
 import {
   Plus, X, RefreshCw, ChevronDown, ChevronUp,
   Users, CheckCircle, DollarSign, TrendingUp,
-  PlayCircle, ClipboardList, Pencil,
+  PlayCircle, ClipboardList, Pencil, Upload, Download,
+  AlertCircle, CheckCircle2,
 } from "lucide-react";
 import Toast from "../components/Toast";
 import { useOrg } from "../context/OrgContext";
@@ -82,6 +83,12 @@ export default function Payroll() {
   const [empForm, setEmpForm] = useState(emptyEmpForm());
   const [empSaving, setEmpSaving] = useState(false);
   const [empError, setEmpError] = useState("");
+
+  // CSV import state
+  const [showImport, setShowImport] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
 
   // Payroll Runs state
   const [runs, setRuns] = useState([]);
@@ -185,6 +192,40 @@ export default function Payroll() {
     setEditingEmp(null);
     setEmpForm(emptyEmpForm());
     setEmpError("");
+  };
+
+  // ── CSV import ─────────────────────────────────────────────────────────
+  const handleImport = async () => {
+    if (!importFile) return;
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", importFile);
+      const res = await api.post("/api/payroll/employees/import", fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setImportResult(res.data);
+      if (res.data.imported > 0) loadEmployees();
+    } catch (err) {
+      setImportResult({ imported: 0, skipped: 0, errors: [err.response?.data?.message || "Upload failed"] });
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const downloadSampleCsv = () => {
+    const taxIdLabel = country === "KE" ? "taxId (KRA PIN)" : country === "GH" ? "taxId (TIN/SSNIT)" : "taxId (TIN)";
+    const header = `firstName,lastName,email,phone,${taxIdLabel},idNumber,bankName,bankAccount,department,jobTitle,basicSalary,houseAllowance,transportAllowance,otherAllowances,status`;
+    const sample = `John,Doe,john.doe@company.com,+2348000000000,12345678-0001,A1234567,First Bank,0123456789,Finance,Accountant,150000,20000,10000,5000,ACTIVE
+Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,HR Manager,200000,30000,15000,0,ACTIVE`;
+    const blob = new Blob([header + "\n" + sample], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "employee_import_template.csv";
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   // ── Payroll run submit ──────────────────────────────────────────────────
@@ -324,7 +365,13 @@ export default function Payroll() {
           </div>
 
           {/* Toolbar */}
-          <div className="flex justify-end">
+          <div className="flex items-center justify-end gap-3">
+            <button
+              onClick={() => { setShowImport(true); setImportFile(null); setImportResult(null); }}
+              className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded-xl text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition"
+            >
+              <Upload size={16} /> Import CSV
+            </button>
             <button
               onClick={() => { setShowEmpForm(true); setEditingEmp(null); setEmpForm(emptyEmpForm()); setEmpError(""); }}
               className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-xl text-sm font-semibold shadow-lg shadow-blue-600/20 hover:shadow-xl hover:scale-[1.02] transition-all"
@@ -651,6 +698,105 @@ export default function Payroll() {
                 })}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════ CSV IMPORT MODAL ═══════════════════ */}
+      {showImport && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-lg">
+            <div className="flex items-center justify-between p-5 border-b border-slate-200 dark:border-slate-700">
+              <h2 className="font-semibold text-slate-900 dark:text-white">Import Employees from CSV</h2>
+              <button
+                onClick={() => setShowImport(false)}
+                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+              >
+                <X size={18} className="text-slate-500 dark:text-slate-400" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-5">
+              {/* Step 1: Download template */}
+              <div className="bg-slate-50 dark:bg-slate-700/40 rounded-xl p-4 space-y-2">
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                  Step 1 — Download the template
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Fill in employee details. Required columns: <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded">firstName</code>, <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded">lastName</code>, <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded">basicSalary</code>. All others optional.
+                </p>
+                <button
+                  onClick={downloadSampleCsv}
+                  className="flex items-center gap-2 px-3 py-2 text-xs font-medium bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-600 transition"
+                >
+                  <Download size={13} /> Download CSV Template
+                </button>
+              </div>
+
+              {/* Step 2: Upload */}
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                  Step 2 — Upload your completed CSV
+                </p>
+                <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl py-8 px-4 cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 transition group">
+                  <Upload size={24} className="text-slate-400 group-hover:text-blue-500 transition" />
+                  <span className="text-sm text-slate-500 dark:text-slate-400">
+                    {importFile ? importFile.name : "Click to select a CSV file"}
+                  </span>
+                  {importFile && (
+                    <span className="text-xs text-slate-400">
+                      {(importFile.size / 1024).toFixed(1)} KB
+                    </span>
+                  )}
+                  <input
+                    type="file"
+                    accept=".csv,text/csv"
+                    className="hidden"
+                    onChange={(e) => { setImportFile(e.target.files[0] ?? null); setImportResult(null); }}
+                  />
+                </label>
+              </div>
+
+              {/* Result */}
+              {importResult && (
+                <div className={`rounded-xl p-4 space-y-2 ${
+                  importResult.errors?.length === 0
+                    ? "bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800"
+                    : "bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800"
+                }`}>
+                  <div className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+                    {importResult.errors?.length === 0
+                      ? <CheckCircle2 size={15} className="text-emerald-600" />
+                      : <AlertCircle size={15} className="text-amber-600" />
+                    }
+                    {importResult.imported} employee{importResult.imported !== 1 ? "s" : ""} imported
+                    {importResult.skipped > 0 && `, ${importResult.skipped} row${importResult.skipped !== 1 ? "s" : ""} skipped`}
+                  </div>
+                  {importResult.errors?.length > 0 && (
+                    <ul className="text-xs text-amber-700 dark:text-amber-300 space-y-0.5 max-h-32 overflow-y-auto">
+                      {importResult.errors.map((e, i) => <li key={i}>• {e}</li>)}
+                    </ul>
+                  )}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowImport(false)}
+                  className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-600 transition"
+                >
+                  {importResult?.imported > 0 ? "Done" : "Cancel"}
+                </button>
+                <button
+                  onClick={handleImport}
+                  disabled={!importFile || importing}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow hover:shadow-md hover:scale-[1.02] transition-all disabled:opacity-50 disabled:scale-100"
+                >
+                  {importing ? <><RefreshCw size={14} className="animate-spin" /> Importing…</> : <><Upload size={14} /> Import</>}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
