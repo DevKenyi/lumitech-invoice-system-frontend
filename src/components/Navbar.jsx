@@ -1,13 +1,14 @@
-// Navbar.jsx
+// Navbar.jsx — Grouped collapsible sections, plan-gated
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, FileText, PlusCircle, Users, LogOut,
   ChevronLeft, ChevronRight, Building2, FolderOpen, ShieldCheck,
-  CreditCard, Wallet, UsersRound, X, BookOpen, BookOpenCheck, Scale, TrendingUp, LayoutList, Landmark, ClipboardList,
+  CreditCard, UsersRound, X, BookOpen, BookOpenCheck, Scale, TrendingUp, LayoutList, Landmark, ClipboardList,
   ChevronDown, Briefcase, Calculator, ArrowLeftRight, Banknote, PiggyBank, Lock, Receipt, Home,
   Info, SlidersHorizontal, Package, ShoppingCart, BarChart2,
   FileCheck, Repeat, Undo2, FileMinus, ClipboardCheck,
   Warehouse, Target, UserCog, GitBranch, BookMarked, TrendingDown, History,
+  Tag, ShoppingBag,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import api, { getUserFromToken } from "../services/api";
@@ -22,10 +23,9 @@ const PLAN_BADGE = {
   ACCOUNTANT_PRO: "bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300",
 };
 
-// Plans that include Chart of Accounts + Journal Entries
-// STARTER (Essential) does NOT include accounting tools
 const ACCOUNTING_PLANS = new Set(["FREE", "GROWTH", "ACCOUNTANT_PRO"]);
 
+// ── NavLink ──────────────────────────────────────────────────────────────────
 function NavLink({ item, collapsed, onClick, isActive, isMobile }) {
   const active = isActive(item.path);
   return (
@@ -39,17 +39,16 @@ function NavLink({ item, collapsed, onClick, isActive, isMobile }) {
           item.path === "/clients"  ? "nav-clients"  :
           item.path === "/invoices/reports/aging" ? "nav-reports" : undefined
         }
-        className={`group/nav flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
+        className={`group/nav flex items-center gap-3 px-3 py-2 rounded-xl transition-all ${
           active
             ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
             : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60"
         }`}
       >
-        <item.icon size={20} className="flex-shrink-0" />
+        <item.icon size={18} className="flex-shrink-0" />
         {!collapsed && (
           <span className="flex-1 min-w-0">
-            <span className="text-sm font-medium block">{item.label}</span>
-            {/* On mobile: show description inline as a subtitle */}
+            <span className="text-sm font-medium block truncate">{item.label}</span>
             {isMobile && item.info && (
               <span className={`text-xs block leading-snug mt-0.5 ${active ? "text-white/70" : "text-slate-400 dark:text-slate-500"}`}>
                 {item.info}
@@ -57,15 +56,9 @@ function NavLink({ item, collapsed, onClick, isActive, isMobile }) {
             )}
           </span>
         )}
-        {/* Info tooltip — desktop only, hover-based */}
         {!collapsed && !isMobile && item.info && (
           <span className="relative group/info" onClick={e => e.preventDefault()}>
-            <Info
-              size={12}
-              className={`flex-shrink-0 transition ${
-                active ? "text-white/50" : "text-slate-300 dark:text-slate-600 group-hover/nav:text-slate-400 dark:group-hover/nav:text-slate-400"
-              }`}
-            />
+            <Info size={11} className={`flex-shrink-0 transition ${active ? "text-white/50" : "text-slate-300 dark:text-slate-600 group-hover/nav:text-slate-400"}`} />
             <span className="pointer-events-none absolute right-0 bottom-full mb-1.5 z-50 w-48 px-2.5 py-2 text-xs bg-slate-900 dark:bg-slate-700 text-white rounded-xl shadow-xl opacity-0 group-hover/info:opacity-100 transition-opacity whitespace-normal leading-relaxed">
               {item.info}
               <span className="absolute bottom-[-4px] right-3 w-2 h-2 bg-slate-900 dark:bg-slate-700 rotate-45" />
@@ -77,13 +70,69 @@ function NavLink({ item, collapsed, onClick, isActive, isMobile }) {
   );
 }
 
+// ── NavSection ───────────────────────────────────────────────────────────────
+function NavSection({ id, label, icon: Icon, items, collapsed, defaultOpen, locked, lockUpgrade, onClick, isActive, isMobile }) {
+  const [open, setOpen] = useState(defaultOpen ?? false);
+
+  // In collapsed (icon-only) mode — render items flat, no section header
+  if (collapsed) {
+    return (
+      <ul className="space-y-0.5">
+        {items.map(item => (
+          <NavLink key={item.path} item={item} collapsed={collapsed} onClick={onClick} isActive={isActive} isMobile={isMobile} />
+        ))}
+      </ul>
+    );
+  }
+
+  // Locked section — show as an upgrade prompt row
+  if (locked) {
+    return (
+      <div className="pt-0.5">
+        <Link
+          to="/settings/billing"
+          onClick={onClick}
+          className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:border-indigo-400 dark:hover:border-indigo-500 hover:text-indigo-500 dark:hover:text-indigo-400 transition text-sm group/lock"
+        >
+          <Icon size={16} className="flex-shrink-0" />
+          <span className="flex-1 font-medium">{label}</span>
+          <span className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-500 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-full group-hover/lock:bg-indigo-100 dark:group-hover/lock:bg-indigo-900/50 whitespace-nowrap">
+            <Lock size={9} /> {lockUpgrade ?? "Upgrade"}
+          </span>
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pt-0.5">
+      {/* Section header button */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/40 transition"
+      >
+        <Icon size={13} className="flex-shrink-0" />
+        <span className="flex-1 text-left text-xs font-semibold uppercase tracking-wider">{label}</span>
+        <ChevronDown size={12} className={`flex-shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+      </button>
+      {/* Items */}
+      {open && (
+        <ul className="space-y-0.5 mt-0.5 ml-2 pl-2 border-l border-slate-100 dark:border-slate-700/60">
+          {items.map(item => (
+            <NavLink key={item.path} item={item} collapsed={false} onClick={onClick} isActive={isActive} isMobile={isMobile} />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// ── Main Navbar ──────────────────────────────────────────────────────────────
 function Navbar({ onClose }) {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
-  // On mobile the collapse button is hidden (lg:hidden), so collapsed only applies on desktop
   const effectiveCollapsed = collapsed;
   const [plan, setPlan] = useState(getUserFromToken()?.plan ?? null);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [userType, setUserTypeState] = useState(getUserType());
 
   const user = getUserFromToken();
@@ -95,8 +144,11 @@ function Navbar({ onClose }) {
   const isStaff = role === "STAFF" || role === "STAFF_EXPENSE";
   const isAdminOrStaff = role === "STAFF" || role === "STAFF_EXPENSE" || role === "ADMIN";
   const isAccountant = userType === USER_TYPES.ACCOUNTANT;
+  const canSwitchMode = getRegisteredAs() === USER_TYPES.ACCOUNTANT;
+  const isAccountantPro = plan === "ACCOUNTANT_PRO";
+  const canAccessGrowthFeatures = !plan || ACCOUNTING_PLANS.has(plan); // FREE trial + GROWTH + AP
+  const cur = location.pathname;
 
-  // React to mode switches from other parts of the app
   useEffect(() => {
     const handler = () => setUserTypeState(getUserType());
     window.addEventListener("userTypeChange", handler);
@@ -110,98 +162,11 @@ function Navbar({ onClose }) {
       .catch(() => {});
   }, []);
 
-  // FREE = null means trial (full access); plan not yet loaded also means no restriction
-  const canAccessAccountingTools = !plan || ACCOUNTING_PLANS.has(plan);
-
-  // Only users who registered as accountant can toggle modes.
-  // Business owners are permanently locked to business owner experience.
-  const canSwitchMode = getRegisteredAs() === USER_TYPES.ACCOUNTANT;
-
   const handleSwitchMode = () => {
     const next = userType === USER_TYPES.BUSINESS_OWNER ? USER_TYPES.ACCOUNTANT : USER_TYPES.BUSINESS_OWNER;
     setUserType(next);
     setUserTypeState(next);
   };
-
-  const isAccountantPro = getUserFromToken()?.plan === "ACCOUNTANT_PRO";
-
-  // ── Primary nav items shared by both modes ──────────────────────────────
-  // Staff only see expenses — no invoicing, accounting, or finance features
-  const coreItems = isStaff ? [] : [
-    ...(!isAdminOrStaff ? [{ path: "/dashboard",   label: "Dashboard",            icon: LayoutDashboard, info: "Real-time snapshot of your business — revenue, unpaid invoices and recent activity" }] : []),
-    { path: "/invoices",          label: "Invoices",             icon: FileText,    info: "View and manage all your invoices, track payment status" },
-    { path: "/create",            label: "New Invoice",          icon: PlusCircle,  info: "Create and send a new invoice to a client" },
-    { path: "/quotes",            label: "Quotes",               icon: FileCheck,      info: "Create and send estimates to clients, convert to invoices when accepted" },
-    { path: "/proforma",          label: "Proforma Invoices",    icon: GitBranch,      info: "Issue preliminary invoices for customs or pre-delivery confirmation" },
-    { path: "/invoices/recurring",label: "Recurring Invoices",   icon: Repeat,         info: "Set up invoices that auto-send on a schedule" },
-    { path: "/purchase-orders",   label: "Purchase Orders",      icon: ClipboardCheck, info: "Raise POs for suppliers and convert to bills when approved" },
-    { path: "/clients",           label: "Customers",            icon: Users,       info: "Manage your clients and view their full payment history" },
-    { path: "/projects",          label: "Projects",             icon: FolderOpen,  info: "Track billable projects and link them to invoices" },
-    { path: "/finance",           label: paymentLabel("module"), icon: Banknote,    info: "Track incoming payments and manage collections" },
-    ...(!isAccountant ? [{ path: "/dashboard", label: "Capital", icon: PiggyBank, info: "Financial summary and capital overview for your business" }] : []),
-  ];
-
-  // ── Accounting items (always visible for accountants, hidden for biz owners) ──
-  const accountingItems = [
-    { path: "/accounting/accounts",              label: "Chart of Accounts", icon: BookOpen,      info: "Master list of all accounts used for bookkeeping" },
-    { path: "/accounting/entries",               label: "Journal Entries",   icon: BookOpenCheck, info: "Record financial transactions — use Quick Entry for simplicity" },
-    { path: "/accounting/opening-balances",      label: "Opening Balances",  icon: Scale,         info: "Set starting account balances when you begin using LumiLedger" },
-    { path: "/bills",                            label: "Bills & Payables",  icon: FileMinus,      info: "Track supplier bills and record payments" },
-    { path: "/suppliers",                        label: "Suppliers",          icon: Building2,      info: "View supplier balances and payment history aggregated from bills" },
-    { path: "/debit-notes",                      label: "Debit Notes",       icon: FileMinus,      info: "Issue debit notes to suppliers to reduce bill balances" },
-    { path: "/credit-notes",                     label: "Credit Notes",      icon: Undo2,          info: "Issue credit notes to reduce invoice balances" },
-    { path: "/invoices/reports/aging",           label: "Aging Report",      icon: ClipboardList, info: "See overdue invoices and how long they have been unpaid" },
-    ...(isAccountantPro ? [{ path: "/invoices/reports/tax", label: "Tax Report", icon: Calculator, info: "VAT and WHT breakdown for tax filing" }] : []),
-    { path: "/accounting/reports/trial-balance", label: "Trial Balance",     icon: TrendingUp,    info: "Check that your total debits and credits are balanced" },
-    { path: "/accounting/reports/profit-loss",   label: "Profit & Loss",     icon: TrendingUp,    info: "See your income, expenses, and net profit over a period" },
-    { path: "/accounting/reports/balance-sheet", label: "Balance Sheet",     icon: LayoutList,    info: "Snapshot of your assets, liabilities, and equity" },
-    ...(["SUPER_ADMIN", "ADMIN"].includes(role) ? [{ path: "/accounting/import", label: "Import Statement", icon: Landmark, info: "Upload a bank statement to auto-create journal entries" }] : []),
-    { path: "/accounting/reconciliation",            label: "Reconciliation",       icon: ArrowLeftRight, info: "Match bank transactions to your recorded journal entries" },
-    { path: "/accounting/reports/cash-flow",         label: "Cash Flow Statement",  icon: TrendingDown,   info: "Operating, investing, and financing cash flows for a period" },
-    { path: "/accounting/ledger",                    label: "Account Ledger",       icon: BookMarked,     info: "Full transaction history and running balance for any account" },
-    { path: "/accounting/reports/cash-flow-forecast",label: "Cash Flow Forecast",   icon: History,        info: "Project future cash inflows and outflows from open invoices and bills" },
-    { path: "/fixed-assets",                         label: "Fixed Assets",         icon: Warehouse,      info: "Track and depreciate your fixed assets over their useful life" },
-    { path: "/accounting/budget",                    label: "Budget vs Actual",     icon: Target,         info: "Compare budgeted amounts to actual spend by account and period" },
-    { path: "/payroll",                              label: "Payroll & PAYE",       icon: UserCog,        info: "Manage employee salaries, calculate PAYE, NHIF, NSSF and Housing Levy" },
-  ];
-
-  // ── Reports visible in primary nav for business owners ──────────────────
-  const reportItems = [
-    { path: "/invoices/reports/aging",           label: "Aging Report",  icon: ClipboardList, info: "See overdue invoices and how long they have been unpaid" },
-    ...(isAccountantPro ? [{ path: "/invoices/reports/tax", label: "Tax Report", icon: Calculator, info: "VAT and WHT breakdown for tax filing" }] : []),
-    { path: "/accounting/reports/trial-balance", label: "Trial Balance", icon: Scale,         info: "Check that your total debits and credits are balanced" },
-    { path: "/accounting/reports/profit-loss",   label: "Profit & Loss", icon: TrendingUp,    info: "See your income, expenses, and net profit over a period" },
-    { path: "/accounting/reports/balance-sheet",          label: "Balance Sheet",       icon: LayoutList,   info: "Snapshot of your assets, liabilities, and equity" },
-    { path: "/accounting/reports/cash-flow",              label: "Cash Flow Statement", icon: TrendingDown, info: "Operating, investing, and financing cash flows for a period" },
-    { path: "/accounting/reports/cash-flow-forecast",     label: "Cash Flow Forecast",  icon: History,      info: "Project future cash inflows and outflows from open invoices and bills" },
-    { path: "/accounting/ledger",                         label: "Account Ledger",      icon: BookMarked,   info: "Full transaction history and running balance for any account" },
-  ];
-
-  const staffItems = [
-    { path: "/staff-home",      label: "Home",            icon: Home,               info: "Your expense dashboard and recent submissions" },
-    { path: "/pos",             label: "Make a Sale",     icon: ShoppingCart,       info: "Sell products and process payments for customers" },
-    { path: "/expenses",        label: "Expenses",        icon: Receipt,            info: "Submit new expense claims and track your submissions" },
-    { path: "/expenses/manage", label: "Manage Expenses", icon: FolderOpen,         info: "Review, approve, or return expense reports" },
-    { path: "/settings/org",    label: "Preferences",     icon: SlidersHorizontal,  info: "Change your display theme preference" },
-  ];
-
-  // Retail/POS items — shown when on GROWTH or ACCOUNTANT_PRO (or FREE trial)
-  const posItems = [
-    { path: "/pos",          label: "Point of Sale",  icon: ShoppingCart, info: "Sell products, process payments and issue receipts" },
-    { path: "/inventory",    label: "Inventory",      icon: Package,      info: "Manage your products, stock levels and prices" },
-    { path: "/sales/report", label: "Sales Reports",  icon: BarChart2,    info: "View revenue, transactions and staff performance" },
-  ];
-
-  const bottomItems = isStaff
-    ? []  // staff nav is handled separately via staffItems
-    : [
-        ...(isAccountantPro ? [{ path: "/expenses",      label: "Expenses",       icon: Receipt,          info: "Review and manage staff expense claims and approvals" }] : []),
-        { path: "/team",                                   label: "Team",           icon: UsersRound,       info: "Invite and manage your team members and their roles" },
-        { path: "/settings/org",                           label: "Org Settings",   icon: Building2,        info: "Update your organisation details, logo, and payment settings" },
-        { path: "/settings/billing",                       label: "Billing",        icon: CreditCard,       info: "View and manage your subscription plan" },
-        ...(isAccountantPro ? [{ path: "/audit",           label: "Audit Trail",    icon: ShieldCheck,      info: "Full log of every action taken in your account" }] : []),
-        ...(isPlatformAdmin  ? [{ path: "/admin",          label: "Platform Admin", icon: ShieldCheck,      info: "System-wide administration and organisation management" }] : []),
-      ];
 
   const handleLogout = () => {
     posthog.reset();
@@ -209,296 +174,312 @@ function Navbar({ onClose }) {
     window.location.href = "/login";
   };
 
+  // ── Section: Sales & Invoicing ─────────────────────────────────────────────
+  const salesItems = [
+    ...(!isAdminOrStaff ? [{ path: "/dashboard", label: "Dashboard", icon: LayoutDashboard, info: "Real-time snapshot of your business" }] : []),
+    { path: "/invoices",           label: "Invoices",          icon: FileText,       info: "View and manage all invoices" },
+    { path: "/create",             label: "New Invoice",       icon: PlusCircle,     info: "Create and send a new invoice" },
+    { path: "/quotes",             label: "Quotes",            icon: FileCheck,      info: "Create estimates and convert to invoices" },
+    { path: "/proforma",           label: "Proforma Invoices", icon: GitBranch,      info: "Preliminary invoices for customs or pre-delivery" },
+    { path: "/invoices/recurring", label: "Recurring",         icon: Repeat,         info: "Auto-send invoices on a schedule" },
+    { path: "/clients",            label: "Customers",         icon: Users,          info: "Manage clients and payment history" },
+    { path: "/projects",           label: "Projects",          icon: FolderOpen,     info: "Track billable projects and link to invoices" },
+    { path: "/finance",            label: paymentLabel("module"), icon: Banknote,    info: "Track incoming payments and collections" },
+    ...(!isAccountant ? [{ path: "/dashboard", label: "Capital", icon: PiggyBank, info: "Financial summary and capital overview" }] : []),
+  ];
+  const salesActive = salesItems.some(i => cur === i.path);
+
+  // ── Section: Bills & Purchases ─────────────────────────────────────────────
+  const purchasesItems = [
+    { path: "/bills",        label: "Bills & Payables", icon: FileMinus,     info: "Track supplier bills and record payments" },
+    { path: "/suppliers",    label: "Suppliers",         icon: Building2,     info: "Supplier balances aggregated from bills" },
+    { path: "/purchase-orders", label: "Purchase Orders", icon: ClipboardCheck, info: "Raise POs and convert to bills" },
+    { path: "/debit-notes",  label: "Debit Notes",      icon: FileMinus,     info: "Reduce bill balances with debit notes" },
+    { path: "/credit-notes", label: "Credit Notes",     icon: Undo2,         info: "Reduce invoice balances with credit notes" },
+  ];
+  const purchasesActive = purchasesItems.some(i => cur === i.path);
+
+  // ── Section: Accounting ────────────────────────────────────────────────────
+  const accountingItems = [
+    { path: "/accounting/accounts",         label: "Chart of Accounts", icon: BookOpen,      info: "Master list of all bookkeeping accounts" },
+    { path: "/accounting/entries",          label: "Journal Entries",   icon: BookOpenCheck, info: "Record financial transactions" },
+    { path: "/accounting/opening-balances", label: "Opening Balances",  icon: Scale,         info: "Set starting account balances" },
+    { path: "/accounting/reconciliation",   label: "Reconciliation",    icon: ArrowLeftRight, info: "Match bank transactions to journal entries" },
+    { path: "/accounting/ledger",           label: "Account Ledger",    icon: BookMarked,    info: "Full transaction history for any account" },
+    { path: "/fixed-assets",               label: "Fixed Assets",      icon: Warehouse,     info: "Track and depreciate fixed assets" },
+    { path: "/accounting/budget",          label: "Budget vs Actual",  icon: Target,        info: "Compare budgeted to actual spend" },
+    { path: "/payroll",                    label: "Payroll & PAYE",    icon: UserCog,       info: "Employee salaries and statutory deductions" },
+    ...(["SUPER_ADMIN", "ADMIN"].includes(role) ? [{ path: "/accounting/import", label: "Import Statement", icon: Landmark, info: "Upload bank statement to auto-create entries" }] : []),
+  ];
+  const accountingActive = accountingItems.some(i => cur.startsWith(i.path));
+
+  // ── Section: Reports ──────────────────────────────────────────────────────
+  const reportItems = [
+    { path: "/invoices/reports/aging",           label: "Aging Report",      icon: ClipboardList, info: "Overdue invoices and how long unpaid" },
+    { path: "/accounting/reports/profit-loss",   label: "Profit & Loss",     icon: TrendingUp,    info: "Income, expenses and net profit" },
+    { path: "/accounting/reports/balance-sheet", label: "Balance Sheet",     icon: LayoutList,    info: "Snapshot of assets, liabilities and equity" },
+    { path: "/accounting/reports/trial-balance", label: "Trial Balance",     icon: Scale,         info: "Check debits and credits are balanced" },
+    { path: "/accounting/reports/cash-flow",     label: "Cash Flow",         icon: TrendingDown,  info: "Operating, investing and financing flows" },
+    { path: "/accounting/reports/cash-flow-forecast", label: "Cash Forecast",icon: History,       info: "Project future cash from invoices and bills" },
+    ...(isAccountantPro || !plan || plan === "FREE" ? [{ path: "/invoices/reports/tax", label: "Tax Report", icon: Calculator, info: "VAT and WHT breakdown for tax filing" }] : []),
+  ];
+  const reportsActive = reportItems.some(i => cur.startsWith(i.path));
+
+  // ── Section: Retail & POS ─────────────────────────────────────────────────
+  const posItems = [
+    { path: "/pos",          label: "Point of Sale",  icon: ShoppingCart, info: "Sell products and process payments" },
+    { path: "/inventory",    label: "Inventory",      icon: Package,      info: "Manage products, stock and prices" },
+    { path: "/sales/report", label: "Sales Reports",  icon: BarChart2,    info: "Revenue, transactions and performance" },
+  ];
+  const posActive = posItems.some(i => cur.startsWith(i.path));
+
+  // ── Section: Settings ─────────────────────────────────────────────────────
+  const settingsItems = [
+    { path: "/team",          label: "Team",         icon: UsersRound,      info: "Invite and manage team members" },
+    { path: "/settings/org",  label: "Org Settings", icon: SlidersHorizontal, info: "Organisation details, logo and payment settings" },
+    { path: "/settings/billing", label: "Billing",   icon: CreditCard,      info: "View and manage your subscription" },
+    ...(isAccountantPro || !plan || plan === "FREE" ? [{ path: "/expenses", label: "Expenses", icon: Receipt, info: "Manage staff expense claims" }] : []),
+    ...(isAccountantPro || !plan || plan === "FREE" ? [{ path: "/audit",    label: "Audit Trail", icon: ShieldCheck, info: "Full log of every action in your account" }] : []),
+    ...(isPlatformAdmin ? [{ path: "/admin", label: "Platform Admin", icon: ShieldCheck, info: "System-wide administration" }] : []),
+  ];
+  const settingsActive = settingsItems.some(i => cur === i.path);
+
+  // ── Staff nav items ────────────────────────────────────────────────────────
+  const staffItems = [
+    { path: "/staff-home",      label: "Home",            icon: Home,              info: "Expense dashboard and recent submissions" },
+    { path: "/pos",             label: "Make a Sale",     icon: ShoppingCart,      info: "Sell products and process payments" },
+    { path: "/expenses",        label: "Expenses",        icon: Receipt,           info: "Submit and track expense claims" },
+    { path: "/expenses/manage", label: "Manage Expenses", icon: FolderOpen,        info: "Review and approve expense reports" },
+    { path: "/settings/org",    label: "Preferences",     icon: SlidersHorizontal, info: "Change your display preferences" },
+  ];
+
+  // ── Sections config ───────────────────────────────────────────────────────
+  // For collapsed (icon-only) mode, collect all items in a flat list
+  const allItemsFlat = isAccountant
+    ? [...salesItems, ...purchasesItems, ...accountingItems, ...reportItems, ...posItems, ...settingsItems]
+    : [...salesItems, ...purchasesItems, ...reportItems, ...posItems, ...settingsItems];
+
   return (
-    <aside className={`h-screen sticky top-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-r border-slate-200/60 dark:border-slate-700/60 flex flex-col transition-all duration-300 ${effectiveCollapsed ? "w-20" : "w-64"}`}>
+    <aside className={`h-screen sticky top-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-r border-slate-200/60 dark:border-slate-700/60 flex flex-col transition-all duration-300 ${effectiveCollapsed ? "w-16" : "w-64"}`}>
 
       {/* Logo & Toggle */}
-      <div className="flex items-center justify-between p-4 border-b border-slate-200/60 dark:border-slate-700/60">
+      <div className="flex items-center justify-between p-3 border-b border-slate-200/60 dark:border-slate-700/60 flex-shrink-0">
         <div className={`flex items-center gap-2 ${effectiveCollapsed ? "justify-center w-full" : ""}`}>
           <div className="p-2 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow-lg shadow-blue-600/20 flex-shrink-0">
-            <FileText className="w-5 h-5 text-white" />
+            <FileText className="w-4 h-4 text-white" />
           </div>
           {!effectiveCollapsed && (
-            <span className="font-bold text-lg text-slate-900 dark:text-white">
+            <span className="font-bold text-base text-slate-900 dark:text-white truncate">
               LumiLedger<span className="text-blue-600">.</span>
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 flex-shrink-0">
           {onClose && (
             <button onClick={onClose} className="lg:hidden p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition">
-              <X size={18} className="text-slate-500 dark:text-slate-400" />
+              <X size={16} className="text-slate-500 dark:text-slate-400" />
             </button>
           )}
           <div className="hidden lg:flex items-center gap-1">
             {!effectiveCollapsed && <NotificationBell align="left" />}
-            <button
-              onClick={() => setCollapsed(!collapsed)}
-              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition"
-            >
+            <button onClick={() => setCollapsed(!collapsed)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition">
               {effectiveCollapsed
-                ? <ChevronRight size={18} className="text-slate-500 dark:text-slate-400" />
-                : <ChevronLeft size={18} className="text-slate-500 dark:text-slate-400" />}
+                ? <ChevronRight size={16} className="text-slate-500 dark:text-slate-400" />
+                : <ChevronLeft size={16} className="text-slate-500 dark:text-slate-400" />}
             </button>
           </div>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-4 px-3 overflow-y-auto space-y-1">
+      <nav className="flex-1 py-3 px-2 overflow-y-auto space-y-0.5 scrollbar-thin">
 
-        {/* ── STAFF: simple 4-item nav ──────────────────────────────────── */}
+        {/* ── STAFF: simple flat nav ─────────────────────────────────────── */}
         {isStaff && (
-          <ul className="space-y-1">
+          <ul className="space-y-0.5">
             {staffItems.map(item => (
               <NavLink key={item.path} item={item} collapsed={effectiveCollapsed} onClick={onClose} isActive={isActive} isMobile={isMobile} />
             ))}
           </ul>
         )}
 
-        {/* Core items (non-staff only) */}
-        {!isStaff && (
-          <ul className="space-y-1">
-            {coreItems.map(item => (
-              <NavLink key={item.path} item={item} collapsed={effectiveCollapsed} onClick={onClose} isActive={isActive} isMobile={isMobile} />
+        {/* ── NON-STAFF: sectioned nav ───────────────────────────────────── */}
+        {!isStaff && effectiveCollapsed && (
+          /* COLLAPSED: flat icon-only list */
+          <ul className="space-y-0.5">
+            {allItemsFlat.map(item => (
+              <NavLink key={item.path} item={item} collapsed={true} onClick={onClose} isActive={isActive} isMobile={isMobile} />
             ))}
           </ul>
         )}
 
-        {/* ── ACCOUNTANT: all accounting items inline ────────────────────── */}
-        {isAccountant && !isStaff && (
-          <>
-            {!effectiveCollapsed && (
-              <p className="px-3 pt-3 pb-1 text-xs font-semibold text-slate-400 uppercase tracking-wider">Accounting</p>
-            )}
-            <ul className="space-y-1">
-              {accountingItems
-                .filter(item => {
-                  // Gate Chart of Accounts + Journal Entries + Bank Import by plan
-                  const restricted = ["/accounting/accounts", "/accounting/entries", "/accounting/import"];
-                  return canAccessAccountingTools || !restricted.includes(item.path);
-                })
-                .map(item => (
-                  <NavLink key={item.path} item={item} collapsed={effectiveCollapsed} onClick={onClose} isActive={isActive} isMobile={isMobile} />
-                ))}
-            </ul>
-            {/* Show upgrade nudge for restricted items if on STARTER */}
-            {!canAccessAccountingTools && !effectiveCollapsed && (
-              <Link
-                to="/settings/billing"
-                onClick={onClose}
-                className="flex items-center gap-2 px-3 py-2 mx-0 rounded-xl border border-dashed border-slate-600 text-slate-500 hover:border-indigo-400 hover:text-indigo-400 transition text-xs mt-1"
-              >
-                <Lock size={12} />
-                Chart of Accounts &amp; Journal Entries
-                <span className="ml-auto text-indigo-400 font-semibold">Upgrade</span>
-              </Link>
-            )}
-          </>
-        )}
-
-        {/* ── BUSINESS OWNER: reports visible, advanced collapsed ─────────── */}
-        {!isAccountant && !isStaff && (
-          <>
-            {!effectiveCollapsed && (
-              <p className="px-3 pt-3 pb-1 text-xs font-semibold text-slate-400 uppercase tracking-wider">Reports</p>
-            )}
-            <ul className="space-y-1">
-              {reportItems.map(item => (
-                <NavLink key={item.path} item={item} collapsed={effectiveCollapsed} onClick={onClose} isActive={isActive} isMobile={isMobile} />
-              ))}
-            </ul>
-
-            {/* Advanced Accounting — gated by plan */}
-            {canAccessAccountingTools ? (
-              /* Unlocked: collapsible section */
-              !effectiveCollapsed ? (
-                <div className="pt-2">
-                  <button
-                    onClick={() => setAdvancedOpen(o => !o)}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/60 transition text-sm font-medium"
-                  >
-                    <span>Advanced Accounting</span>
-                    <ChevronDown size={14} className={`transition-transform ${advancedOpen ? "rotate-180" : ""}`} />
-                  </button>
-                  {advancedOpen && (
-                    <ul className="space-y-1 mt-1 pl-2">
-                      {[
-                        { path: "/accounting/accounts",         label: "Chart of Accounts", icon: BookOpen },
-                        { path: "/accounting/entries",          label: "Journal Entries",   icon: BookOpenCheck },
-                        { path: "/accounting/opening-balances", label: "Opening Balances",  icon: Scale },
-                        { path: "/bills",                       label: "Bills & Payables",  icon: FileMinus },
-                        { path: "/suppliers",                   label: "Suppliers",          icon: Building2 },
-                        { path: "/debit-notes",                 label: "Debit Notes",       icon: FileMinus },
-                        { path: "/credit-notes",                label: "Credit Notes",      icon: Undo2 },
-                        { path: "/accounting/reports/cash-flow",          label: "Cash Flow Statement", icon: TrendingDown },
-                        { path: "/accounting/ledger",                     label: "Account Ledger",      icon: BookMarked },
-                        { path: "/accounting/reports/cash-flow-forecast", label: "Cash Flow Forecast",  icon: History },
-                        { path: "/fixed-assets",                          label: "Fixed Assets",        icon: Warehouse },
-                        { path: "/accounting/budget",                     label: "Budget vs Actual",    icon: Target },
-                        { path: "/payroll",                               label: "Payroll & PAYE",      icon: UserCog },
-                        ...(["SUPER_ADMIN", "ADMIN"].includes(role) ? [{ path: "/accounting/import", label: "Import Statement", icon: Landmark }] : []),
-                      ].map(item => (
-                        <NavLink key={item.path} item={item} collapsed={false} onClick={onClose} isActive={isActive} isMobile={isMobile} />
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              ) : (
-                <ul className="space-y-1 pt-1">
-                  {[
-                    { path: "/accounting/accounts",         label: "Chart of Accounts", icon: BookOpen },
-                    { path: "/accounting/entries",          label: "Journal Entries",   icon: BookOpenCheck },
-                    { path: "/accounting/opening-balances", label: "Opening Balances",  icon: Scale },
-                    { path: "/bills",                       label: "Bills & Payables",  icon: FileMinus },
-                    { path: "/suppliers",                   label: "Suppliers",          icon: Building2 },
-                    { path: "/debit-notes",                 label: "Debit Notes",       icon: FileMinus },
-                    { path: "/credit-notes",                label: "Credit Notes",      icon: Undo2 },
-                    { path: "/accounting/reports/cash-flow",          label: "Cash Flow Statement", icon: TrendingDown },
-                    { path: "/accounting/ledger",                     label: "Account Ledger",      icon: BookMarked },
-                    { path: "/accounting/reports/cash-flow-forecast", label: "Cash Flow Forecast",  icon: History },
-                    { path: "/fixed-assets",                          label: "Fixed Assets",        icon: Warehouse },
-                    { path: "/accounting/budget",                     label: "Budget vs Actual",    icon: Target },
-                    { path: "/payroll",                               label: "Payroll & PAYE",      icon: UserCog },
-                  ].map(item => (
-                    <NavLink key={item.path} item={item} collapsed={true} onClick={onClose} isActive={isActive} isMobile={isMobile} />
-                  ))}
-                </ul>
-              )
-            ) : (
-              /* Locked: upgrade prompt */
-              !effectiveCollapsed ? (
-                <div className="pt-2">
-                  <Link
-                    to="/settings/billing"
-                    onClick={onClose}
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-600 text-slate-400 dark:text-slate-500 hover:border-indigo-400 hover:text-indigo-500 transition text-sm group"
-                  >
-                    <Lock size={14} className="flex-shrink-0" />
-                    <span className="flex-1">Advanced Accounting</span>
-                    <span className="text-xs font-semibold text-indigo-500 group-hover:text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded-full">
-                      Upgrade
-                    </span>
-                  </Link>
-                  <p className="px-3 mt-1.5 text-xs text-slate-400">
-                    Chart of Accounts &amp; Journal Entries — available on Business plan
-                  </p>
-                </div>
-              ) : (
-                <div className="pt-1">
-                  <Link
-                    to="/settings/billing"
-                    onClick={onClose}
-                    title="Upgrade for Advanced Accounting"
-                    className="flex items-center justify-center p-2 rounded-xl text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition"
-                  >
-                    <Lock size={16} />
-                  </Link>
-                </div>
-              )
-            )}
-          </>
-        )}
-
-        {/* ── RETAIL / POS (non-staff only) ─────────────────────────────── */}
-        {!isStaff && (
-          <>
-            {!effectiveCollapsed && (
-              <p className="px-3 pt-3 pb-1 text-xs font-semibold text-slate-400 uppercase tracking-wider">Retail & POS</p>
-            )}
-            <ul className="space-y-1">
-              {posItems.map(item => (
-                <NavLink key={item.path} item={item} collapsed={effectiveCollapsed} onClick={onClose} isActive={isActive} isMobile={isMobile} />
-              ))}
-            </ul>
-          </>
-        )}
-
-        {/* Bottom items (non-staff only) */}
         {!isStaff && !effectiveCollapsed && (
-          <p className="px-3 pt-3 pb-1 text-xs font-semibold text-slate-400 uppercase tracking-wider">Settings</p>
-        )}
-        {!isStaff && (
-        <ul className="space-y-1">
-          {bottomItems.map(item => {
-            const active = isActive(item.path);
-            return (
-              <li key={item.path}>
-                <Link
-                  to={item.path}
-                  onClick={onClose}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
-                    active
-                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
-                      : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60"
-                  }`}
-                >
-                  <item.icon size={20} className="flex-shrink-0" />
-                  {!effectiveCollapsed && (
-                    <>
-                      <span className="flex-1 min-w-0">
-                        <span className="text-sm font-medium block">{item.label}</span>
-                        {isMobile && item.info && (
-                          <span className={`text-xs block leading-snug mt-0.5 ${active ? "text-white/70" : "text-slate-400 dark:text-slate-500"}`}>
-                            {item.info}
-                          </span>
-                        )}
-                      </span>
-                      {item.path === "/settings/billing" && plan && (
-                        <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 ${
-                          active ? "bg-white/20 text-white" : PLAN_BADGE[plan] ?? PLAN_BADGE.FREE
-                        }`}>
-                          {{ FREE: "Trial", STARTER: "Essential", GROWTH: "Business", ACCOUNTANT_PRO: "Pro" }[plan] ?? plan}
-                        </span>
-                      )}
-                    </>
-                  )}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+          <div className="space-y-0.5">
+
+            {/* 1 · Sales & Invoicing ── always visible */}
+            <NavSection
+              id="sales"
+              label="Sales & Invoicing"
+              icon={FileText}
+              items={salesItems}
+              collapsed={false}
+              defaultOpen={salesActive || cur === "/dashboard" || cur === "/"}
+              onClick={onClose}
+              isActive={isActive}
+              isMobile={isMobile}
+            />
+
+            {/* 2 · Bills & Purchases ── GROWTH+ or locked */}
+            {canAccessGrowthFeatures ? (
+              <NavSection
+                id="purchases"
+                label="Bills & Purchases"
+                icon={ShoppingBag}
+                items={purchasesItems}
+                collapsed={false}
+                defaultOpen={purchasesActive}
+                onClick={onClose}
+                isActive={isActive}
+                isMobile={isMobile}
+              />
+            ) : (
+              <NavSection
+                id="purchases"
+                label="Bills & Purchases"
+                icon={ShoppingBag}
+                items={[]}
+                collapsed={false}
+                locked
+                lockUpgrade="Business plan"
+                onClick={onClose}
+                isActive={isActive}
+                isMobile={isMobile}
+              />
+            )}
+
+            {/* 3 · Accounting ── GROWTH+ or locked, always visible for Accountant mode */}
+            {canAccessGrowthFeatures ? (
+              <NavSection
+                id="accounting"
+                label="Accounting"
+                icon={BookOpen}
+                items={accountingItems}
+                collapsed={false}
+                defaultOpen={isAccountant || accountingActive}
+                onClick={onClose}
+                isActive={isActive}
+                isMobile={isMobile}
+              />
+            ) : (
+              <NavSection
+                id="accounting"
+                label="Accounting"
+                icon={BookOpen}
+                items={[]}
+                collapsed={false}
+                locked
+                lockUpgrade="Business plan"
+                onClick={onClose}
+                isActive={isActive}
+                isMobile={isMobile}
+              />
+            )}
+
+            {/* 4 · Reports ── all plans, some items gated */}
+            <NavSection
+              id="reports"
+              label="Reports"
+              icon={BarChart2}
+              items={reportItems}
+              collapsed={false}
+              defaultOpen={reportsActive}
+              onClick={onClose}
+              isActive={isActive}
+              isMobile={isMobile}
+            />
+
+            {/* 5 · Retail & POS ── GROWTH+ or locked */}
+            {canAccessGrowthFeatures ? (
+              <NavSection
+                id="pos"
+                label="Retail & POS"
+                icon={ShoppingCart}
+                items={posItems}
+                collapsed={false}
+                defaultOpen={posActive}
+                onClick={onClose}
+                isActive={isActive}
+                isMobile={isMobile}
+              />
+            ) : (
+              <NavSection
+                id="pos"
+                label="Retail & POS"
+                icon={ShoppingCart}
+                items={[]}
+                collapsed={false}
+                locked
+                lockUpgrade="Business plan"
+                onClick={onClose}
+                isActive={isActive}
+                isMobile={isMobile}
+              />
+            )}
+
+            {/* 6 · Settings ── always visible */}
+            <NavSection
+              id="settings"
+              label="Settings"
+              icon={SlidersHorizontal}
+              items={settingsItems}
+              collapsed={false}
+              defaultOpen={settingsActive}
+              onClick={onClose}
+              isActive={isActive}
+              isMobile={isMobile}
+            />
+
+          </div>
         )}
       </nav>
 
-      {/* User Profile + Mode Switch */}
-      <div className="p-4 border-t border-slate-200/60 dark:border-slate-700/60">
+      {/* User Profile + Mode Switch + Logout */}
+      <div className="p-3 border-t border-slate-200/60 dark:border-slate-700/60 flex-shrink-0 space-y-1">
+
+        {/* User info */}
         {user && !effectiveCollapsed && (
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
+          <div className="flex items-center gap-2.5 px-2 py-1.5 mb-1">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
               {user.username?.charAt(0).toUpperCase() || "U"}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{user.username}</p>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full font-medium ${
-                  isStaff
-                    ? "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
-                    : isAccountant
-                    ? "bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300"
-                    : "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300"
-                }`}>
-                  {isStaff ? <Receipt size={10} /> : isAccountant ? <Calculator size={10} /> : <Briefcase size={10} />}
-                  {isStaff ? "Staff (Expense)" : isAccountant ? "Accountant" : "Business Owner"}
-                </span>
-              </div>
+              <span className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full font-medium mt-0.5 ${
+                isStaff    ? "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
+                : isAccountant ? "bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300"
+                             : "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300"
+              }`}>
+                {isStaff ? <Receipt size={9} /> : isAccountant ? <Calculator size={9} /> : <Briefcase size={9} />}
+                {isStaff ? "Staff" : isAccountant ? "Accountant" : "Business Owner"}
+              </span>
             </div>
           </div>
         )}
+
         {user && effectiveCollapsed && (
-          <div className="flex justify-center mb-3">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-medium">
+          <div className="flex justify-center mb-1">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-semibold">
               {user.username?.charAt(0).toUpperCase() || "U"}
             </div>
           </div>
         )}
 
-        {/* Switch Mode — only available for accountant-registered users, never for staff */}
+        {/* Mode switch */}
         {canSwitchMode && !isStaff && (
           <button
             onClick={handleSwitchMode}
             title={`Switch to ${isAccountant ? "Business Owner" : "Accountant"} view`}
-            className={`flex items-center gap-3 px-3 py-2 w-full rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/60 transition mb-1 ${effectiveCollapsed ? "justify-center" : ""}`}
+            className={`flex items-center gap-2 px-3 py-2 w-full rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/60 transition ${effectiveCollapsed ? "justify-center" : ""}`}
           >
             <ArrowLeftRight size={16} />
             {!effectiveCollapsed && (
@@ -509,11 +490,12 @@ function Navbar({ onClose }) {
           </button>
         )}
 
+        {/* Logout */}
         <button
           onClick={handleLogout}
-          className={`flex items-center gap-3 px-3 py-2.5 w-full rounded-xl text-slate-600 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-600 dark:hover:text-rose-400 transition ${effectiveCollapsed ? "justify-center" : ""}`}
+          className={`flex items-center gap-2 px-3 py-2 w-full rounded-xl text-slate-600 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-600 dark:hover:text-rose-400 transition ${effectiveCollapsed ? "justify-center" : ""}`}
         >
-          <LogOut size={20} />
+          <LogOut size={18} />
           {!effectiveCollapsed && <span className="text-sm font-medium">Logout</span>}
         </button>
       </div>
