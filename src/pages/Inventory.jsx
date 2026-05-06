@@ -14,6 +14,7 @@ const CATS  = ["Electronics", "Food & Drinks", "Clothing", "Beauty", "Health", "
 const emptyForm = () => ({
   name: "", sku: "", barcode: "", description: "", price: "",
   costPrice: "", quantityInStock: 0, lowStockThreshold: 5, category: "", unit: "unit",
+  incomeAccountId: "", directCostAccountId: "",
 });
 
 const emptyRestockForm = () => ({
@@ -69,6 +70,7 @@ export default function Inventory() {
   const [saving, setSaving]       = useState(false);
   const [page, setPage]           = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [accounts, setAccounts]   = useState([]);
 
   const [restockOrders, setRestockOrders]   = useState([]);
   const [restockLoading, setRestockLoading] = useState(false);
@@ -111,7 +113,15 @@ export default function Inventory() {
     return () => clearTimeout(t);
   }, [search]);
 
-  const openCreate = () => { setEditing(null); setForm(emptyForm()); setShowForm(true); };
+  const loadAccounts = async () => {
+    if (accounts.length > 0) return;
+    try {
+      const res = await api.get("/api/accounting/accounts");
+      setAccounts(res.data || []);
+    } catch { /* silently ignore — accounts are optional */ }
+  };
+
+  const openCreate = () => { setEditing(null); setForm(emptyForm()); loadAccounts(); setShowForm(true); };
   const openEdit   = (p)  => {
     setEditing(p.id);
     setForm({
@@ -119,7 +129,9 @@ export default function Inventory() {
       description: p.description || "", price: p.price || "",
       costPrice: p.costPrice || "", quantityInStock: p.quantityInStock,
       lowStockThreshold: p.lowStockThreshold, category: p.category || "", unit: p.unit || "unit",
+      incomeAccountId: p.incomeAccountId || "", directCostAccountId: p.directCostAccountId || "",
     });
+    loadAccounts();
     setShowForm(true);
   };
 
@@ -320,7 +332,7 @@ export default function Inventory() {
                 <table className="w-full text-sm">
                   <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 text-xs uppercase tracking-wide">
                     <tr>
-                      {["Product", "SKU / Barcode", "Price", "Cost", "Stock", "Category", ""].map(h => (
+                      {["Product", "SKU / Barcode", "Price", "Cost", "Stock", "Category", "Linked Accounts", ""].map(h => (
                         <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>
                       ))}
                     </tr>
@@ -347,6 +359,24 @@ export default function Inventory() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-slate-500">{p.category || "—"}</td>
+                        <td className="px-4 py-3">
+                          {p.incomeAccountName || p.directCostAccountName ? (
+                            <div className="space-y-0.5">
+                              {p.incomeAccountName && (
+                                <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                                  <span className="text-slate-400">Income: </span>{p.incomeAccountName}
+                                </p>
+                              )}
+                              {p.directCostAccountName && (
+                                <p className="text-xs text-amber-700 dark:text-amber-400">
+                                  <span className="text-slate-400">COGS: </span>{p.directCostAccountName}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-slate-300 dark:text-slate-600 text-xs">—</span>
+                          )}
+                        </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1">
                             <button onClick={() => openEdit(p)} className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition">
@@ -578,6 +608,32 @@ export default function Inventory() {
                   </select>
                 </div>
               </div>
+              {accounts.length > 0 && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 mb-1">Income Account</label>
+                      <select value={form.incomeAccountId} onChange={e => set("incomeAccountId", e.target.value)} className={inputCls}>
+                        <option value="">None</option>
+                        {accounts.filter(a => a.type === "INCOME").map(a => (
+                          <option key={a.id} value={a.id}>{a.code ? `${a.code} · ` : ""}{a.name}</option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-slate-400 mt-0.5">Revenue account for sales of this item</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 mb-1">Direct Cost Account</label>
+                      <select value={form.directCostAccountId} onChange={e => set("directCostAccountId", e.target.value)} className={inputCls}>
+                        <option value="">None</option>
+                        {accounts.filter(a => a.type === "EXPENSE" && a.subType === "DIRECT_COST").map(a => (
+                          <option key={a.id} value={a.id}>{a.code ? `${a.code} · ` : ""}{a.name}</option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-slate-400 mt-0.5">COGS account for cost of this item</p>
+                    </div>
+                  </div>
+                </>
+              )}
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-1">Description</label>
                 <textarea value={form.description} onChange={e => set("description", e.target.value)}
