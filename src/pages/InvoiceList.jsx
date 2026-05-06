@@ -103,7 +103,7 @@ function InvoiceList() {
 
   const StatCard = ({ title, value, icon: Icon, color, trend }) => (
     <div className="group relative bg-white dark:bg-slate-800 rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-lg hover:border-slate-300 transition-all duration-300">
-      <div className="flex items-start justify-between">
+      <div className="flex items-center justify-between">
         <div>
           <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">{title}</p>
           <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mt-1.5 sm:mt-2">{value}</p>
