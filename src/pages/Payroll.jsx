@@ -9,6 +9,13 @@ import Toast from "../components/Toast";
 import { useOrg } from "../context/OrgContext";
 
 
+function payrollLabels(countryCode) {
+  if (countryCode === "GH") return { stat1: "SSNIT", stat2: null, stat3: null };
+  if (countryCode === "KE") return { stat1: "NHIF/SHIF", stat2: "NSSF", stat3: "Housing Levy" };
+  // Default: Nigeria (NG)
+  return { stat1: "NHF", stat2: "Pension", stat3: null };
+}
+
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
@@ -64,7 +71,7 @@ function StatCard({ icon: Icon, label, value, sub, iconBg }) {
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 export default function Payroll() {
-  const { fmt, currencySymbol } = useOrg();
+  const { fmt, currencySymbol, country } = useOrg();
   const [activeTab, setActiveTab] = useState("employees");
 
   // Employees state
@@ -580,55 +587,63 @@ export default function Payroll() {
                         <div className="px-5 pb-5 bg-slate-50 dark:bg-slate-700/20 border-t border-slate-100 dark:border-slate-700">
                           {(!run.entries || run.entries.length === 0) ? (
                             <p className="py-6 text-center text-sm text-slate-400">No entries in this run</p>
-                          ) : (
-                            <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
-                              <table className="w-full text-xs">
-                                <thead>
-                                  <tr className="bg-slate-100 dark:bg-slate-700/60 border-b border-slate-200 dark:border-slate-700">
-                                    {["Employee", "Gross", "NHIF", "NSSF", "Housing Levy", "Taxable Income", "PAYE", "Net Pay"].map((h) => (
-                                      <th
-                                        key={h}
-                                        className="px-3 py-2.5 text-left font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide whitespace-nowrap"
-                                      >
-                                        {h}
-                                      </th>
-                                    ))}
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
-                                  {run.entries.map((entry) => (
-                                    <tr key={entry.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition">
-                                      <td className="px-3 py-2.5 text-slate-900 dark:text-white font-medium whitespace-nowrap">
-                                        {entry.employeeName}
-                                        <span className="text-slate-400 font-normal ml-1">({entry.employeeNumber})</span>
-                                      </td>
-                                      <td className="px-3 py-2.5 text-slate-700 dark:text-slate-300 whitespace-nowrap">{fmt(entry.grossSalary)}</td>
-                                      <td className="px-3 py-2.5 text-slate-700 dark:text-slate-300 whitespace-nowrap">{fmt(entry.nhif)}</td>
-                                      <td className="px-3 py-2.5 text-slate-700 dark:text-slate-300 whitespace-nowrap">{fmt(entry.nssf)}</td>
-                                      <td className="px-3 py-2.5 text-slate-700 dark:text-slate-300 whitespace-nowrap">{fmt(entry.housingLevy)}</td>
-                                      <td className="px-3 py-2.5 text-slate-700 dark:text-slate-300 whitespace-nowrap">{fmt(entry.taxableIncome)}</td>
-                                      <td className="px-3 py-2.5 text-rose-600 dark:text-rose-400 font-medium whitespace-nowrap">{fmt(entry.paye)}</td>
-                                      <td className="px-3 py-2.5 text-emerald-600 dark:text-emerald-400 font-semibold whitespace-nowrap">{fmt(entry.netSalary)}</td>
+                          ) : (() => {
+                            const lbl = payrollLabels(run.countryCode);
+                            const cols = [
+                              { key: "employee", label: "Employee" },
+                              { key: "grossSalary", label: "Gross" },
+                              { key: "nhif", label: lbl.stat1 },
+                              ...(lbl.stat2 ? [{ key: "nssf", label: lbl.stat2 }] : []),
+                              ...(lbl.stat3 ? [{ key: "housingLevy", label: lbl.stat3 }] : []),
+                              { key: "taxableIncome", label: "Taxable" },
+                              { key: "paye", label: "PAYE" },
+                              { key: "netSalary", label: "Net Pay" },
+                            ];
+                            return (
+                              <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+                                <table className="w-full text-xs">
+                                  <thead>
+                                    <tr className="bg-slate-100 dark:bg-slate-700/60 border-b border-slate-200 dark:border-slate-700">
+                                      {cols.map((c) => (
+                                        <th key={c.key} className="px-3 py-2.5 text-left font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide whitespace-nowrap">
+                                          {c.label}
+                                        </th>
+                                      ))}
                                     </tr>
-                                  ))}
-                                </tbody>
-                                <tfoot>
-                                  <tr className="bg-slate-100 dark:bg-slate-700/60 border-t-2 border-slate-300 dark:border-slate-600">
-                                    <td className="px-3 py-2.5 font-bold text-slate-700 dark:text-slate-200 text-xs uppercase tracking-wide">
-                                      Totals
-                                    </td>
-                                    <td className="px-3 py-2.5 font-bold text-slate-900 dark:text-white whitespace-nowrap">{fmt(totals.grossSalary)}</td>
-                                    <td className="px-3 py-2.5 font-bold text-slate-900 dark:text-white whitespace-nowrap">{fmt(totals.nhif)}</td>
-                                    <td className="px-3 py-2.5 font-bold text-slate-900 dark:text-white whitespace-nowrap">{fmt(totals.nssf)}</td>
-                                    <td className="px-3 py-2.5 font-bold text-slate-900 dark:text-white whitespace-nowrap">{fmt(totals.housingLevy)}</td>
-                                    <td className="px-3 py-2.5 font-bold text-slate-900 dark:text-white whitespace-nowrap">{fmt(totals.taxableIncome)}</td>
-                                    <td className="px-3 py-2.5 font-bold text-rose-600 dark:text-rose-400 whitespace-nowrap">{fmt(totals.paye)}</td>
-                                    <td className="px-3 py-2.5 font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">{fmt(totals.netSalary)}</td>
-                                  </tr>
-                                </tfoot>
-                              </table>
-                            </div>
-                          )}
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
+                                    {run.entries.map((entry) => (
+                                      <tr key={entry.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition">
+                                        <td className="px-3 py-2.5 text-slate-900 dark:text-white font-medium whitespace-nowrap">
+                                          {entry.employeeName}
+                                          <span className="text-slate-400 font-normal ml-1">({entry.employeeNumber})</span>
+                                        </td>
+                                        <td className="px-3 py-2.5 text-slate-700 dark:text-slate-300 whitespace-nowrap">{fmt(entry.grossSalary)}</td>
+                                        <td className="px-3 py-2.5 text-slate-700 dark:text-slate-300 whitespace-nowrap">{fmt(entry.nhif)}</td>
+                                        {lbl.stat2 && <td className="px-3 py-2.5 text-slate-700 dark:text-slate-300 whitespace-nowrap">{fmt(entry.nssf)}</td>}
+                                        {lbl.stat3 && <td className="px-3 py-2.5 text-slate-700 dark:text-slate-300 whitespace-nowrap">{fmt(entry.housingLevy)}</td>}
+                                        <td className="px-3 py-2.5 text-slate-700 dark:text-slate-300 whitespace-nowrap">{fmt(entry.taxableIncome)}</td>
+                                        <td className="px-3 py-2.5 text-rose-600 dark:text-rose-400 font-medium whitespace-nowrap">{fmt(entry.paye)}</td>
+                                        <td className="px-3 py-2.5 text-emerald-600 dark:text-emerald-400 font-semibold whitespace-nowrap">{fmt(entry.netSalary)}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                  <tfoot>
+                                    <tr className="bg-slate-100 dark:bg-slate-700/60 border-t-2 border-slate-300 dark:border-slate-600">
+                                      <td className="px-3 py-2.5 font-bold text-slate-700 dark:text-slate-200 text-xs uppercase tracking-wide">Totals</td>
+                                      <td className="px-3 py-2.5 font-bold text-slate-900 dark:text-white whitespace-nowrap">{fmt(totals.grossSalary)}</td>
+                                      <td className="px-3 py-2.5 font-bold text-slate-900 dark:text-white whitespace-nowrap">{fmt(totals.nhif)}</td>
+                                      {lbl.stat2 && <td className="px-3 py-2.5 font-bold text-slate-900 dark:text-white whitespace-nowrap">{fmt(totals.nssf)}</td>}
+                                      {lbl.stat3 && <td className="px-3 py-2.5 font-bold text-slate-900 dark:text-white whitespace-nowrap">{fmt(totals.housingLevy)}</td>}
+                                      <td className="px-3 py-2.5 font-bold text-slate-900 dark:text-white whitespace-nowrap">{fmt(totals.taxableIncome)}</td>
+                                      <td className="px-3 py-2.5 font-bold text-rose-600 dark:text-rose-400 whitespace-nowrap">{fmt(totals.paye)}</td>
+                                      <td className="px-3 py-2.5 font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">{fmt(totals.netSalary)}</td>
+                                    </tr>
+                                  </tfoot>
+                                </table>
+                              </div>
+                            );
+                          })()}
                         </div>
                       )}
                     </div>
@@ -698,7 +713,7 @@ export default function Payroll() {
                   <input
                     value={empForm.phone}
                     onChange={(e) => setEmpForm((f) => ({ ...f, phone: e.target.value }))}
-                    placeholder="+254 700 000 000"
+                    placeholder="+234 800 000 0000"
                     className={inputCls}
                   />
                 </div>
@@ -726,14 +741,16 @@ export default function Payroll() {
                 </div>
               </div>
 
-              {/* Row 4: KRA PIN / ID Number */}
+              {/* Row 4: Tax ID / ID Number */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">KRA PIN</label>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">
+                    {country === "KE" ? "KRA PIN" : country === "GH" ? "TIN / SSNIT No." : "Tax ID (TIN)"}
+                  </label>
                   <input
                     value={empForm.kraPin}
                     onChange={(e) => setEmpForm((f) => ({ ...f, kraPin: e.target.value }))}
-                    placeholder="A000000000X"
+                    placeholder={country === "KE" ? "A000000000X" : country === "GH" ? "C000000000" : "00000000-0001"}
                     className={inputCls}
                   />
                 </div>
@@ -773,7 +790,7 @@ export default function Payroll() {
               {/* Row 6: Basic Salary / House Allowance */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Basic Salary (KES) *</label>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Basic Salary ({currencySymbol}) *</label>
                   <input
                     type="number"
                     min="0"
@@ -786,7 +803,7 @@ export default function Payroll() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">House Allowance (KES)</label>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">House Allowance ({currencySymbol})</label>
                   <input
                     type="number"
                     min="0"
@@ -802,7 +819,7 @@ export default function Payroll() {
               {/* Row 7: Transport / Other Allowances */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Transport Allowance (KES)</label>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Transport Allowance ({currencySymbol})</label>
                   <input
                     type="number"
                     min="0"
@@ -814,7 +831,7 @@ export default function Payroll() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Other Allowances (KES)</label>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Other Allowances ({currencySymbol})</label>
                   <input
                     type="number"
                     min="0"
