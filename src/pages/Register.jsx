@@ -199,10 +199,11 @@ export default function Register() {
                 </div>
                 <div className="space-y-1.5">
                   <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                    <Phone size={14} className="text-slate-400" /> Phone Number <span className="text-slate-400 font-normal">(optional)</span>
+                    <Phone size={14} className="text-slate-400" /> Phone Number <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="tel"
+                    required
                     placeholder="+234 800 000 0000"
                     value={form.phone}
                     onChange={e => setForm({ ...form, phone: e.target.value })}
@@ -228,8 +229,8 @@ export default function Register() {
                 </div>
               </div>
               <button
-                onClick={() => { if (form.orgName.trim() && form.email.trim()) setStep(2); }}
-                disabled={!form.orgName.trim() || !form.email.trim()}
+                onClick={() => { if (form.orgName.trim() && form.email.trim() && form.phone.trim()) setStep(2); }}
+                disabled={!form.orgName.trim() || !form.email.trim() || !form.phone.trim()}
                 className="mt-6 w-full inline-flex items-center justify-center gap-2 py-3.5 bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-semibold rounded-2xl shadow-lg shadow-blue-600/25 hover:scale-[1.02] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 Continue <ArrowRight size={16} />
