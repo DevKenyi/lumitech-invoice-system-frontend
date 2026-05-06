@@ -216,17 +216,12 @@ function Billing() {
             <div className={`relative bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 rounded-2xl p-6 shadow-2xl shadow-blue-600/40 flex flex-col ${
               currentPlan === "STARTER" ? "ring-4 ring-white/50" : ""
             }`}>
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <span className="inline-flex items-center gap-1 px-3 py-1 bg-white text-blue-600 text-xs font-bold rounded-full shadow-lg border border-blue-100">
-                  ⭐ Most Popular
-                </span>
-              </div>
               <div className="inline-flex items-center px-3 py-1 bg-white/15 text-white text-xs font-bold rounded-full mb-5 self-start tracking-widest uppercase">
                 Essential
               </div>
-              <div className="mb-2">
-                <span className="text-4xl font-extrabold text-white">{fmtPrice("STARTER") ?? "—"}</span>
-                <span className="text-blue-200 text-sm ml-1">/month</span>
+              <div className="mb-2 flex items-baseline flex-wrap gap-1">
+                <span className="text-3xl font-extrabold text-white">{fmtPrice("STARTER") ?? "—"}</span>
+                <span className="text-blue-200 text-sm">/month</span>
               </div>
               <p className="text-blue-200 text-xs mb-5">
                 Best for small businesses and solo operators
@@ -265,15 +260,20 @@ function Billing() {
             </div>
 
             {/* GROWTH → Business */}
-            <div className={`bg-slate-900 rounded-2xl border-2 p-6 flex flex-col transition-all ${
+            <div className={`relative bg-slate-900 rounded-2xl border-2 p-6 flex flex-col transition-all mt-5 md:mt-6 ${
               currentPlan === "GROWTH" ? "border-indigo-400 ring-2 ring-indigo-500/30" : "border-slate-700"
             }`}>
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-400 text-slate-900 text-xs font-bold rounded-full shadow-lg">
+                  ⭐ Most Popular
+                </span>
+              </div>
               <div className="inline-flex items-center px-3 py-1 bg-indigo-500/20 text-indigo-300 text-xs font-bold rounded-full mb-5 self-start border border-indigo-500/30 tracking-widest uppercase">
                 Business
               </div>
-              <div className="mb-2">
+              <div className="mb-2 flex items-baseline flex-wrap gap-1">
                 <span className="text-3xl font-extrabold text-white">{fmtPrice("GROWTH") ?? "—"}</span>
-                <span className="text-slate-400 text-sm ml-1">/month</span>
+                <span className="text-slate-400 text-sm">/month</span>
               </div>
               <p className="text-slate-400 text-xs mb-5">
                 For growing businesses that need team collaboration
@@ -319,9 +319,9 @@ function Billing() {
                 <Calculator size={11} />
                 Accountant Pro
               </div>
-              <div className="mb-2">
+              <div className="mb-2 flex items-baseline flex-wrap gap-1">
                 <span className="text-3xl font-extrabold text-slate-900">{fmtPrice("ACCOUNTANT_PRO") ?? "—"}</span>
-                <span className="text-slate-400 text-sm ml-1">/month</span>
+                <span className="text-slate-400 text-sm">/month</span>
               </div>
               <p className="text-slate-500 text-xs mb-5">
                 Built for accountants managing multiple clients
