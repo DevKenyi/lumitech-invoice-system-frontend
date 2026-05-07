@@ -99,6 +99,20 @@ function ClientPortal() {
     }
   };
 
+  const handleFlutterwave = async (inv) => {
+    setPayingLinkId(inv.id + "-fw");
+    setPaymentError(null);
+    try {
+      const res = await axios.post(
+        `${baseURL}/api/public/clients/${token}/invoices/${inv.id}/payment-link/flutterwave`
+      );
+      window.location.href = res.data.paymentUrl;
+    } catch (e) {
+      setPaymentError(e.response?.data?.message || "Could not generate Flutterwave link. Please try another method.");
+      setPayingLinkId(null);
+    }
+  };
+
   const openPaymentOptions = (inv) => {
     setPayingInvoice(inv);
     setPaymentError(null);
@@ -354,6 +368,26 @@ function ClientPortal() {
                   <div className="text-left">
                     <p className="text-sm font-semibold text-slate-800">Pay with Paystack</p>
                     <p className="text-xs text-slate-500">Card, bank transfer, USSD, or QR code</p>
+                  </div>
+                </button>
+              )}
+
+              {/* Flutterwave */}
+              {data?.orgAcceptsFlutterwave && (
+                <button
+                  onClick={() => handleFlutterwave(payingInvoice)}
+                  disabled={payingLinkId === payingInvoice.id + "-fw"}
+                  className="w-full flex items-center gap-4 p-4 border-2 border-orange-200 rounded-xl hover:border-orange-500 hover:bg-orange-50 transition group disabled:opacity-50"
+                >
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 shadow-sm shrink-0">
+                    {payingLinkId === payingInvoice.id + "-fw"
+                      ? <Loader2 className="w-5 h-5 text-white animate-spin" />
+                      : <CreditCard className="w-5 h-5 text-white" />
+                    }
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-semibold text-slate-800">Pay with Flutterwave</p>
+                    <p className="text-xs text-slate-500">Card, bank transfer, mobile money & more</p>
                   </div>
                 </button>
               )}

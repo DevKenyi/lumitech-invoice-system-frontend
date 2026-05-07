@@ -41,7 +41,11 @@ const EMPTY_FORM = {
   bankName: "", bankAccountNumber: "", bankAccountName: "",
   paystackPublicKey: "", paystackSecretKey: "",
   paystackSecretKeyConfigured: false,
-  acceptPaystack: false, acceptBankTransfer: true, acceptCash: false,
+  acceptPaystack: false,
+  flutterwavePublicKey: "", flutterwaveSecretKey: "", flutterwaveWebhookSecret: "",
+  flutterwaveSecretKeyConfigured: false, flutterwaveWebhookSecretConfigured: false,
+  acceptFlutterwave: false,
+  acceptBankTransfer: true, acceptCash: false,
   baseCurrency: "NGN", country: "NG", defaultVatRate: 7.5, taxAuthorityLabel: "FIRS",
 };
 
@@ -55,9 +59,12 @@ function OrgSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
-  // Secret key reveal — password-gated
+  // Paystack secret key reveal — password-gated
   const [showSecret, setShowSecret] = useState(false);
   const [editingSecret, setEditingSecret] = useState(false);
+  // Flutterwave secret fields editing
+  const [editingFwSecret, setEditingFwSecret] = useState(false);
+  const [editingFwWebhook, setEditingFwWebhook] = useState(false);
   const [pwModal, setPwModal] = useState(false);
   const [pwInput, setPwInput] = useState("");
   const [pwError, setPwError] = useState("");
@@ -113,16 +120,26 @@ function OrgSettings() {
     e.preventDefault();
     try {
       setSaving(true);
-      // Only send paystackSecretKey if the user is actively editing it
       const payload = { ...form };
       if (!editingSecret) delete payload.paystackSecretKey;
       delete payload.paystackSecretKeyConfigured;
+      if (!editingFwSecret) delete payload.flutterwaveSecretKey;
+      if (!editingFwWebhook) delete payload.flutterwaveWebhookSecret;
+      delete payload.flutterwaveSecretKeyConfigured;
+      delete payload.flutterwaveWebhookSecretConfigured;
       await api.put("/api/org", payload);
       setToast({ visible: true, message: "Organisation settings saved", type: "success" });
       setEditingSecret(false);
       setShowSecret(false);
-      // Refresh configured flag
-      api.get("/api/org").then(res => setForm(f => ({ ...f, paystackSecretKeyConfigured: res.data.paystackSecretKeyConfigured })));
+      setEditingFwSecret(false);
+      setEditingFwWebhook(false);
+      // Refresh configured flags
+      api.get("/api/org").then(res => setForm(f => ({
+        ...f,
+        paystackSecretKeyConfigured: res.data.paystackSecretKeyConfigured,
+        flutterwaveSecretKeyConfigured: res.data.flutterwaveSecretKeyConfigured,
+        flutterwaveWebhookSecretConfigured: res.data.flutterwaveWebhookSecretConfigured,
+      })));
     } catch (err) {
       setToast({ visible: true, message: err.response?.data?.message || "Failed to save settings.", type: "error" });
     } finally {
@@ -364,9 +381,10 @@ function OrgSettings() {
               <p className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-3">Accepted Payment Methods</p>
               <div className="space-y-3">
                 {[
-                  { key: "acceptBankTransfer", label: "Bank Transfer", desc: "Display your bank account details on invoices" },
-                  { key: "acceptPaystack",     label: "Paystack (Online)",  desc: "Generate a payment link for online card/bank payments" },
-                  { key: "acceptCash",         label: "Cash",         desc: "Allow clients to record cash payments" },
+                  { key: "acceptBankTransfer",  label: "Bank Transfer",        desc: "Display your bank account details on invoices" },
+                  { key: "acceptPaystack",      label: "Paystack (Online)",    desc: "Generate a Paystack payment link for card/bank payments" },
+                  { key: "acceptFlutterwave",   label: "Flutterwave (Online)", desc: "Generate a Flutterwave payment link — supports NGN, GHS, ZAR, KES and more" },
+                  { key: "acceptCash",          label: "Cash",                 desc: "Allow clients to record cash payments" },
                 ].map(({ key, label, desc }) => (
                   <label key={key} className="flex items-start gap-3 cursor-pointer group">
                     <div className="relative mt-0.5">
@@ -461,6 +479,75 @@ function OrgSettings() {
                   </div>
                 )}
                 <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">Keep your secret key private. It is never shown to clients.</p>
+              </div>
+            </div>
+
+            {/* Flutterwave Keys */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-orange-500" />
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Flutterwave API Keys</p>
+              </div>
+              <p className="text-xs text-slate-400 dark:text-slate-500 -mt-2">
+                Get your keys from your Flutterwave dashboard at app.flutterwave.com → Settings → API. Supports NGN, GHS, ZAR, KES and more.
+              </p>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Public Key</label>
+                <input
+                  type="text" value={form.flutterwavePublicKey || ""}
+                  onChange={e => set("flutterwavePublicKey", e.target.value)}
+                  placeholder="FLWPUBK-..."
+                  className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Secret Key</label>
+                {form.flutterwaveSecretKeyConfigured && !editingFwSecret ? (
+                  <div className="flex items-center gap-3 px-4 py-2.5 border border-emerald-200 dark:border-emerald-800 rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <span className="text-sm font-mono text-emerald-700 dark:text-emerald-400 flex-1">FLWSECK-•••••••••••••••••••••</span>
+                    <button type="button" onClick={() => { setEditingFwSecret(true); set("flutterwaveSecretKey", ""); }}
+                      className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-orange-600 dark:hover:text-orange-400 transition">
+                      <Pencil size={12} /> Change
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    type="password"
+                    value={form.flutterwaveSecretKey || ""}
+                    onChange={e => set("flutterwaveSecretKey", e.target.value)}
+                    placeholder="FLWSECK-..."
+                    autoFocus={editingFwSecret}
+                    className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition"
+                  />
+                )}
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">Keep your secret key private.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Webhook Secret <span className="text-slate-400 font-normal">(verif-hash)</span></label>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mb-2">
+                  Set a secret hash in your Flutterwave dashboard (Settings → Webhooks) and paste it here. Your webhook URL is:<br />
+                  <code className="text-xs bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded mt-1 inline-block">https://api.lumitechsystems.com/api/webhooks/flutterwave</code>
+                </p>
+                {form.flutterwaveWebhookSecretConfigured && !editingFwWebhook ? (
+                  <div className="flex items-center gap-3 px-4 py-2.5 border border-emerald-200 dark:border-emerald-800 rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <span className="text-sm font-mono text-emerald-700 dark:text-emerald-400 flex-1">••••••••••••••••</span>
+                    <button type="button" onClick={() => { setEditingFwWebhook(true); set("flutterwaveWebhookSecret", ""); }}
+                      className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-orange-600 dark:hover:text-orange-400 transition">
+                      <Pencil size={12} /> Change
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    type="password"
+                    value={form.flutterwaveWebhookSecret || ""}
+                    onChange={e => set("flutterwaveWebhookSecret", e.target.value)}
+                    placeholder="your-webhook-secret"
+                    autoFocus={editingFwWebhook}
+                    className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition"
+                  />
+                )}
               </div>
             </div>
           </div>
