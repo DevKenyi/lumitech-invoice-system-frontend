@@ -16,8 +16,8 @@ export default function SocialProofBar() {
           </div>
           <div className="hidden sm:block w-px h-10 bg-slate-100" />
           <div className="text-center">
-            <p className="text-3xl font-extrabold text-slate-900">8</p>
-            <p className="text-sm text-slate-500 mt-0.5">🌍 African countries supported</p>
+            <p className="text-3xl font-extrabold text-slate-900">🇬🇭 🇿🇦</p>
+            <p className="text-sm text-slate-500 mt-0.5">Ghana &amp; South Africa</p>
           </div>
           <div className="hidden sm:block w-px h-10 bg-slate-100" />
           <div className="text-center">

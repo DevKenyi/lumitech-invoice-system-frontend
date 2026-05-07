@@ -148,19 +148,13 @@ export default function LandingHero() {
             <div className="flex flex-wrap items-center justify-center lg:justify-start gap-1.5 mb-6">
               <span className="text-xs text-slate-400 font-medium mr-1">Live in</span>
               {[
-                { flag: "🇳🇬", name: "Nigeria" },
                 { flag: "🇬🇭", name: "Ghana" },
                 { flag: "🇿🇦", name: "South Africa" },
-                { flag: "🇰🇪", name: "Kenya" },
-                { flag: "🇹🇿", name: "Tanzania" },
-                { flag: "🇷🇼", name: "Rwanda" },
-                { flag: "🇺🇬", name: "Uganda" },
-                { flag: "🇿🇲", name: "Zambia" },
               ].map(c => (
                 <span key={c.name} title={c.name}
                   className="text-lg leading-none hover:scale-125 transition-transform cursor-default select-none">{c.flag}</span>
               ))}
-              <span className="ml-1 text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">8 countries</span>
+              <span className="ml-1 text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">Ghana &amp; South Africa</span>
             </div>
             <h1 className="text-3xl sm:text-4xl lg:text-[52px] font-extrabold text-slate-900 leading-[1.1] tracking-tight mb-5 sm:mb-6">
               Know exactly{" "}

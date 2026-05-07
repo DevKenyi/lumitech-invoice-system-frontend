@@ -73,6 +73,7 @@ function NavLink({ item, collapsed, onClick, isActive, isMobile }) {
 // ── NavSection ───────────────────────────────────────────────────────────────
 function NavSection({ id, label, icon: Icon, items, collapsed, defaultOpen, locked, lockUpgrade, onClick, isActive, isMobile }) {
   const [open, setOpen] = useState(defaultOpen ?? false);
+  const hasActive = items.some(i => isActive(i.path));
 
   // In collapsed (icon-only) mode — render items flat, no section header
   if (collapsed) {
@@ -92,11 +93,11 @@ function NavSection({ id, label, icon: Icon, items, collapsed, defaultOpen, lock
         <Link
           to="/settings/billing"
           onClick={onClick}
-          className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:border-indigo-400 dark:hover:border-indigo-500 hover:text-indigo-500 dark:hover:text-indigo-400 transition text-sm group/lock"
+          className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:border-indigo-300 dark:hover:border-indigo-600 hover:text-indigo-500 dark:hover:text-indigo-400 transition-all group/lock"
         >
-          <Icon size={16} className="flex-shrink-0" />
-          <span className="flex-1 font-medium">{label}</span>
-          <span className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-500 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-full group-hover/lock:bg-indigo-100 dark:group-hover/lock:bg-indigo-900/50 whitespace-nowrap">
+          <Icon size={15} className="flex-shrink-0" />
+          <span className="flex-1 text-xs font-semibold">{label}</span>
+          <span className="inline-flex items-center gap-1 text-xs font-bold bg-gradient-to-r from-indigo-500 to-violet-500 text-white px-2 py-0.5 rounded-full whitespace-nowrap shadow-sm shadow-indigo-500/30">
             <Lock size={9} /> {lockUpgrade ?? "Upgrade"}
           </span>
         </Link>
@@ -109,20 +110,35 @@ function NavSection({ id, label, icon: Icon, items, collapsed, defaultOpen, lock
       {/* Section header button */}
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/40 transition"
+        className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-150 ${
+          hasActive
+            ? "text-blue-600 dark:text-blue-400"
+            : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
+        } hover:bg-slate-50 dark:hover:bg-slate-700/40`}
       >
+        {/* Active-section pulse dot */}
+        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 transition-all duration-200 ${
+          hasActive ? "bg-blue-500 shadow-[0_0_0_2px_rgba(59,130,246,0.2)]" : "bg-slate-200 dark:bg-slate-700"
+        }`} />
         <Icon size={13} className="flex-shrink-0" />
         <span className="flex-1 text-left text-xs font-semibold uppercase tracking-wider">{label}</span>
-        <ChevronDown size={12} className={`flex-shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+        <ChevronDown
+          size={12}
+          className={`flex-shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+        />
       </button>
-      {/* Items */}
-      {open && (
-        <ul className="space-y-0.5 mt-0.5 ml-2 pl-2 border-l border-slate-100 dark:border-slate-700/60">
+      {/* Animated items container */}
+      <div className={`overflow-hidden transition-all duration-200 ease-in-out ${open ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"}`}>
+        <ul className={`space-y-0.5 mt-0.5 ml-2 pl-2 border-l transition-colors duration-200 ${
+          hasActive
+            ? "border-blue-200 dark:border-blue-800/50"
+            : "border-slate-100 dark:border-slate-700/60"
+        }`}>
           {items.map(item => (
             <NavLink key={item.path} item={item} collapsed={false} onClick={onClick} isActive={isActive} isMobile={isMobile} />
           ))}
         </ul>
-      )}
+      </div>
     </div>
   );
 }
