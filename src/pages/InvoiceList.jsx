@@ -311,21 +311,45 @@ function InvoiceList() {
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                   {filteredInvoices.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="px-6 py-16 text-center">
-                        <div className="flex flex-col items-center gap-3">
-                          <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-full">
-                            <FileText className="w-8 h-8 text-slate-400 dark:text-slate-500" />
+                      <td colSpan="6" className="px-6 py-12 text-center">
+                        {invoices.length === 0 ? (
+                          /* True empty — no invoices at all */
+                          <div className="flex flex-col items-center gap-4 max-w-sm mx-auto">
+                            <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 rounded-2xl flex items-center justify-center">
+                              <FileText className="w-8 h-8 text-blue-500 dark:text-blue-400" />
+                            </div>
+                            <div>
+                              <p className="text-base font-semibold text-slate-800 dark:text-slate-100 mb-1">No invoices yet</p>
+                              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                                Send your first invoice and start getting paid. It takes less than 2 minutes.
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-700/50 rounded-xl px-4 py-2.5 w-full justify-center">
+                              <span className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-[10px] flex-shrink-0">1</span>
+                              Add a customer
+                              <span className="text-slate-300 dark:text-slate-600">→</span>
+                              <span className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-[10px] flex-shrink-0">2</span>
+                              Create invoice
+                              <span className="text-slate-300 dark:text-slate-600">→</span>
+                              <span className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-[10px] flex-shrink-0">3</span>
+                              Get paid
+                            </div>
+                            <Link
+                              to="/create"
+                              className="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-xl text-sm font-semibold shadow-md shadow-blue-600/25 hover:scale-[1.02] transition-all"
+                            >
+                              <Plus className="w-4 h-4" />
+                              Create Your First Invoice
+                            </Link>
                           </div>
-                          <p className="text-slate-500 dark:text-slate-400 font-medium">No invoices found</p>
-                          <p className="text-sm text-slate-400 dark:text-slate-500">Try adjusting your search or create a new invoice</p>
-                          <Link
-                            to="/create"
-                            className="mt-2 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
-                          >
-                            <Plus className="w-4 h-4" />
-                            Create Invoice
-                          </Link>
-                        </div>
+                        ) : (
+                          /* Filter empty — has invoices but search returned nothing */
+                          <div className="flex flex-col items-center gap-2">
+                            <Search className="w-7 h-7 text-slate-300 dark:text-slate-600" />
+                            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">No invoices match your search</p>
+                            <p className="text-xs text-slate-400 dark:text-slate-500">Try a different name, number or status</p>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ) : (

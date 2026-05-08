@@ -174,9 +174,23 @@ export default function Bills() {
             <RefreshCw size={18} className="animate-spin" /> Loading…
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-3 text-slate-400">
-            <FileText size={40} className="opacity-30" />
-            <p className="text-sm">{search ? "No bills match your search" : "No bills yet — add your first supplier bill"}</p>
+          <div className="py-14 px-6 text-center flex flex-col items-center gap-3 max-w-xs mx-auto">
+            {search ? (
+              <>
+                <Search size={32} className="text-slate-300 dark:text-slate-600" />
+                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">No bills match your search</p>
+              </>
+            ) : (
+              <>
+                <div className="w-14 h-14 bg-gradient-to-br from-rose-100 to-pink-100 dark:from-rose-900/40 dark:to-pink-900/40 rounded-2xl flex items-center justify-center">
+                  <FileText className="w-7 h-7 text-rose-500 dark:text-rose-400" />
+                </div>
+                <p className="text-base font-semibold text-slate-800 dark:text-slate-100">No bills yet</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Record supplier bills to track what your business owes and keep your books accurate.
+                </p>
+              </>
+            )}
           </div>
         ) : (
           <div className="divide-y divide-slate-100 dark:divide-slate-700">

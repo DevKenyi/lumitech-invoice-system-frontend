@@ -159,17 +159,22 @@ function ClientList() {
             <p className="text-slate-500 dark:text-slate-400">Loading clients...</p>
           </div>
         ) : clients.length === 0 ? (
-          <div className="p-12 text-center">
-            <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-full inline-block mb-3">
-              <Users className="w-8 h-8 text-slate-400 dark:text-slate-500" />
+          <div className="py-16 px-6 text-center flex flex-col items-center gap-4 max-w-xs mx-auto">
+            <div className="w-16 h-16 bg-gradient-to-br from-indigo-100 to-violet-100 dark:from-indigo-900/40 dark:to-violet-900/40 rounded-2xl flex items-center justify-center">
+              <Users className="w-8 h-8 text-indigo-500 dark:text-indigo-400" />
             </div>
-            <p className="text-slate-500 dark:text-slate-400">No customers yet</p>
+            <div>
+              <p className="text-base font-semibold text-slate-800 dark:text-slate-100 mb-1">No customers yet</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                Add your first customer before creating an invoice. You can import a list or add them one by one.
+              </p>
+            </div>
             <Link
               to="/clients/create"
-              className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
+              className="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-br from-indigo-600 to-violet-600 text-white rounded-xl text-sm font-semibold shadow-md shadow-indigo-600/25 hover:scale-[1.02] transition-all"
             >
               <Plus size={16} />
-              Add your first customer
+              Add Your First Customer
             </Link>
           </div>
         ) : (

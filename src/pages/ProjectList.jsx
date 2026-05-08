@@ -118,9 +118,16 @@ function ProjectList() {
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-slate-200 border-t-blue-600" />
           </div>
         ) : projects.length === 0 ? (
-          <div className="text-center py-20 text-slate-400 dark:text-slate-500">
-            <FolderOpen className="mx-auto w-10 h-10 mb-3 opacity-30" />
-            <p>No projects yet. Create your first one.</p>
+          <div className="py-16 px-6 text-center flex flex-col items-center gap-4 max-w-xs mx-auto">
+            <div className="w-16 h-16 bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/40 dark:to-orange-900/40 rounded-2xl flex items-center justify-center">
+              <FolderOpen className="w-8 h-8 text-amber-500 dark:text-amber-400" />
+            </div>
+            <div>
+              <p className="text-base font-semibold text-slate-800 dark:text-slate-100 mb-1">No projects yet</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                Group invoices under a project to track what you've billed per client engagement.
+              </p>
+            </div>
           </div>
         ) : (
           <>
