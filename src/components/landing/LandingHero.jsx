@@ -105,13 +105,14 @@ export default function LandingHero() {
             <div className="flex flex-wrap items-center justify-center lg:justify-start gap-1.5 mb-6">
               <span className="text-xs text-slate-400 font-medium mr-1">Live in</span>
               {[
+                { flag: "🇳🇬", name: "Nigeria" },
                 { flag: "🇬🇭", name: "Ghana" },
                 { flag: "🇿🇦", name: "South Africa" },
               ].map(c => (
                 <span key={c.name} title={c.name}
                   className="text-lg leading-none hover:scale-125 transition-transform cursor-default select-none">{c.flag}</span>
               ))}
-              <span className="ml-1 text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">Ghana &amp; South Africa</span>
+              <span className="ml-1 text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">Nigeria · Ghana · South Africa</span>
             </div>
             <h1 className="text-3xl sm:text-4xl lg:text-[52px] font-extrabold text-slate-900 leading-[1.1] tracking-tight mb-5 sm:mb-6">
               Send invoices.{" "}
@@ -121,7 +122,7 @@ export default function LandingHero() {
               Know your numbers.
             </h1>
             <p className="text-lg sm:text-xl text-slate-500 leading-relaxed mb-8 max-w-lg mx-auto lg:mx-0">
-              The accounting platform built for Ghanaian and South African businesses. Invoice clients, track payments, run payroll, and file taxes — in one place.
+              The accounting platform built for Nigerian, Ghanaian, and South African businesses. Invoice clients, track payments, run payroll, and file taxes — in one place.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 mb-6 justify-center lg:justify-start">
               <Link to="/register" className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold rounded-xl shadow-xl shadow-blue-600/30 hover:shadow-2xl hover:scale-[1.02] transition-all text-base">

@@ -1,5 +1,5 @@
 import {
-  FileText, TrendingUp, UserCog, Receipt, BookOpen, Globe,
+  FileText, TrendingUp, UserCog, Receipt, BookOpen, Globe, Sparkles,
 } from "lucide-react";
 
 const FEATURES = [
@@ -75,6 +75,25 @@ export default function FeaturesSection() {
               <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{f.desc}</p>
             </div>
           ))}
+
+          {/* AI Accountant — Coming Soon */}
+          <div className="group relative bg-gradient-to-br from-violet-950 to-indigo-950 rounded-2xl p-6 border border-violet-700/40 shadow-sm overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 via-transparent to-indigo-500/5 pointer-events-none" />
+            <div className="absolute top-3 right-3">
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 bg-amber-400/20 text-amber-300 border border-amber-400/30 rounded-full uppercase tracking-wide">
+                ✦ Coming Soon
+              </span>
+            </div>
+            <div className="relative">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center mb-5 shadow-lg shadow-violet-500/30 group-hover:scale-110 transition-transform">
+                <Sparkles className="w-5 h-5 text-white" />
+              </div>
+              <h3 className="font-bold text-white text-base mb-2 leading-snug">AI Accountant</h3>
+              <p className="text-sm text-violet-300 leading-relaxed">
+                Your personal AI that reads your books, summarises your finances, flags risks, and gives you professional accounting advice — like having a CFO on call 24/7.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </section>

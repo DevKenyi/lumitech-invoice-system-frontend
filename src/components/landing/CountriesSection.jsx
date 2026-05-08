@@ -3,6 +3,11 @@ import { Link } from "react-router-dom";
 
 const COUNTRIES = [
   {
+    flag: "🇳🇬", country: "Nigeria",      currency: "NGN — Naira",
+    tax: "VAT 7.5% · FIRS", payroll: "PAYE · Pension · NHF",
+    accent: "from-green-500/20 to-white/10", border: "border-green-500/30",
+  },
+  {
     flag: "🇬🇭", country: "Ghana",        currency: "GHS — Cedi",
     tax: "VAT 15% · GRA",  payroll: "PAYE · SSNIT",
     accent: "from-yellow-500/20 to-red-500/10", border: "border-yellow-500/30",
@@ -10,7 +15,7 @@ const COUNTRIES = [
   {
     flag: "🇿🇦", country: "South Africa", currency: "ZAR — Rand",
     tax: "VAT 15% · SARS", payroll: "PAYE · UIF · SDL",
-    accent: "from-green-500/20 to-yellow-500/10", border: "border-green-500/30",
+    accent: "from-blue-500/20 to-yellow-500/10", border: "border-blue-500/30",
   },
 ];
 
@@ -25,9 +30,9 @@ export default function CountriesSection() {
             <Globe className="w-3.5 h-3.5" /> Built for West &amp; Southern Africa
           </span>
           <h2 className="text-3xl sm:text-5xl font-extrabold text-white mb-4 leading-tight">
-            Launching in{" "}
+            Nigeria, Ghana{" "}
             <span className="bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">
-              Ghana &amp; South Africa
+              &amp; South Africa
             </span>
           </h2>
           <p className="text-slate-400 text-lg max-w-2xl mx-auto leading-relaxed">
@@ -37,7 +42,7 @@ export default function CountriesSection() {
         </div>
 
         {/* Country cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-12 max-w-2xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12">
           {COUNTRIES.map(c => (
             <div key={c.country}
               className={`bg-gradient-to-br ${c.accent} backdrop-blur-sm rounded-2xl p-7 border ${c.border} hover:scale-[1.02] transition-all`}>
@@ -70,9 +75,9 @@ export default function CountriesSection() {
           <h3 className="text-white font-bold text-lg mb-5 text-center">What "country-adaptive" actually means</h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             {[
-              { icon: "💱", title: "Correct currency", desc: "Ghana → every page shows ₵. South Africa → R. No settings needed — it just works." },
-              { icon: "📊", title: "Right VAT rate", desc: "Ghana uses 15% GRA. South Africa uses 15% SARS. Applied automatically to every invoice you send." },
-              { icon: "🏛️", title: "Local compliance", desc: "Tax reports formatted for your authority — GRA for Ghana, SARS for South Africa — ready to file." },
+              { icon: "💱", title: "Correct currency", desc: "Nigeria → ₦. Ghana → ₵. South Africa → R. No settings needed — it just works from the moment you register." },
+              { icon: "📊", title: "Right VAT rate", desc: "Nigeria 7.5% FIRS. Ghana 15% GRA. South Africa 15% SARS. Applied automatically to every invoice." },
+              { icon: "🏛️", title: "Local compliance", desc: "Tax reports formatted for your authority — FIRS, GRA, or SARS — ready to file when you need them." },
             ].map(f => (
               <div key={f.title} className="flex gap-3">
                 <span className="text-2xl shrink-0">{f.icon}</span>
@@ -87,7 +92,7 @@ export default function CountriesSection() {
 
         {/* CTA */}
         <div className="text-center">
-          <p className="text-slate-400 text-sm mb-6">More African markets coming soon — Nigeria, Kenya, and beyond.</p>
+          <p className="text-slate-400 text-sm mb-6">More African markets coming soon — Kenya, Rwanda, and beyond.</p>
           <Link to="/register"
             className="inline-flex items-center gap-2 px-7 py-3.5 bg-gradient-to-br from-amber-500 to-orange-500 text-white font-bold rounded-xl shadow-xl shadow-amber-500/30 hover:scale-[1.02] transition-all">
             Start Free in Your Country
