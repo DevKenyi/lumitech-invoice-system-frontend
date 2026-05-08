@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@zxing/browser": "^0.2.0",
+    "@zxing/library": "^0.22.0",
     "axios": "^1.13.6",
     "lucide-react": "^0.575.0",
     "posthog-js": "^1.372.1",

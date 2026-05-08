@@ -4,9 +4,10 @@ import api from "../services/api";
 import {
   Search, Plus, Minus, Trash2, ShoppingCart, CheckCircle,
   X, Barcode, RefreshCw, Printer, Mail, User, Download,
-  Bluetooth, Usb, Settings, Wifi,
+  Bluetooth, Usb, Settings, Wifi, Camera,
 } from "lucide-react";
 import Toast from "../components/Toast";
+import BarcodeScanner from "../components/BarcodeScanner";
 import {
   printReceiptBrowser,
   connectUSBPrinter, printReceiptUSB,
@@ -268,6 +269,7 @@ export default function POS() {
   const [cart, setCart]             = useState([]);
   const [search, setSearch]         = useState("");
   const [barcode, setBarcode]       = useState("");
+  const [showCameraScanner, setShowCameraScanner] = useState(false);
   const [discount, setDiscount]     = useState("");
   const [paymentMethod, setMethod]  = useState("CASH");
   const [customerName, setCustName] = useState("");
@@ -327,7 +329,7 @@ export default function POS() {
     ).slice(0, 8));
   }, [search, products]);
 
-  // Barcode scan (press Enter)
+  // Barcode scan (press Enter on text input)
   const handleBarcodeScan = async (e) => {
     if (e.key !== "Enter" || !barcode.trim()) return;
     try {
@@ -337,6 +339,18 @@ export default function POS() {
     } catch {
       notify("Product not found for barcode: " + barcode, "error");
       setBarcode("");
+    }
+  };
+
+  // Camera barcode scan callback
+  const handleCameraScan = async (code) => {
+    setShowCameraScanner(false);
+    try {
+      const res = await api.get(`/api/inventory/products/barcode/${encodeURIComponent(code)}`);
+      addToCart(res.data);
+      notify(`${res.data.name} added to cart`, "success");
+    } catch {
+      notify("Product not found for barcode: " + code, "error");
     }
   };
 
@@ -581,7 +595,7 @@ export default function POS() {
           </div>
 
           {/* Barcode scanner input */}
-          <div className="flex gap-3">
+          <div className="flex gap-2">
             <div className="relative flex-1">
               <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
@@ -593,6 +607,15 @@ export default function POS() {
                 className="w-full pl-9 pr-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
               />
             </div>
+            <button
+              type="button"
+              onClick={() => setShowCameraScanner(true)}
+              title="Scan with phone camera"
+              className="flex items-center gap-1.5 px-3 py-2.5 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-xl text-xs font-semibold shadow-sm hover:scale-[1.03] transition-all flex-shrink-0"
+            >
+              <Camera size={15} />
+              <span className="hidden sm:inline">Scan</span>
+            </button>
           </div>
 
           {/* Product search */}
@@ -835,6 +858,13 @@ export default function POS() {
             </button>
           </div>
         </div>
+      )}
+
+      {showCameraScanner && (
+        <BarcodeScanner
+          onDetected={handleCameraScan}
+          onClose={() => setShowCameraScanner(false)}
+        />
       )}
     </div>
   );

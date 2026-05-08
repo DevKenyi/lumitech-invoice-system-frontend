@@ -3,9 +3,10 @@ import { useEffect, useState } from "react";
 import api from "../services/api";
 import {
   Plus, Search, Edit2, Trash2, Package, AlertTriangle, X, Check,
-  Barcode, Tag, RefreshCw, ChevronDown, ChevronUp, History, TrendingDown,
+  Barcode, Tag, RefreshCw, ChevronDown, ChevronUp, History, TrendingDown, Camera,
 } from "lucide-react";
 import Toast from "../components/Toast";
+import BarcodeScanner from "../components/BarcodeScanner";
 import { useOrg } from "../context/OrgContext";
 
 const UNITS = ["unit", "piece", "kg", "litre", "pack", "carton", "dozen", "bottle", "bag", "box"];
@@ -67,6 +68,7 @@ export default function Inventory() {
   const [showForm, setShowForm]   = useState(false);
   const [editing, setEditing]     = useState(null);
   const [form, setForm]           = useState(emptyForm());
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [saving, setSaving]       = useState(false);
   const [page, setPage]           = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -590,7 +592,17 @@ export default function Inventory() {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1">Barcode</label>
-                  <input value={form.barcode} onChange={e => set("barcode", e.target.value)} placeholder="e.g. 6001234567890" className={inputCls} />
+                  <div className="flex gap-1.5">
+                    <input value={form.barcode} onChange={e => set("barcode", e.target.value)} placeholder="e.g. 6001234567890" className={`${inputCls} flex-1`} />
+                    <button
+                      type="button"
+                      onClick={() => setShowBarcodeScanner(true)}
+                      title="Scan barcode with camera"
+                      className="px-2.5 py-1.5 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-lg hover:scale-[1.05] transition flex-shrink-0"
+                    >
+                      <Camera size={14} />
+                    </button>
+                  </div>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -743,6 +755,16 @@ export default function Inventory() {
             </div>
           </div>
         </div>
+      )}
+
+      {showBarcodeScanner && (
+        <BarcodeScanner
+          onDetected={(code) => {
+            set("barcode", code);
+            setShowBarcodeScanner(false);
+          }}
+          onClose={() => setShowBarcodeScanner(false)}
+        />
       )}
     </div>
   );
