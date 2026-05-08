@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import {
   ShoppingBag, ArrowRight, CheckCircle, Search,
   Barcode as Barcode2, Package as Package2,
-  Printer as PrinterIcon, ShieldCheck as ShieldCheck2,
+  Printer as PrinterIcon, ShieldCheck as ShieldCheck2, Camera, Zap,
 } from "lucide-react";
 
 export default function PosSection() {
@@ -16,6 +16,32 @@ export default function PosSection() {
           <span className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded-full text-sm font-semibold">
             <ShoppingBag className="w-4 h-4" /> New — Optional POS for retail businesses
           </span>
+        </div>
+
+        {/* Barcode scanner hero callout */}
+        <div className="relative mb-14 rounded-3xl overflow-hidden border border-orange-500/20 bg-gradient-to-br from-slate-800 via-slate-800 to-orange-950/40">
+          <div className="absolute -top-10 -right-10 w-56 h-56 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="relative flex flex-col sm:flex-row items-center gap-6 px-6 py-8 sm:px-10">
+            {/* Pulsing camera icon */}
+            <div className="relative flex-shrink-0">
+              <span className="absolute inset-0 rounded-2xl bg-orange-500/30 animate-ping" style={{ animationDuration: "2s" }} />
+              <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center shadow-lg shadow-orange-500/40">
+                <Camera className="w-7 h-7 text-white" />
+              </div>
+            </div>
+            <div className="text-center sm:text-left">
+              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-400 uppercase tracking-widest mb-2">
+                <Zap className="w-3 h-3" /> Phone Barcode Scanner — No Hardware Needed
+              </div>
+              <h3 className="text-xl sm:text-2xl font-extrabold text-white leading-snug mb-2">
+                Walk your shop floor, scan with your phone,<br className="hidden sm:block" />
+                and the cart builds itself.
+              </h3>
+              <p className="text-slate-400 text-sm sm:text-base leading-relaxed max-w-2xl">
+                No barcode gun. No separate scanner hardware. No extra cost. A business owner in Lagos or Accra just opens the POS on their phone, taps Scan, and every product jumps straight into the cart.
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="text-center max-w-3xl mx-auto mb-16">

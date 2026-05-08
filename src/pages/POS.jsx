@@ -575,6 +575,32 @@ export default function POS() {
     <div className="max-w-7xl mx-auto px-4 py-6">
       <Toast {...toast} onClose={() => setToast(t => ({ ...t, visible: false }))} />
 
+      {/* Barcode scanner banner */}
+      <div className="mb-5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 p-px shadow-lg shadow-blue-600/20">
+        <div className="rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 px-4 py-3 sm:px-6 sm:py-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <div className="relative flex-shrink-0">
+            <span className="absolute inset-0 rounded-xl bg-blue-500/40 animate-ping" style={{ animationDuration: "2s" }} />
+            <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
+              <Camera className="w-5 h-5 text-white" />
+            </div>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-white font-bold text-sm sm:text-base leading-snug">
+              Scan products with your phone — no barcode gun needed.
+            </p>
+            <p className="text-slate-400 text-xs sm:text-sm mt-0.5 leading-relaxed">
+              Tap <span className="text-blue-400 font-semibold">Scan</span> next to the barcode field, point your camera at any product, and it jumps straight into the cart.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowCameraScanner(true)}
+            className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-xs sm:text-sm font-bold rounded-xl shadow hover:scale-[1.03] transition-all whitespace-nowrap"
+          >
+            <Camera size={14} /> Try it now
+          </button>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
         {/* LEFT — Product search */}
