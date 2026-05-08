@@ -26,7 +26,7 @@ export default function LandingNav() {
         <div className="flex items-center gap-3">
           <Link to="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition hidden sm:block">Sign In</Link>
           <Link to="/register" className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-br from-blue-600 to-indigo-600 text-white text-sm font-semibold rounded-xl shadow-lg shadow-blue-600/25 hover:shadow-xl hover:scale-[1.02] transition-all">
-            Start Free <ChevronRight className="w-3.5 h-3.5" />
+            Start 30-Day Free Trial <ChevronRight className="w-3.5 h-3.5" />
           </Link>
           <button onClick={() => setOpen(!open)} className="md:hidden p-2 rounded-xl text-slate-500 hover:bg-slate-100 transition">
             {open ? <XIcon className="w-5 h-5" /> : <Menu className="w-5 h-5" />}

@@ -61,9 +61,6 @@ export default function CapitalSection() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
           <div>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-full border border-blue-100 mb-6">
-              ✦ What makes LumiLedger different
-            </span>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 leading-tight mb-5">
               Finally know{" "}
               <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
