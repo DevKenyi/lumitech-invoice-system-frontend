@@ -39,6 +39,7 @@ function CreateInvoice() {
   const [ccInput, setCcInput] = useState("");
   const [baseCurrency, setBaseCurrency] = useState("NGN");
   const [defaultVatRate, setDefaultVatRate] = useState(7.5);
+  const [showCelebration, setShowCelebration] = useState(false);
   const navigate = useNavigate();
 
 
@@ -123,8 +124,12 @@ function CreateInvoice() {
     setIsLoading(true);
     setError("");
     try {
-      await api.post("api/invoices", { ...form, projectId: form.projectId || null });
-      navigate("/invoices");
+      const { data } = await api.post("api/invoices", { ...form, projectId: form.projectId || null });
+      if (data?.firstInvoice) {
+        setShowCelebration(true);
+      } else {
+        navigate("/invoices");
+      }
     } catch {
       setError("Failed to create invoice. Please try again.");
     } finally {
@@ -558,6 +563,51 @@ function CreateInvoice() {
         </div>
 
       </form>
+
+      {/* First-invoice celebration modal */}
+      {showCelebration && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="relative bg-white dark:bg-slate-800 rounded-3xl shadow-2xl max-w-md w-full p-8 text-center overflow-hidden">
+            {/* Confetti dots */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+              {["🎉","🎊","✨","⭐","🎈","💫","🌟","🎁"].map((emoji, i) => (
+                <span
+                  key={i}
+                  className="absolute text-2xl animate-bounce"
+                  style={{
+                    left: `${10 + i * 11}%`,
+                    top: `${-5 + (i % 3) * 8}%`,
+                    animationDelay: `${i * 0.15}s`,
+                    animationDuration: `${1.2 + (i % 3) * 0.3}s`,
+                  }}
+                >{emoji}</span>
+              ))}
+            </div>
+
+            {/* Trophy icon */}
+            <div className="w-20 h-20 mx-auto mb-5 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-400/40">
+              <span className="text-4xl">🏆</span>
+            </div>
+
+            <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white mb-2">
+              Congratulations! 🎉
+            </h2>
+            <p className="text-slate-600 dark:text-slate-300 text-base leading-relaxed mb-1">
+              Your first invoice has been created and sent to your customer.
+            </p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed mb-7">
+              You're pushing your business in the right direction. Every great business starts with that first invoice — keep going!
+            </p>
+
+            <button
+              onClick={() => navigate("/invoices")}
+              className="w-full py-3 bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-blue-600/30 hover:scale-[1.02] transition-all text-sm"
+            >
+              View My Invoices →
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
