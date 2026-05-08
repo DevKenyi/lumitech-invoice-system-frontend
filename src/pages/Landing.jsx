@@ -4,16 +4,12 @@ import LandingHero        from "../components/landing/LandingHero";
 import SocialProofBar     from "../components/landing/SocialProofBar";
 import ProblemSection     from "../components/landing/ProblemSection";
 import CapitalSection     from "../components/landing/CapitalSection";
-import PaymentsSection    from "../components/landing/PaymentsSection";
 import FeaturesSection    from "../components/landing/FeaturesSection";
 import HowItWorksSection  from "../components/landing/HowItWorksSection";
-import WhoIsItForSection  from "../components/landing/WhoIsItForSection";
+import CountriesSection   from "../components/landing/CountriesSection";
 import TestimonialsSection from "../components/landing/TestimonialsSection";
 import PricingSection     from "../components/landing/PricingSection";
-import PosSection         from "../components/landing/PosSection";
-import CountriesSection   from "../components/landing/CountriesSection";
 import CtaSection         from "../components/landing/CtaSection";
-import SupportSection     from "../components/landing/SupportSection";
 import LandingFooter      from "../components/landing/LandingFooter";
 
 export default function Landing() {
@@ -24,16 +20,12 @@ export default function Landing() {
       <SocialProofBar />
       <ProblemSection />
       <CapitalSection />
-      <PaymentsSection />
       <FeaturesSection />
       <HowItWorksSection />
-      <WhoIsItForSection />
+      <CountriesSection />
       <TestimonialsSection />
       <PricingSection />
-      <PosSection />
-      <CountriesSection />
       <CtaSection />
-      <SupportSection />
       <LandingFooter />
     </div>
   );

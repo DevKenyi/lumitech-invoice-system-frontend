@@ -1,5 +1,6 @@
+import { useState } from "react";
 import {
-  FileText, TrendingUp, UserCog, Receipt, BookOpen, Globe, Sparkles,
+  FileText, TrendingUp, UserCog, Receipt, BookOpen, Globe, Sparkles, ArrowRight,
 } from "lucide-react";
 
 const FEATURES = [
@@ -47,6 +48,62 @@ const FEATURES = [
   },
 ];
 
+function AiAccountantCard() {
+  const [email, setEmail] = useState("");
+  const [joined, setJoined] = useState(false);
+
+  const handleJoin = (e) => {
+    e.preventDefault();
+    if (email.trim()) setJoined(true);
+  };
+
+  return (
+    <div className="group relative bg-gradient-to-br from-[#0f0c29] via-[#1a1060] to-[#24243e] rounded-2xl p-6 border border-violet-500/30 shadow-xl shadow-violet-900/40 overflow-hidden">
+      <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-violet-500/20 blur-2xl animate-pulse pointer-events-none" />
+      <div className="absolute -bottom-6 -left-6 w-24 h-24 rounded-full bg-indigo-500/20 blur-2xl animate-pulse pointer-events-none" style={{ animationDelay: "1s" }} />
+      <div className="relative">
+        <div className="relative w-14 h-14 mb-5">
+          <span className="absolute inset-0 rounded-2xl bg-violet-500/30 animate-ping" style={{ animationDuration: "2s" }} />
+          <span className="absolute inset-0 rounded-2xl bg-violet-500/20 animate-ping" style={{ animationDuration: "2s", animationDelay: "0.4s" }} />
+          <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/50">
+            <Sparkles className="w-6 h-6 text-white drop-shadow-lg" />
+          </div>
+        </div>
+        <h3 className="font-extrabold text-white text-base mb-2 flex items-center gap-2">
+          AI Accountant ✨
+        </h3>
+        <p className="text-sm text-violet-300/90 leading-relaxed mb-4">
+          Your personal AI that reads your books, flags risks, and gives professional accounting advice — like a CFO on call 24/7.
+        </p>
+        {joined ? (
+          <div className="bg-violet-500/20 border border-violet-400/30 rounded-xl px-4 py-3 text-center">
+            <p className="text-violet-200 text-sm font-semibold">🎉 You're on the list!</p>
+            <p className="text-violet-400 text-xs mt-0.5">We'll email you the moment it launches.</p>
+          </div>
+        ) : (
+          <form onSubmit={handleJoin} className="flex gap-2">
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="your@email.com"
+              className="flex-1 min-w-0 px-3 py-2 bg-white/10 border border-violet-400/30 rounded-xl text-white text-xs placeholder:text-violet-400/60 focus:outline-none focus:border-violet-400 transition"
+            />
+            <button
+              type="submit"
+              className="flex-shrink-0 px-3 py-2 bg-gradient-to-br from-violet-500 to-indigo-600 text-white rounded-xl text-xs font-bold hover:scale-[1.05] transition-all"
+            >
+              <ArrowRight size={14} />
+            </button>
+          </form>
+        )}
+        {!joined && <p className="text-[10px] text-violet-500 mt-2">Join the waitlist — be first when it launches.</p>}
+      </div>
+    </div>
+  );
+}
+
 export default function FeaturesSection() {
   return (
     <section id="features" className="py-24 bg-white dark:bg-slate-900">
@@ -76,38 +133,7 @@ export default function FeaturesSection() {
             </div>
           ))}
 
-          {/* AI Accountant — Coming Soon */}
-          <div className="group relative bg-gradient-to-br from-[#0f0c29] via-[#1a1060] to-[#24243e] rounded-2xl p-6 border border-violet-500/30 shadow-xl shadow-violet-900/40 overflow-hidden">
-            {/* Animated glow rings */}
-            <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-violet-500/20 blur-2xl animate-pulse pointer-events-none" />
-            <div className="absolute -bottom-6 -left-6 w-24 h-24 rounded-full bg-indigo-500/20 blur-2xl animate-pulse pointer-events-none" style={{ animationDelay: "1s" }} />
-
-            {/* Coming Soon badge */}
-            <div className="absolute top-3 right-3">
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 bg-amber-400/20 text-amber-300 border border-amber-400/40 rounded-full uppercase tracking-widest animate-pulse">
-                ✦ Coming Soon
-              </span>
-            </div>
-
-            <div className="relative">
-              {/* Icon with double-ring pulse */}
-              <div className="relative w-14 h-14 mb-5">
-                <span className="absolute inset-0 rounded-2xl bg-violet-500/30 animate-ping" style={{ animationDuration: "2s" }} />
-                <span className="absolute inset-0 rounded-2xl bg-violet-500/20 animate-ping" style={{ animationDuration: "2s", animationDelay: "0.4s" }} />
-                <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/50">
-                  <Sparkles className="w-6 h-6 text-white drop-shadow-lg" />
-                </div>
-              </div>
-
-              <h3 className="font-extrabold text-white text-base mb-2 leading-snug flex items-center gap-2">
-                AI Accountant
-                <span className="text-lg">✨</span>
-              </h3>
-              <p className="text-sm text-violet-300/90 leading-relaxed">
-                Your personal AI that reads your books, summarises your finances, flags risks, and gives you professional accounting advice — like having a CFO on call 24/7.
-              </p>
-            </div>
-          </div>
+          <AiAccountantCard />
         </div>
       </div>
     </section>
