@@ -20,7 +20,8 @@ export default function LandingNav() {
           <a href="#countries"    className="text-sm font-medium text-slate-500 hover:text-slate-900 transition">Countries</a>
           <a href="#how-it-works" className="text-sm font-medium text-slate-500 hover:text-slate-900 transition">How it works</a>
           <a href="#pricing"      className="text-sm font-medium text-slate-500 hover:text-slate-900 transition">Pricing</a>
-          <Link to="/pricing"     className="text-sm font-medium text-slate-500 hover:text-slate-900 transition">Plans & FAQ</Link>
+          <Link to="/pricing"          className="text-sm font-medium text-slate-500 hover:text-slate-900 transition">Plans & FAQ</Link>
+          <Link to="/for-accountants" className="text-sm font-medium text-slate-500 hover:text-slate-900 transition">For Accountants</Link>
           <a href="#support"      className="text-sm font-medium text-slate-500 hover:text-slate-900 transition">Support</a>
         </div>
         <div className="flex items-center gap-3">
@@ -50,6 +51,10 @@ export default function LandingNav() {
           <Link to="/pricing" onClick={() => setOpen(false)}
             className="block px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition">
             Plans & FAQ
+          </Link>
+          <Link to="/for-accountants" onClick={() => setOpen(false)}
+            className="block px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition">
+            For Accountants
           </Link>
           <Link to="/login" onClick={() => setOpen(false)}
             className="block px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition">

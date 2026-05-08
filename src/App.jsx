@@ -15,6 +15,7 @@ import ClientList from "./pages/ClientList";
 import ClientDetail from "./pages/ClientDetail";
 import ClientPortal from "./pages/ClientPortal";
 import Landing from "./pages/Landing";
+import ForAccountants from "./pages/ForAccountants";
 import OrgSettings from "./pages/OrgSettings";
 import Register from "./pages/Register";
 import ProjectList from "./pages/ProjectList";
@@ -170,6 +171,7 @@ function App() {
 
           {/* PUBLIC */}
           <Route path="/" element={<Landing />} />
+          <Route path="/for-accountants" element={<ForAccountants />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
