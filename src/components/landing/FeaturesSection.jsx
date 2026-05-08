@@ -77,19 +77,33 @@ export default function FeaturesSection() {
           ))}
 
           {/* AI Accountant — Coming Soon */}
-          <div className="group relative bg-gradient-to-br from-violet-950 to-indigo-950 rounded-2xl p-6 border border-violet-700/40 shadow-sm overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 via-transparent to-indigo-500/5 pointer-events-none" />
+          <div className="group relative bg-gradient-to-br from-[#0f0c29] via-[#1a1060] to-[#24243e] rounded-2xl p-6 border border-violet-500/30 shadow-xl shadow-violet-900/40 overflow-hidden">
+            {/* Animated glow rings */}
+            <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-violet-500/20 blur-2xl animate-pulse pointer-events-none" />
+            <div className="absolute -bottom-6 -left-6 w-24 h-24 rounded-full bg-indigo-500/20 blur-2xl animate-pulse pointer-events-none" style={{ animationDelay: "1s" }} />
+
+            {/* Coming Soon badge */}
             <div className="absolute top-3 right-3">
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 bg-amber-400/20 text-amber-300 border border-amber-400/30 rounded-full uppercase tracking-wide">
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 bg-amber-400/20 text-amber-300 border border-amber-400/40 rounded-full uppercase tracking-widest animate-pulse">
                 ✦ Coming Soon
               </span>
             </div>
+
             <div className="relative">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center mb-5 shadow-lg shadow-violet-500/30 group-hover:scale-110 transition-transform">
-                <Sparkles className="w-5 h-5 text-white" />
+              {/* Icon with double-ring pulse */}
+              <div className="relative w-14 h-14 mb-5">
+                <span className="absolute inset-0 rounded-2xl bg-violet-500/30 animate-ping" style={{ animationDuration: "2s" }} />
+                <span className="absolute inset-0 rounded-2xl bg-violet-500/20 animate-ping" style={{ animationDuration: "2s", animationDelay: "0.4s" }} />
+                <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/50">
+                  <Sparkles className="w-6 h-6 text-white drop-shadow-lg" />
+                </div>
               </div>
-              <h3 className="font-bold text-white text-base mb-2 leading-snug">AI Accountant</h3>
-              <p className="text-sm text-violet-300 leading-relaxed">
+
+              <h3 className="font-extrabold text-white text-base mb-2 leading-snug flex items-center gap-2">
+                AI Accountant
+                <span className="text-lg">✨</span>
+              </h3>
+              <p className="text-sm text-violet-300/90 leading-relaxed">
                 Your personal AI that reads your books, summarises your finances, flags risks, and gives you professional accounting advice — like having a CFO on call 24/7.
               </p>
             </div>
