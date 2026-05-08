@@ -20,21 +20,43 @@ export default function PricingSection() {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 items-stretch">
           {/* ESSENTIAL */}
+          <div className="bg-white rounded-2xl border-2 border-slate-200 p-6 flex flex-col">
+            <div className="inline-flex items-center px-3 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded-full mb-5 self-start border border-slate-200 tracking-widest uppercase">Essential</div>
+            <div className="mb-1">
+              <span className="text-3xl font-extrabold text-slate-900">₦9,900</span>
+              <span className="text-slate-400 text-sm ml-1">/month</span>
+            </div>
+            <p className="text-slate-500 text-sm mb-5">For business owners managing their finances</p>
+            <ul className="space-y-2.5 mb-6 flex-1">
+              {["Invoicing & payments", "Expense tracking", "Financial reports", "Capital tracking", "Up to 50 clients", "Email reminders"].map(f => (
+                <li key={f} className="flex items-start gap-2 text-sm text-slate-600">
+                  <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />{f}
+                </li>
+              ))}
+            </ul>
+            <div className="mt-auto">
+              <Link to="/register" className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition text-sm">
+                Start 30-Day Free Trial <ArrowRight className="w-4 h-4" />
+              </Link>
+              <p className="text-center text-xs text-slate-400 mt-2">Then ₦9,900/month. Cancel anytime.</p>
+            </div>
+          </div>
+
+          {/* BUSINESS — Most Popular */}
           <div className="relative bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 rounded-2xl p-6 pt-8 shadow-2xl shadow-blue-600/40 flex flex-col sm:-mt-4 sm:-mb-4">
             <div className="absolute -top-4 left-1/2 -translate-x-1/2 whitespace-nowrap">
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white text-blue-700 text-xs font-extrabold rounded-full shadow-lg border border-blue-100">⭐ Most Popular</span>
             </div>
-            <div className="inline-flex items-center px-3 py-1 bg-white/20 text-white text-xs font-bold rounded-full mb-5 self-start tracking-widest uppercase">Essential</div>
+            <div className="inline-flex items-center px-3 py-1 bg-white/20 text-white text-xs font-bold rounded-full mb-5 self-start tracking-widest uppercase">Business</div>
             <div className="mb-1">
-              <span className="text-4xl font-extrabold text-white">₦9,900</span>
+              <span className="text-4xl font-extrabold text-white">₦24,900</span>
               <span className="text-blue-200 text-sm ml-1">/month</span>
             </div>
-            <p className="text-blue-200 text-sm mb-5">For business owners managing their finances</p>
+            <p className="text-blue-200 text-sm mb-5">For growing businesses that need more</p>
             <ul className="space-y-2.5 mb-6 flex-1">
-              {["Invoicing & payments", "Expense tracking", "Financial reports", "✅ Capital tracking", "Up to 50 clients", "Email reminders"].map(f => (
-                <li key={f} className={`flex items-start gap-2 text-sm ${f.startsWith("✅") ? "text-white font-semibold" : "text-white"}`}>
-                  <CheckCircle className={`w-4 h-4 flex-shrink-0 mt-0.5 ${f.startsWith("✅") ? "text-emerald-300" : "text-blue-200"}`} />
-                  {f.replace("✅ ", "")}
+              {["Everything in Essential", "Unlimited clients", "Multi-user access", "Advanced reports", "Chart of Accounts & Ledger", "Journal Entries", "Bank reconciliation", "Fixed assets & depreciation"].map(f => (
+                <li key={f} className="flex items-start gap-2 text-sm text-white">
+                  <CheckCircle className="w-4 h-4 text-blue-200 flex-shrink-0 mt-0.5" />{f}
                 </li>
               ))}
             </ul>
@@ -42,30 +64,7 @@ export default function PricingSection() {
               <Link to="/register" className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-white text-blue-700 font-extrabold rounded-xl hover:bg-blue-50 transition shadow-lg text-sm">
                 Start 30-Day Free Trial <ArrowRight className="w-4 h-4" />
               </Link>
-              <p className="text-center text-xs text-blue-300 mt-2">Then ₦9,900/month. Cancel anytime.</p>
-            </div>
-          </div>
-
-          {/* BUSINESS */}
-          <div className="bg-slate-900 rounded-2xl border-2 border-slate-700 p-6 flex flex-col">
-            <div className="inline-flex items-center px-3 py-1 bg-indigo-500/20 text-indigo-300 text-xs font-bold rounded-full mb-5 self-start border border-indigo-500/30 tracking-widest uppercase">Business</div>
-            <div className="mb-1">
-              <span className="text-3xl font-extrabold text-white">₦24,900</span>
-              <span className="text-slate-400 text-sm ml-1">/month</span>
-            </div>
-            <p className="text-slate-400 text-sm mb-5">For growing businesses that need more</p>
-            <ul className="space-y-2.5 mb-6 flex-1">
-              {["Everything in Essential", "Unlimited clients", "Multi-user access", "Advanced reports", "Chart of Accounts & Ledger", "Journal Entries", "Bank reconciliation", "Fixed assets & depreciation"].map(f => (
-                <li key={f} className="flex items-start gap-2 text-sm text-slate-300">
-                  <CheckCircle className="w-4 h-4 text-indigo-400 flex-shrink-0 mt-0.5" />{f}
-                </li>
-              ))}
-            </ul>
-            <div className="mt-auto">
-              <Link to="/register" className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition shadow-lg text-sm">
-                Start 30-Day Free Trial <ArrowRight className="w-4 h-4" />
-              </Link>
-              <p className="text-center text-xs text-slate-500 mt-2">Then ₦24,900/month.</p>
+              <p className="text-center text-xs text-blue-300 mt-2">Then ₦24,900/month. Cancel anytime.</p>
             </div>
           </div>
 
