@@ -4,7 +4,8 @@ import {
   Plus, X, RefreshCw, ChevronDown, ChevronUp,
   Users, CheckCircle, DollarSign, TrendingUp,
   PlayCircle, ClipboardList, Pencil, Upload, Download,
-  AlertCircle, CheckCircle2,
+  AlertCircle, CheckCircle2, Briefcase, Milestone,
+  CreditCard, FileText,
 } from "lucide-react";
 import Toast from "../components/Toast";
 import { useOrg } from "../context/OrgContext";
@@ -43,7 +44,7 @@ const emptyEmpForm = () => ({
   department: "", jobTitle: "", kraPin: "", idNumber: "",
   bankName: "", bankAccount: "",
   basicSalary: "", houseAllowance: "", transportAllowance: "", otherAllowances: "",
-  status: "ACTIVE",
+  status: "ACTIVE", employeeType: "SALARIED",
 });
 
 const currentYear = new Date().getFullYear();
@@ -99,6 +100,20 @@ export default function Payroll() {
   const [runError, setRunError] = useState("");
   const [expandedRunId, setExpandedRunId] = useState(null);
 
+  // Contractor state
+  const [contracts, setContracts] = useState([]);
+  const [contractsLoading, setContractsLoading] = useState(true);
+  const [showContractForm, setShowContractForm] = useState(false);
+  const [contractForm, setContractForm] = useState({ employeeId: "", contractName: "", projectName: "", totalValue: "" });
+  const [contractSaving, setContractSaving] = useState(false);
+  const [contractError, setContractError] = useState("");
+  const [expandedContractId, setExpandedContractId] = useState(null);
+  const [milestoneForm, setMilestoneForm] = useState({ description: "", grossAmount: "", dueDate: "" });
+  const [addingMilestoneFor, setAddingMilestoneFor] = useState(null);
+  const [milestoneSaving, setMilestoneSaving] = useState(false);
+  const [milestoneError, setMilestoneError] = useState("");
+  const [payingMilestoneId, setPayingMilestoneId] = useState(null);
+
   const [toast, setToast] = useState({ visible: false, message: "", type: "info" });
   const notify = (message, type = "success") => setToast({ visible: true, message, type });
 
@@ -128,10 +143,24 @@ export default function Payroll() {
     }
   }, []);
 
+  // ── Load contractor contracts ───────────────────────────────────────────
+  const loadContracts = useCallback(async () => {
+    setContractsLoading(true);
+    try {
+      const res = await api.get("/api/payroll/contractor-contracts");
+      setContracts(res.data ?? []);
+    } catch {
+      notify("Failed to load contracts", "error");
+    } finally {
+      setContractsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadEmployees();
     loadRuns();
-  }, [loadEmployees, loadRuns]);
+    loadContracts();
+  }, [loadEmployees, loadRuns, loadContracts]);
 
   // ── Employee submit ─────────────────────────────────────────────────────
   const handleEmpSubmit = async (e) => {
@@ -182,6 +211,7 @@ export default function Payroll() {
       transportAllowance: emp.transportAllowance ?? "",
       otherAllowances: emp.otherAllowances ?? "",
       status: emp.status ?? "ACTIVE",
+      employeeType: emp.employeeType ?? "SALARIED",
     });
     setEmpError("");
     setShowEmpForm(true);
@@ -259,6 +289,63 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
     }
   };
 
+  // ── Contractor handlers ─────────────────────────────────────────────────
+  const handleContractSubmit = async (e) => {
+    e.preventDefault();
+    setContractSaving(true);
+    setContractError("");
+    try {
+      await api.post("/api/payroll/contractor-contracts", {
+        ...contractForm,
+        totalValue: parseFloat(contractForm.totalValue) || 0,
+      });
+      notify("Contract created");
+      setShowContractForm(false);
+      setContractForm({ employeeId: "", contractName: "", projectName: "", totalValue: "" });
+      loadContracts();
+    } catch (err) {
+      setContractError(err.response?.data?.message || "Failed to create contract");
+    } finally {
+      setContractSaving(false);
+    }
+  };
+
+  const handleMilestoneSubmit = async (e, contractId) => {
+    e.preventDefault();
+    setMilestoneSaving(true);
+    setMilestoneError("");
+    try {
+      await api.post(`/api/payroll/contractor-contracts/${contractId}/milestones`, {
+        ...milestoneForm,
+        grossAmount: parseFloat(milestoneForm.grossAmount) || 0,
+        dueDate: milestoneForm.dueDate || null,
+      });
+      notify("Milestone added");
+      setAddingMilestoneFor(null);
+      setMilestoneForm({ description: "", grossAmount: "", dueDate: "" });
+      loadContracts();
+    } catch (err) {
+      setMilestoneError(err.response?.data?.message || "Failed to add milestone");
+    } finally {
+      setMilestoneSaving(false);
+    }
+  };
+
+  const payMilestone = async (milestoneId) => {
+    setPayingMilestoneId(milestoneId);
+    try {
+      await api.put(`/api/payroll/contractor-contracts/milestones/${milestoneId}/pay`);
+      notify("Milestone paid — journal entry posted");
+      loadContracts();
+    } catch (err) {
+      notify(err.response?.data?.message || "Failed to pay milestone", "error");
+    } finally {
+      setPayingMilestoneId(null);
+    }
+  };
+
+  const contractors = employees.filter(e => e.employeeType === "CONTRACTOR");
+
   // ── Employee stat calculations ──────────────────────────────────────────
   const totalEmp = employees.length;
   const activeEmps = employees.filter((e) => e.status === "ACTIVE");
@@ -314,6 +401,7 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
         {[
           { key: "employees", label: "Employees", Icon: Users },
           { key: "runs", label: "Payroll Runs", Icon: ClipboardList },
+          { key: "contractors", label: "Contractors", Icon: Briefcase },
         ].map(({ key, label, Icon }) => (
           <button
             key={key}
@@ -990,6 +1078,25 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
                 </div>
               </div>
 
+              {/* Employee Type */}
+              <div>
+                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Employee Type</label>
+                <div className="flex gap-2">
+                  {[{ v: "SALARIED", label: "Salaried Staff" }, { v: "CONTRACTOR", label: "Contractor" }].map(opt => (
+                    <button key={opt.v} type="button"
+                      onClick={() => setEmpForm(f => ({ ...f, employeeType: opt.v }))}
+                      className={`flex-1 py-2 rounded-xl text-sm font-medium border transition ${
+                        empForm.employeeType === opt.v
+                          ? "bg-blue-600 text-white border-blue-600 shadow"
+                          : "bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:border-blue-400"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Status (edit only) */}
               {editingEmp && (
                 <div>
@@ -1113,6 +1220,299 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
                   className="px-4 py-2 text-sm font-semibold text-white bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow hover:shadow-md hover:scale-[1.02] transition-all disabled:opacity-50"
                 >
                   {runSaving ? "Creating…" : "Create Payroll Run"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════ CONTRACTORS TAB ═══════════════════ */}
+      {activeTab === "contractors" && (
+        <div className="space-y-6">
+          {/* Stats */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard icon={Briefcase} label="Total Contracts" value={contracts.length}
+              iconBg="bg-gradient-to-br from-violet-500 to-purple-600" />
+            <StatCard icon={Users} label="Contractors" value={contractors.length}
+              sub="Marked as contractor type"
+              iconBg="bg-gradient-to-br from-blue-500 to-indigo-600" />
+            <StatCard
+              icon={CreditCard} label="Total Paid"
+              value={fmt(contracts.reduce((s, c) => s + parseFloat(c.totalPaid || 0), 0))}
+              sub="Across all contracts"
+              iconBg="bg-gradient-to-br from-emerald-500 to-teal-600" />
+            <StatCard
+              icon={TrendingUp} label="Outstanding"
+              value={fmt(contracts.reduce((s, c) => s + parseFloat(c.totalOutstanding || 0), 0))}
+              sub="Across all contracts"
+              iconBg="bg-gradient-to-br from-amber-500 to-orange-500" />
+          </div>
+
+          {/* Toolbar */}
+          <div className="flex justify-end">
+            <button
+              onClick={() => setShowContractForm(true)}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow hover:shadow-md hover:scale-[1.02] transition-all"
+            >
+              <Plus size={16} /> New Contract
+            </button>
+          </div>
+
+          {/* Contracts list */}
+          {contractsLoading ? (
+            <div className="flex items-center justify-center py-16 text-slate-400"><RefreshCw size={20} className="animate-spin mr-2" /> Loading…</div>
+          ) : contracts.length === 0 ? (
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-12 text-center">
+              <div className="w-14 h-14 bg-violet-50 dark:bg-violet-900/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Briefcase size={24} className="text-violet-500" />
+              </div>
+              <h3 className="font-semibold text-slate-900 dark:text-white mb-1">No contractor contracts yet</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Create a contract for a contractor, add milestones, and pay them as work is completed.</p>
+              <button onClick={() => setShowContractForm(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow hover:shadow-md transition">
+                <Plus size={15} /> New Contract
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {contracts.map(contract => {
+                const isExpanded = expandedContractId === contract.id;
+                const paidCount = (contract.milestones || []).filter(m => m.status === "PAID").length;
+                const totalCount = (contract.milestones || []).length;
+                return (
+                  <div key={contract.id} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                    {/* Contract header */}
+                    <button
+                      onClick={() => setExpandedContractId(isExpanded ? null : contract.id)}
+                      className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition"
+                    >
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center flex-shrink-0">
+                          <Briefcase size={18} className="text-violet-600 dark:text-violet-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-900 dark:text-white text-sm truncate">{contract.contractName}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            {contract.employeeName} · {contract.employeeNumber}
+                            {contract.projectName && ` · ${contract.projectName}`}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 flex-shrink-0 ml-4">
+                        <div className="text-right hidden sm:block">
+                          <p className="text-xs text-slate-400">Contract Value</p>
+                          <p className="text-sm font-bold text-slate-800 dark:text-white">{fmt(contract.totalValue)}</p>
+                        </div>
+                        <div className="text-right hidden sm:block">
+                          <p className="text-xs text-slate-400">Paid</p>
+                          <p className="text-sm font-bold text-emerald-600">{fmt(contract.totalPaid)}</p>
+                        </div>
+                        <div className="text-right hidden sm:block">
+                          <p className="text-xs text-slate-400">Outstanding</p>
+                          <p className="text-sm font-bold text-amber-600">{fmt(contract.totalOutstanding)}</p>
+                        </div>
+                        <span className="text-xs bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-1 rounded-lg">
+                          {paidCount}/{totalCount} milestones
+                        </span>
+                        {isExpanded ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                      </div>
+                    </button>
+
+                    {/* Expanded milestones */}
+                    {isExpanded && (
+                      <div className="border-t border-slate-100 dark:border-slate-700 px-5 py-4 space-y-3">
+                        {/* Mobile totals */}
+                        <div className="flex gap-4 sm:hidden text-sm mb-2">
+                          <span className="text-slate-500">Value: <strong className="text-slate-800 dark:text-white">{fmt(contract.totalValue)}</strong></span>
+                          <span className="text-slate-500">Paid: <strong className="text-emerald-600">{fmt(contract.totalPaid)}</strong></span>
+                          <span className="text-slate-500">Owed: <strong className="text-amber-600">{fmt(contract.totalOutstanding)}</strong></span>
+                        </div>
+
+                        {/* Progress bar */}
+                        {contract.totalValue > 0 && (
+                          <div>
+                            <div className="flex justify-between text-xs text-slate-500 mb-1">
+                              <span>Payment progress</span>
+                              <span className="font-semibold text-blue-600">
+                                {Math.round((parseFloat(contract.totalPaid) / parseFloat(contract.totalValue)) * 100)}% paid
+                              </span>
+                            </div>
+                            <div className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                              <div
+                                className="h-2 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all"
+                                style={{ width: `${Math.min(100, Math.round((parseFloat(contract.totalPaid) / parseFloat(contract.totalValue)) * 100))}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Milestones */}
+                        {(contract.milestones || []).length === 0 ? (
+                          <p className="text-sm text-slate-400 py-2">No milestones yet. Add one below.</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {(contract.milestones || []).map(m => (
+                              <div key={m.id}
+                                className={`flex items-center justify-between px-4 py-3 rounded-xl border ${
+                                  m.status === "PAID"
+                                    ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800"
+                                    : "bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600"
+                                }`}
+                              >
+                                <div className="min-w-0 mr-3">
+                                  <p className="text-sm font-medium text-slate-800 dark:text-white truncate">{m.description}</p>
+                                  <div className="flex flex-wrap gap-3 text-xs text-slate-500 mt-0.5">
+                                    <span>Gross: <strong className="text-slate-700 dark:text-slate-300">{fmt(m.grossAmount)}</strong></span>
+                                    <span>WHT 5%: <strong className="text-amber-600">−{fmt(m.whtAmount)}</strong></span>
+                                    <span>Net paid: <strong className="text-emerald-600">{fmt(m.netAmount)}</strong></span>
+                                    {m.dueDate && <span>Due: {m.dueDate}</span>}
+                                    {m.paidDate && <span>Paid: {m.paidDate}</span>}
+                                  </div>
+                                </div>
+                                <div className="flex-shrink-0 flex items-center gap-2">
+                                  {m.status === "PAID" ? (
+                                    <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 px-2.5 py-1 rounded-full">
+                                      <CheckCircle2 size={12} /> Paid
+                                    </span>
+                                  ) : (
+                                    <button
+                                      onClick={() => payMilestone(m.id)}
+                                      disabled={payingMilestoneId === m.id}
+                                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg shadow hover:shadow-md hover:scale-[1.02] transition-all disabled:opacity-50 disabled:scale-100"
+                                    >
+                                      {payingMilestoneId === m.id ? <RefreshCw size={11} className="animate-spin" /> : <CreditCard size={11} />}
+                                      Pay Milestone
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Add milestone form */}
+                        {addingMilestoneFor === contract.id ? (
+                          <form onSubmit={(e) => handleMilestoneSubmit(e, contract.id)}
+                            className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 space-y-3">
+                            <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">Add Milestone</p>
+                            <input required placeholder="Milestone description (e.g. Phase 1 complete)"
+                              value={milestoneForm.description}
+                              onChange={e => setMilestoneForm(f => ({ ...f, description: e.target.value }))}
+                              className={inputCls} />
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs text-slate-500 mb-1">Gross Amount ({currencySymbol})</label>
+                                <input required type="number" min="0" step="0.01" placeholder="300000"
+                                  value={milestoneForm.grossAmount}
+                                  onChange={e => setMilestoneForm(f => ({ ...f, grossAmount: e.target.value }))}
+                                  className={inputCls} />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-slate-500 mb-1">Due Date (optional)</label>
+                                <input type="date"
+                                  value={milestoneForm.dueDate}
+                                  onChange={e => setMilestoneForm(f => ({ ...f, dueDate: e.target.value }))}
+                                  className={inputCls} />
+                              </div>
+                            </div>
+                            {milestoneForm.grossAmount && (
+                              <div className="text-xs text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-700 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-600">
+                                Gross: <strong>{fmt(parseFloat(milestoneForm.grossAmount) || 0)}</strong>
+                                {" · "}WHT 5%: <strong className="text-amber-600">−{fmt((parseFloat(milestoneForm.grossAmount) || 0) * 0.05)}</strong>
+                                {" · "}Net to contractor: <strong className="text-emerald-600">{fmt((parseFloat(milestoneForm.grossAmount) || 0) * 0.95)}</strong>
+                              </div>
+                            )}
+                            {milestoneError && <p className="text-xs text-rose-600">{milestoneError}</p>}
+                            <div className="flex gap-2 justify-end">
+                              <button type="button"
+                                onClick={() => { setAddingMilestoneFor(null); setMilestoneForm({ description: "", grossAmount: "", dueDate: "" }); setMilestoneError(""); }}
+                                className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 transition">
+                                Cancel
+                              </button>
+                              <button type="submit" disabled={milestoneSaving}
+                                className="px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg shadow hover:shadow-md transition disabled:opacity-50">
+                                {milestoneSaving ? "Saving…" : "Add Milestone"}
+                              </button>
+                            </div>
+                          </form>
+                        ) : (
+                          <button
+                            onClick={() => { setAddingMilestoneFor(contract.id); setMilestoneError(""); }}
+                            className="flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 font-medium transition"
+                          >
+                            <Plus size={15} /> Add Milestone
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════════ NEW CONTRACT MODAL ═══════════════════ */}
+      {showContractForm && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-md">
+            <div className="flex items-center justify-between p-5 border-b border-slate-200 dark:border-slate-700">
+              <h2 className="font-semibold text-slate-900 dark:text-white">New Contractor Contract</h2>
+              <button onClick={() => { setShowContractForm(false); setContractError(""); }}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleContractSubmit} className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Contractor *</label>
+                <select required value={contractForm.employeeId}
+                  onChange={e => setContractForm(f => ({ ...f, employeeId: e.target.value }))}
+                  className={inputCls}>
+                  <option value="">Select contractor…</option>
+                  {employees.filter(e => e.employeeType === "CONTRACTOR").map(e => (
+                    <option key={e.id} value={e.id}>{e.firstName} {e.lastName} ({e.employeeNumber})</option>
+                  ))}
+                </select>
+                {employees.filter(e => e.employeeType === "CONTRACTOR").length === 0 && (
+                  <p className="text-xs text-amber-600 mt-1">No contractors found. Go to Employees tab and set employee type to "Contractor" first.</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Contract Name *</label>
+                <input required placeholder="e.g. Mobile App Development Q2 2026"
+                  value={contractForm.contractName}
+                  onChange={e => setContractForm(f => ({ ...f, contractName: e.target.value }))}
+                  className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Project Name (optional)</label>
+                <input placeholder="e.g. LumiLedger Mobile"
+                  value={contractForm.projectName}
+                  onChange={e => setContractForm(f => ({ ...f, projectName: e.target.value }))}
+                  className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Total Contract Value ({currencySymbol}) *</label>
+                <input required type="number" min="0" step="0.01" placeholder="1500000"
+                  value={contractForm.totalValue}
+                  onChange={e => setContractForm(f => ({ ...f, totalValue: e.target.value }))}
+                  className={inputCls} />
+              </div>
+              {contractError && (
+                <div className="bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-xl px-4 py-3 text-sm text-rose-600 dark:text-rose-400">{contractError}</div>
+              )}
+              <div className="flex justify-end gap-3 pt-1">
+                <button type="button"
+                  onClick={() => { setShowContractForm(false); setContractError(""); }}
+                  className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-600 transition">
+                  Cancel
+                </button>
+                <button type="submit" disabled={contractSaving}
+                  className="px-4 py-2 text-sm font-semibold text-white bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow hover:shadow-md hover:scale-[1.02] transition-all disabled:opacity-50">
+                  {contractSaving ? "Saving…" : "Create Contract"}
                 </button>
               </div>
             </form>
