@@ -39,9 +39,37 @@ const RUN_STATUS_CFG = {
 const inputCls =
   "w-full px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition";
 
+const DEPARTMENTS = [
+  "Accounting & Finance",
+  "Administration",
+  "Business Development",
+  "Customer Service",
+  "Compliance & Legal",
+  "Design & Creative",
+  "Engineering & Technology",
+  "Human Resources",
+  "Information Technology",
+  "Inventory & Warehouse",
+  "Logistics & Supply Chain",
+  "Management",
+  "Marketing & Communications",
+  "Operations",
+  "Payroll",
+  "Procurement",
+  "Product Management",
+  "Project Management",
+  "Quality Assurance",
+  "Research & Development",
+  "Sales",
+  "Security",
+  "Software Development",
+  "Training & Development",
+  "Other",
+];
+
 const emptyEmpForm = () => ({
   firstName: "", lastName: "", email: "", phone: "",
-  department: "", jobTitle: "", kraPin: "", idNumber: "",
+  department: "", departmentOther: "", jobTitle: "", kraPin: "", idNumber: "",
   bankName: "", bankAccount: "",
   basicSalary: "", houseAllowance: "", transportAllowance: "", otherAllowances: "",
   status: "ACTIVE", employeeType: "SALARIED",
@@ -170,6 +198,7 @@ export default function Payroll() {
     try {
       const payload = {
         ...empForm,
+        department: empForm.department === "Other" ? empForm.departmentOther : empForm.department,
         basicSalary: parseFloat(empForm.basicSalary) || 0,
         houseAllowance: parseFloat(empForm.houseAllowance) || 0,
         transportAllowance: parseFloat(empForm.transportAllowance) || 0,
@@ -200,7 +229,8 @@ export default function Payroll() {
       lastName: emp.lastName ?? "",
       email: emp.email ?? "",
       phone: emp.phone ?? "",
-      department: emp.department ?? "",
+      department: DEPARTMENTS.includes(emp.department) ? emp.department : (emp.department ? "Other" : ""),
+      departmentOther: DEPARTMENTS.includes(emp.department) ? "" : (emp.department ?? ""),
       jobTitle: emp.jobTitle ?? "",
       kraPin: emp.kraPin ?? "",
       idNumber: emp.idNumber ?? "",
@@ -521,9 +551,16 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
                               {fmt(totalPkg)}
                             </td>
                             <td className="px-5 py-3.5">
-                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${sc.cls}`}>
-                                {sc.label}
-                              </span>
+                              <div className="flex flex-col gap-1">
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium w-fit ${sc.cls}`}>
+                                  {sc.label}
+                                </span>
+                                {emp.employeeType === "CONTRACTOR" && (
+                                  <span className="text-xs px-2 py-0.5 rounded-full font-medium w-fit bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400">
+                                    Contractor
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="px-5 py-3.5">
                               <button
@@ -556,11 +593,18 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
                             <p className="font-semibold text-slate-900 dark:text-white text-sm">
                               {emp.firstName} {emp.lastName}
                             </p>
-                            <p className="text-xs text-slate-400">{emp.employeeNumber} · {emp.department}</p>
+                            <p className="text-xs text-slate-400">{emp.employeeNumber}{emp.department ? ` · ${emp.department}` : ""}{emp.jobTitle ? ` · ${emp.jobTitle}` : ""}</p>
                           </div>
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${sc.cls} flex-shrink-0`}>
-                            {sc.label}
-                          </span>
+                          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${sc.cls}`}>
+                              {sc.label}
+                            </span>
+                            {emp.employeeType === "CONTRACTOR" && (
+                              <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400">
+                                Contractor
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <div className="flex items-center justify-between">
                           <div>
@@ -907,7 +951,7 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
 
             <form onSubmit={handleEmpSubmit} className="p-5 space-y-4">
               {/* Row 1: First / Last Name */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">First Name *</label>
                   <input
@@ -931,7 +975,7 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
               </div>
 
               {/* Row 2: Email / Phone */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Email</label>
                   <input
@@ -954,15 +998,26 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
               </div>
 
               {/* Row 3: Department / Job Title */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Department</label>
-                  <input
+                  <select
                     value={empForm.department}
-                    onChange={(e) => setEmpForm((f) => ({ ...f, department: e.target.value }))}
-                    placeholder="Finance"
+                    onChange={(e) => setEmpForm((f) => ({ ...f, department: e.target.value, departmentOther: "" }))}
                     className={inputCls}
-                  />
+                  >
+                    <option value="">Select department…</option>
+                    {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                  {empForm.department === "Other" && (
+                    <input
+                      required
+                      value={empForm.departmentOther}
+                      onChange={(e) => setEmpForm((f) => ({ ...f, departmentOther: e.target.value }))}
+                      placeholder="Specify department…"
+                      className={`${inputCls} mt-2`}
+                    />
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Job Title</label>
@@ -976,7 +1031,7 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
               </div>
 
               {/* Row 4: Tax ID / ID Number */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">
                     {country === "KE" ? "KRA PIN" : country === "GH" ? "TIN / SSNIT No." : "Tax ID (TIN)"}
@@ -1000,13 +1055,13 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
               </div>
 
               {/* Row 5: Bank Name / Account */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Bank Name</label>
                   <input
                     value={empForm.bankName}
                     onChange={(e) => setEmpForm((f) => ({ ...f, bankName: e.target.value }))}
-                    placeholder="Equity Bank"
+                    placeholder="First Bank"
                     className={inputCls}
                   />
                 </div>
@@ -1023,7 +1078,7 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
 
               {/* Row 6: Basic Salary / House Allowance — salary hidden for contractors */}
               {empForm.employeeType !== "CONTRACTOR" && (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Basic Salary ({currencySymbol}) *</label>
                   <input
@@ -1052,7 +1107,7 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
               </div>
 
               {/* Row 7: Transport / Other Allowances */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Transport Allowance ({currencySymbol})</label>
                   <input
