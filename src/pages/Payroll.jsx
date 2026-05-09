@@ -1076,64 +1076,64 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
                 </div>
               </div>
 
-              {/* Row 6: Basic Salary / House Allowance — salary hidden for contractors */}
-              {empForm.employeeType !== "CONTRACTOR" && (<>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Basic Salary ({currencySymbol}) *</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    required={empForm.employeeType !== "CONTRACTOR"}
-                    value={empForm.basicSalary}
-                    onChange={(e) => setEmpForm((f) => ({ ...f, basicSalary: e.target.value }))}
-                    placeholder="0.00"
-                    className={inputCls}
-                  />
+              {/* Rows 6-7: Salary & Allowances — hidden for contractors */}
+              {empForm.employeeType !== "CONTRACTOR" && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Basic Salary ({currencySymbol}) *</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        required
+                        value={empForm.basicSalary}
+                        onChange={(e) => setEmpForm((f) => ({ ...f, basicSalary: e.target.value }))}
+                        placeholder="0.00"
+                        className={inputCls}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">House Allowance ({currencySymbol})</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={empForm.houseAllowance}
+                        onChange={(e) => setEmpForm((f) => ({ ...f, houseAllowance: e.target.value }))}
+                        placeholder="0.00"
+                        className={inputCls}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Transport Allowance ({currencySymbol})</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={empForm.transportAllowance}
+                        onChange={(e) => setEmpForm((f) => ({ ...f, transportAllowance: e.target.value }))}
+                        placeholder="0.00"
+                        className={inputCls}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Other Allowances ({currencySymbol})</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={empForm.otherAllowances}
+                        onChange={(e) => setEmpForm((f) => ({ ...f, otherAllowances: e.target.value }))}
+                        placeholder="0.00"
+                        className={inputCls}
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">House Allowance ({currencySymbol})</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={empForm.houseAllowance}
-                    onChange={(e) => setEmpForm((f) => ({ ...f, houseAllowance: e.target.value }))}
-                    placeholder="0.00"
-                    className={inputCls}
-                  />
-                </div>
-              </div>
-
-              {/* Row 7: Transport / Other Allowances */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Transport Allowance ({currencySymbol})</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={empForm.transportAllowance}
-                    onChange={(e) => setEmpForm((f) => ({ ...f, transportAllowance: e.target.value }))}
-                    placeholder="0.00"
-                    className={inputCls}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Other Allowances ({currencySymbol})</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={empForm.otherAllowances}
-                    onChange={(e) => setEmpForm((f) => ({ ...f, otherAllowances: e.target.value }))}
-                    placeholder="0.00"
-                    className={inputCls}
-                  />
-                </div>
-              </div>
-              </>)}
+              )}
 
               {/* Employee Type */}
               <div>
