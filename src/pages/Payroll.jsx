@@ -1077,7 +1077,7 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
               </div>
 
               {/* Row 6: Basic Salary / House Allowance — salary hidden for contractors */}
-              {empForm.employeeType !== "CONTRACTOR" && (
+              {empForm.employeeType !== "CONTRACTOR" && (<>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Basic Salary ({currencySymbol}) *</label>
@@ -1133,7 +1133,7 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
                   />
                 </div>
               </div>
-              )}
+              </>)}
 
               {/* Employee Type */}
               <div>
