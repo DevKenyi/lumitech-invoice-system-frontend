@@ -1021,7 +1021,8 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
                 </div>
               </div>
 
-              {/* Row 6: Basic Salary / House Allowance */}
+              {/* Row 6: Basic Salary / House Allowance — salary hidden for contractors */}
+              {empForm.employeeType !== "CONTRACTOR" && (
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Basic Salary ({currencySymbol}) *</label>
@@ -1029,7 +1030,7 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
                     type="number"
                     min="0"
                     step="0.01"
-                    required
+                    required={empForm.employeeType !== "CONTRACTOR"}
                     value={empForm.basicSalary}
                     onChange={(e) => setEmpForm((f) => ({ ...f, basicSalary: e.target.value }))}
                     placeholder="0.00"
@@ -1077,6 +1078,7 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
                   />
                 </div>
               </div>
+              )}
 
               {/* Employee Type */}
               <div>
@@ -1113,8 +1115,8 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
                 </div>
               )}
 
-              {/* Total package preview */}
-              {empForm.basicSalary && (
+              {/* Total package preview — salaried only */}
+              {empForm.employeeType !== "CONTRACTOR" && empForm.basicSalary && (
                 <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-4 py-3 text-sm text-blue-700 dark:text-blue-300">
                   Total monthly package ≈{" "}
                   {fmt(
