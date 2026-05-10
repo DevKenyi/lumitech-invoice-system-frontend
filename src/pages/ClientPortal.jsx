@@ -5,6 +5,7 @@ import axios from "axios";
 import {
   FileText, CreditCard, Download, CheckCircle, Clock, XCircle,
   AlertCircle, TrendingUp, Wallet, Landmark, Banknote, X, Loader2,
+  Lock, ShieldCheck,
 } from "lucide-react";
 
 const baseURL =
@@ -528,10 +529,11 @@ function ClientPortal() {
                       : <CreditCard className="w-5 h-5 text-white" />
                     }
                   </div>
-                  <div className="text-left">
+                  <div className="text-left flex-1">
                     <p className="text-sm font-semibold text-slate-800">Pay with Paystack</p>
                     <p className="text-xs text-slate-500">Card, bank transfer, USSD, or QR code</p>
                   </div>
+                  <Lock className="w-3.5 h-3.5 text-slate-300 shrink-0" />
                 </button>
               )}
 
@@ -548,10 +550,11 @@ function ClientPortal() {
                       : <CreditCard className="w-5 h-5 text-white" />
                     }
                   </div>
-                  <div className="text-left">
+                  <div className="text-left flex-1">
                     <p className="text-sm font-semibold text-slate-800">Pay with Flutterwave</p>
                     <p className="text-xs text-slate-500">Card, bank transfer, mobile money & more</p>
                   </div>
+                  <Lock className="w-3.5 h-3.5 text-slate-300 shrink-0" />
                 </button>
               )}
 
@@ -603,6 +606,32 @@ function ClientPortal() {
                     <p className="text-sm font-semibold text-slate-800">Cash Payment</p>
                     <p className="text-xs text-slate-500 mt-0.5">Please contact your service provider to arrange a cash payment of <strong>{fmt(payingInvoice.balanceDue)}</strong>.</p>
                   </div>
+                </div>
+              )}
+
+              {/* Trust badges */}
+              {(data?.orgAcceptsPaystack || data?.orgAcceptsFlutterwave) && (
+                <div className="mt-2 pt-4 border-t border-slate-100">
+                  <div className="flex items-center justify-center gap-1.5 mb-3">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                    <p className="text-xs font-semibold text-emerald-700">Your payment is safe and secure</p>
+                  </div>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {[
+                      { icon: <Lock className="w-3 h-3" />, label: "256-bit SSL encryption" },
+                      { icon: <ShieldCheck className="w-3 h-3" />, label: "We never store your card details" },
+                      { icon: <CheckCircle className="w-3 h-3" />, label: "PCI-DSS compliant gateway" },
+                      { icon: <ShieldCheck className="w-3 h-3" />, label: "Verified by Paystack & Flutterwave" },
+                    ].map(b => (
+                      <span key={b.label} className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-full text-xs text-slate-500 font-medium">
+                        <span className="text-emerald-500">{b.icon}</span>
+                        {b.label}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-center text-xs text-slate-400 mt-3">
+                    Payments are processed by Paystack and Flutterwave — licensed and regulated payment gateways. Your card details go directly to them and are never seen or stored by us.
+                  </p>
                 </div>
               )}
             </div>
