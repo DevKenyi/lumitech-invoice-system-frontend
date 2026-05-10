@@ -20,11 +20,15 @@ function ClientPortal() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [downloadingId, setDownloadingId] = useState(null);
-  const [payingInvoice, setPayingInvoice] = useState(null); // {inv, mode} where mode = "paystack"|"bank"|"cash"
+  const [payingInvoice, setPayingInvoice] = useState(null);
   const [payingLinkId, setPayingLinkId] = useState(null);
   const [paymentError, setPaymentError] = useState(null);
   const [verifyingPayment, setVerifyingPayment] = useState(false);
-  const [paymentSuccess, setPaymentSuccess] = useState(null); // invoice number string on success
+  const [paymentSuccess, setPaymentSuccess] = useState(null);
+  // Consolidated payment state
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [consolidatedLoading, setConsolidatedLoading] = useState(false);
+  const [consolidatedSuccess, setConsolidatedSuccess] = useState(null); // count of invoices paid
 
   const invoices = data?.invoices || [];
   const summary = data;
@@ -69,6 +73,7 @@ function ClientPortal() {
     const status = searchParams.get("status");
     const txRef = searchParams.get("tx_ref");
     const transactionId = searchParams.get("transaction_id");
+    const cpRef = searchParams.get("cp_ref");
     if (!txRef || !transactionId || !data) return;
 
     if (status !== "successful") {
@@ -77,11 +82,26 @@ function ClientPortal() {
       return;
     }
 
-    const invoice = data.invoices?.find(inv => inv.flutterwaveReference === txRef);
-    if (!invoice) return;
-
     setVerifyingPayment(true);
     setSearchParams({}, { replace: true });
+
+    // Consolidated payment redirect-back
+    if (cpRef) {
+      axios
+        .post(`${baseURL}/api/public/clients/${token}/consolidated-payment/verify-flutterwave?cpRef=${cpRef}&transactionId=${transactionId}`)
+        .then(res => {
+          setConsolidatedSuccess(res.data.invoiceCount);
+          setSelectedIds(new Set());
+          reload();
+        })
+        .catch(e => setPaymentError(e.response?.data?.message || "Payment could not be verified. Please contact support."))
+        .finally(() => setVerifyingPayment(false));
+      return;
+    }
+
+    // Single invoice redirect-back
+    const invoice = data.invoices?.find(inv => inv.flutterwaveReference === txRef);
+    if (!invoice) { setVerifyingPayment(false); return; }
 
     axios
       .post(`${baseURL}/api/public/clients/${token}/invoices/${invoice.id}/verify-flutterwave?transactionId=${transactionId}`)
@@ -145,6 +165,44 @@ function ClientPortal() {
   const openPaymentOptions = (inv) => {
     setPayingInvoice(inv);
     setPaymentError(null);
+  };
+
+  const unpaidInvoices = invoices.filter(inv => inv.balanceDue > 0);
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === unpaidInvoices.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(unpaidInvoices.map(inv => inv.id)));
+    }
+  };
+
+  const selectedTotal = unpaidInvoices
+    .filter(inv => selectedIds.has(inv.id))
+    .reduce((sum, inv) => sum + (inv.balanceDue || 0), 0);
+
+  const handleConsolidatedPay = async (method) => {
+    if (selectedIds.size === 0) return;
+    setConsolidatedLoading(true);
+    setPaymentError(null);
+    try {
+      const res = await axios.post(
+        `${baseURL}/api/public/clients/${token}/consolidated-payment-link`,
+        { invoiceIds: Array.from(selectedIds), method }
+      );
+      window.location.href = res.data.paymentUrl;
+    } catch (e) {
+      setPaymentError(e.response?.data?.message || "Could not generate consolidated payment link.");
+      setConsolidatedLoading(false);
+    }
   };
 
   // Use the org's currency from the portal data (set when first invoice loads)
@@ -250,6 +308,71 @@ function ClientPortal() {
           </div>
         )}
 
+        {/* Consolidated payment success banner */}
+        {consolidatedSuccess && (
+          <div className="flex items-center justify-between gap-3 bg-emerald-50 border border-emerald-200 rounded-2xl px-5 py-4">
+            <div className="flex items-center gap-3">
+              <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+              <p className="text-sm font-medium text-emerald-800">
+                <span className="font-semibold">{consolidatedSuccess} invoice{consolidatedSuccess > 1 ? "s" : ""}</span> cleared successfully!
+              </p>
+            </div>
+            <button onClick={() => setConsolidatedSuccess(null)} className="text-emerald-600 hover:text-emerald-800">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Consolidated payment bar — shows when invoices are selected */}
+        {unpaidInvoices.length >= 2 && (
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200 px-5 py-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 rounded border-slate-300 accent-blue-600 cursor-pointer"
+                  checked={selectedIds.size === unpaidInvoices.length && unpaidInvoices.length > 0}
+                  onChange={toggleSelectAll}
+                />
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">
+                    {selectedIds.size === 0
+                      ? "Select invoices to pay together"
+                      : `${selectedIds.size} invoice${selectedIds.size > 1 ? "s" : ""} selected — ${fmt(selectedTotal)}`}
+                  </p>
+                  {selectedIds.size === 0 && (
+                    <p className="text-xs text-slate-400 mt-0.5">Tick the boxes below to pay multiple invoices at once</p>
+                  )}
+                </div>
+              </div>
+              {selectedIds.size >= 2 && (
+                <div className="flex gap-2 flex-wrap">
+                  {data?.orgAcceptsFlutterwave && (
+                    <button
+                      onClick={() => handleConsolidatedPay("flutterwave")}
+                      disabled={consolidatedLoading}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-xl transition disabled:opacity-60"
+                    >
+                      {consolidatedLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CreditCard className="w-3.5 h-3.5" />}
+                      Pay {fmt(selectedTotal)} via Flutterwave
+                    </button>
+                  )}
+                  {data?.orgAcceptsPaystack && (
+                    <button
+                      onClick={() => handleConsolidatedPay("paystack")}
+                      disabled={consolidatedLoading}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition disabled:opacity-60"
+                    >
+                      {consolidatedLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CreditCard className="w-3.5 h-3.5" />}
+                      Pay {fmt(selectedTotal)} via Paystack
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Summary Cards */}
         {summary && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -305,6 +428,7 @@ function ClientPortal() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-100 bg-slate-50/50">
+                    <th className="px-4 py-4 w-8"></th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Invoice #</th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Issue Date</th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Due Date</th>
@@ -316,7 +440,17 @@ function ClientPortal() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {invoices.map((inv) => (
-                    <tr key={inv.id} className="hover:bg-slate-50/50 transition-colors">
+                    <tr key={inv.id} className={`hover:bg-slate-50/50 transition-colors ${selectedIds.has(inv.id) ? "bg-blue-50/50" : ""}`}>
+                      <td className="px-4 py-4">
+                        {inv.balanceDue > 0 && (
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 rounded border-slate-300 accent-blue-600 cursor-pointer"
+                            checked={selectedIds.has(inv.id)}
+                            onChange={() => toggleSelect(inv.id)}
+                          />
+                        )}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap font-mono font-medium text-slate-900">
                         #{inv.invoiceNumber}
                       </td>
