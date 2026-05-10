@@ -123,8 +123,8 @@ function OrgSettings() {
       const payload = { ...form };
       if (!editingSecret) delete payload.paystackSecretKey;
       delete payload.paystackSecretKeyConfigured;
-      if (!editingFwSecret) delete payload.flutterwaveSecretKey;
-      if (!editingFwWebhook) delete payload.flutterwaveWebhookSecret;
+      if (form.flutterwaveSecretKeyConfigured && !editingFwSecret) delete payload.flutterwaveSecretKey;
+      if (form.flutterwaveWebhookSecretConfigured && !editingFwWebhook) delete payload.flutterwaveWebhookSecret;
       delete payload.flutterwaveSecretKeyConfigured;
       delete payload.flutterwaveWebhookSecretConfigured;
       await api.put("/api/org", payload);
