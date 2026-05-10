@@ -1,7 +1,11 @@
 import { Link } from "react-router-dom";
-import { CheckCircle, ArrowRight, Zap, Shield, Clock, Layers } from "lucide-react";
+import { CheckCircle, ArrowRight, Shield, Clock, Layers, Globe } from "lucide-react";
+import useCountry, { COUNTRY_CONFIG } from "../../hooks/useCountry";
 
 export default function PricingSection() {
+  const { countryCode, config, setCountry } = useCountry();
+  const { plans } = config;
+
   return (
     <section id="pricing" className="py-24 bg-slate-50 border-y border-slate-100">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -10,6 +14,25 @@ export default function PricingSection() {
             Simple pricing. Start free.
           </h2>
           <p className="text-slate-500 max-w-xl mx-auto">Every plan includes a full 30-day free trial — no credit card, no restrictions. Pick a plan, try everything, then decide.</p>
+        </div>
+
+        {/* Country switcher */}
+        <div className="flex items-center justify-center gap-2 mb-8 flex-wrap">
+          <Globe className="w-4 h-4 text-slate-400" />
+          <span className="text-sm text-slate-500">Pricing for:</span>
+          {Object.values(COUNTRY_CONFIG).map(c => (
+            <button
+              key={c.code}
+              onClick={() => setCountry(c.code)}
+              className={`px-3 py-1 rounded-full text-xs font-semibold border transition ${
+                countryCode === c.code
+                  ? "bg-blue-600 text-white border-blue-600"
+                  : "bg-white text-slate-600 border-slate-200 hover:border-blue-300"
+              }`}
+            >
+              {c.name} ({c.symbol})
+            </button>
+          ))}
         </div>
 
         {/* Free trial banner */}
@@ -23,7 +46,7 @@ export default function PricingSection() {
           <div className="bg-white rounded-2xl border-2 border-slate-200 p-6 flex flex-col">
             <div className="inline-flex items-center px-3 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded-full mb-5 self-start border border-slate-200 tracking-widest uppercase">Essential</div>
             <div className="mb-1">
-              <span className="text-3xl font-extrabold text-slate-900">₦9,900</span>
+              <span className="text-3xl font-extrabold text-slate-900">{plans.essential.price}</span>
               <span className="text-slate-400 text-sm ml-1">/month</span>
             </div>
             <p className="text-slate-500 text-sm mb-5">For business owners managing their finances</p>
@@ -38,7 +61,7 @@ export default function PricingSection() {
               <Link to="/register" className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition text-sm">
                 Start 30-Day Free Trial <ArrowRight className="w-4 h-4" />
               </Link>
-              <p className="text-center text-xs text-slate-400 mt-2">Then ₦9,900/month. Cancel anytime.</p>
+              <p className="text-center text-xs text-slate-400 mt-2">{plans.essential.sub}</p>
             </div>
           </div>
 
@@ -49,7 +72,7 @@ export default function PricingSection() {
             </div>
             <div className="inline-flex items-center px-3 py-1 bg-white/20 text-white text-xs font-bold rounded-full mb-5 self-start tracking-widest uppercase">Business</div>
             <div className="mb-1">
-              <span className="text-4xl font-extrabold text-white">₦24,900</span>
+              <span className="text-4xl font-extrabold text-white">{plans.business.price}</span>
               <span className="text-blue-200 text-sm ml-1">/month</span>
             </div>
             <p className="text-blue-200 text-sm mb-5">For growing businesses that need more</p>
@@ -64,7 +87,7 @@ export default function PricingSection() {
               <Link to="/register" className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-white text-blue-700 font-extrabold rounded-xl hover:bg-blue-50 transition shadow-lg text-sm">
                 Start 30-Day Free Trial <ArrowRight className="w-4 h-4" />
               </Link>
-              <p className="text-center text-xs text-blue-300 mt-2">Then ₦24,900/month. Cancel anytime.</p>
+              <p className="text-center text-xs text-blue-300 mt-2">{plans.business.sub}</p>
             </div>
           </div>
 
@@ -72,12 +95,23 @@ export default function PricingSection() {
           <div className="bg-white rounded-2xl border-2 border-violet-200 p-6 flex flex-col">
             <div className="inline-flex items-center px-3 py-1 bg-violet-100 text-violet-700 text-xs font-bold rounded-full mb-5 self-start border border-violet-200 tracking-widest uppercase">Accountant Pro</div>
             <div className="mb-1">
-              <span className="text-3xl font-extrabold text-slate-900">₦59,900</span>
+              <span className="text-3xl font-extrabold text-slate-900">{plans.accountantPro.price}</span>
               <span className="text-slate-400 text-sm ml-1">/month</span>
             </div>
             <p className="text-slate-500 text-sm mb-5">For accountants managing multiple clients</p>
             <ul className="space-y-2.5 mb-6 flex-1">
-              {["Everything in Business", "✦ Payroll & PAYE (NHIF, NSSF, Housing Levy)", "✦ Multi-currency (13 currencies)", "✦ Budget vs Actual", "✦ Cash Flow Forecast", "Expense reporting & claims", "Audit Trail (full activity log)", "VAT & WHT tracking (FIRS)", "Multi-business management", "Priority support"].map(f => (
+              {[
+                "Everything in Business",
+                `✦ Payroll & ${config.taxBody === "GRA" ? "SSNIT/PAYE" : config.taxBody === "SARS" ? "PAYE/UIF/SDL" : "PAYE/Pension/NHF"}`,
+                "✦ Multi-currency (13 currencies)",
+                "✦ Budget vs Actual",
+                "✦ Cash Flow Forecast",
+                "Expense reporting & claims",
+                "Audit Trail (full activity log)",
+                `${config.vatLabel} & WHT tracking (${config.taxBody})`,
+                "Multi-business management",
+                "Priority support",
+              ].map(f => (
                 <li key={f} className={`flex items-start gap-2 text-sm ${f.startsWith("✦") ? "text-violet-700 font-semibold" : "text-slate-600"}`}>
                   <CheckCircle className={`w-4 h-4 flex-shrink-0 mt-0.5 ${f.startsWith("✦") ? "text-violet-500" : "text-violet-400"}`} />
                   {f.replace("✦ ", "")}
@@ -89,7 +123,7 @@ export default function PricingSection() {
               <Link to="/register" className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-xl transition shadow-lg text-sm">
                 Start 30-Day Free Trial <ArrowRight className="w-4 h-4" />
               </Link>
-              <p className="text-center text-xs text-slate-400 mt-2">Then ₦59,900/month.</p>
+              <p className="text-center text-xs text-slate-400 mt-2">{plans.accountantPro.sub}</p>
             </div>
           </div>
         </div>
