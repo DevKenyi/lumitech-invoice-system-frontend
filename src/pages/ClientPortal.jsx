@@ -284,6 +284,22 @@ function ClientPortal() {
         </div>
       </header>
 
+      {/* Security trust bar */}
+      {(data?.orgAcceptsPaystack || data?.orgAcceptsFlutterwave) && (
+        <div className="bg-emerald-50 border-b border-emerald-100">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-center gap-2 flex-wrap">
+            <Lock className="w-3 h-3 text-emerald-600 shrink-0" />
+            <span className="text-xs text-emerald-700 font-medium">Payments secured by Paystack &amp; Flutterwave</span>
+            <span className="text-emerald-300 text-xs hidden sm:inline">·</span>
+            <span className="text-xs text-emerald-600 hidden sm:inline">256-bit SSL</span>
+            <span className="text-emerald-300 text-xs hidden sm:inline">·</span>
+            <span className="text-xs text-emerald-600 hidden sm:inline">We never store your card details</span>
+            <span className="text-emerald-300 text-xs hidden sm:inline">·</span>
+            <span className="text-xs text-emerald-600 hidden sm:inline">PCI-DSS compliant</span>
+          </div>
+        </div>
+      )}
+
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
 
         {/* Paystack callback — verifying payment */}
