@@ -46,16 +46,45 @@ function ClientPortal() {
     const reference = searchParams.get("reference") || searchParams.get("trxref");
     if (!reference || !data) return;
 
-    // Find the invoice that was being paid
     const invoice = data.invoices?.find(inv => inv.paystackReference === reference);
     if (!invoice) return;
 
     setVerifyingPayment(true);
-    // Clear the query params so a page refresh doesn't re-trigger
     setSearchParams({}, { replace: true });
 
     axios
       .post(`${baseURL}/api/public/clients/${token}/invoices/${invoice.id}/verify-payment?reference=${reference}`)
+      .then(() => {
+        setPaymentSuccess(invoice.invoiceNumber);
+        reload();
+      })
+      .catch(e => {
+        setPaymentError(e.response?.data?.message || "Payment could not be verified. Please contact support.");
+      })
+      .finally(() => setVerifyingPayment(false));
+  }, [searchParams, data]);
+
+  // Handle Flutterwave redirect-back: ?status=successful&tx_ref=xxx&transaction_id=xxx
+  useEffect(() => {
+    const status = searchParams.get("status");
+    const txRef = searchParams.get("tx_ref");
+    const transactionId = searchParams.get("transaction_id");
+    if (!txRef || !transactionId || !data) return;
+
+    if (status !== "successful") {
+      setSearchParams({}, { replace: true });
+      if (status === "cancelled") setPaymentError("Payment was cancelled.");
+      return;
+    }
+
+    const invoice = data.invoices?.find(inv => inv.flutterwaveReference === txRef);
+    if (!invoice) return;
+
+    setVerifyingPayment(true);
+    setSearchParams({}, { replace: true });
+
+    axios
+      .post(`${baseURL}/api/public/clients/${token}/invoices/${invoice.id}/verify-flutterwave?transactionId=${transactionId}`)
       .then(() => {
         setPaymentSuccess(invoice.invoiceNumber);
         reload();
