@@ -90,14 +90,14 @@ const Dashboard = () => {
 
   const StatCard = ({ title, value, icon: Icon, color, sub }) => (
     <div className="group relative bg-white/80 backdrop-blur-sm dark:bg-slate-800/80 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-lg transition-all duration-300">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{title}</p>
-          <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mt-2">{value}</p>
+          <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mt-2 break-words leading-tight">{value}</p>
           {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
         </div>
-        <div className={`p-3 rounded-xl ${color} shadow-sm`}>
-          <Icon className="w-5 h-5 text-white" />
+        <div className={`p-2.5 rounded-xl ${color} shadow-sm shrink-0`}>
+          <Icon className="w-4 h-4 text-white" />
         </div>
       </div>
     </div>

@@ -394,36 +394,36 @@ function ClientPortal() {
         {summary && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 p-5">
-              <div className="flex items-start justify-between">
-                <div>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Invoiced</p>
-                  <p className="text-2xl font-bold text-slate-900 mt-1">{fmt(summary.totalInvoiced)}</p>
+                  <p className="text-xl font-bold text-slate-900 mt-1 break-words leading-tight">{fmt(summary.totalInvoiced)}</p>
                 </div>
-                <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-sm">
+                <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-sm shrink-0">
                   <TrendingUp className="w-4 h-4 text-white" />
                 </div>
               </div>
             </div>
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 p-5">
-              <div className="flex items-start justify-between">
-                <div>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Paid</p>
-                  <p className="text-2xl font-bold text-emerald-600 mt-1">{fmt(summary.totalPaid)}</p>
+                  <p className="text-xl font-bold text-emerald-600 mt-1 break-words leading-tight">{fmt(summary.totalPaid)}</p>
                 </div>
-                <div className="p-2.5 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 shadow-sm">
+                <div className="p-2.5 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 shadow-sm shrink-0">
                   <CheckCircle className="w-4 h-4 text-white" />
                 </div>
               </div>
             </div>
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 p-5">
-              <div className="flex items-start justify-between">
-                <div>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Outstanding</p>
-                  <p className={`text-2xl font-bold mt-1 ${summary.totalOutstanding > 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                  <p className={`text-xl font-bold mt-1 break-words leading-tight ${summary.totalOutstanding > 0 ? "text-rose-600" : "text-emerald-600"}`}>
                     {fmt(summary.totalOutstanding)}
                   </p>
                 </div>
-                <div className={`p-2.5 rounded-xl shadow-sm ${summary.totalOutstanding > 0 ? "bg-gradient-to-br from-rose-500 to-pink-500" : "bg-gradient-to-br from-emerald-500 to-teal-500"}`}>
+                <div className={`p-2.5 rounded-xl shadow-sm shrink-0 ${summary.totalOutstanding > 0 ? "bg-gradient-to-br from-rose-500 to-pink-500" : "bg-gradient-to-br from-emerald-500 to-teal-500"}`}>
                   <Wallet className="w-4 h-4 text-white" />
                 </div>
               </div>

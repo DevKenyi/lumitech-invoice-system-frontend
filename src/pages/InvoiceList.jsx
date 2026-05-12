@@ -103,18 +103,18 @@ function InvoiceList() {
 
   const StatCard = ({ title, value, icon: Icon, color, trend }) => (
     <div className="group relative bg-white dark:bg-slate-800 rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-lg hover:border-slate-300 transition-all duration-300">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
           <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">{title}</p>
-          <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mt-1.5 sm:mt-2">{value}</p>
+          <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mt-1.5 sm:mt-2 break-words leading-tight">{value}</p>
           {trend && (
             <p className="text-xs text-emerald-600 mt-2 flex items-center gap-1">
               <TrendingUp className="w-3 h-3" /> +{trend}% from last month
             </p>
           )}
         </div>
-        <div className={`p-3 rounded-xl ${color} shadow-sm`}>
-          <Icon className="w-5 h-5 text-white" />
+        <div className={`p-2.5 rounded-xl ${color} shadow-sm shrink-0`}>
+          <Icon className="w-4 h-4 text-white" />
         </div>
       </div>
       {/* Subtle gradient overlay */}
