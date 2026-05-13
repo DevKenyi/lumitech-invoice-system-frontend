@@ -332,7 +332,7 @@ function Navbar({ onClose }) {
           <div className="space-y-0.5">
 
             {/* Dashboard — standalone, always on top */}
-            {!isAdminOrStaff && (
+            {!isStaff && (
               <NavLink
                 item={{ path: "/dashboard", label: "Dashboard", icon: LayoutDashboard, info: "Real-time snapshot of your business" }}
                 collapsed={false}
