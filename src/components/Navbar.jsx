@@ -192,7 +192,6 @@ function Navbar({ onClose }) {
 
   // ── Section: Sales & Invoicing ─────────────────────────────────────────────
   const salesItems = [
-    ...(!isAdminOrStaff ? [{ path: "/dashboard", label: "Dashboard", icon: LayoutDashboard, info: "Real-time snapshot of your business" }] : []),
     { path: "/invoices",           label: "Invoices",          icon: FileText,       info: "View and manage all invoices" },
     { path: "/create",             label: "New Invoice",       icon: PlusCircle,     info: "Create and send a new invoice" },
     { path: "/quotes",             label: "Quotes",            icon: FileCheck,      info: "Create estimates and convert to invoices" },
@@ -332,6 +331,17 @@ function Navbar({ onClose }) {
         {!isStaff && !effectiveCollapsed && (
           <div className="space-y-0.5">
 
+            {/* Dashboard — standalone, always on top */}
+            {!isAdminOrStaff && (
+              <NavLink
+                item={{ path: "/dashboard", label: "Dashboard", icon: LayoutDashboard, info: "Real-time snapshot of your business" }}
+                collapsed={false}
+                onClick={onClose}
+                isActive={isActive}
+                isMobile={isMobile}
+              />
+            )}
+
             {/* 1 · Sales & Invoicing ── always visible */}
             <NavSection
               id="sales"
@@ -339,7 +349,7 @@ function Navbar({ onClose }) {
               icon={FileText}
               items={salesItems}
               collapsed={false}
-              defaultOpen={salesActive || cur === "/dashboard" || cur === "/"}
+              defaultOpen={salesActive}
               onClick={onClose}
               isActive={isActive}
               isMobile={isMobile}
