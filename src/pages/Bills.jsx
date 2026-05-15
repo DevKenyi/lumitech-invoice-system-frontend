@@ -29,7 +29,7 @@ const emptyBillForm = () => ({
 const emptyPayForm = () => ({ amount: "", paymentDate: today(), paymentMethod: "BANK_TRANSFER", reference: "" });
 
 export default function Bills() {
-  const { fmt, baseCurrency } = useOrg();
+  const { fmt, baseCurrency, currencySymbol } = useOrg();
   const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
