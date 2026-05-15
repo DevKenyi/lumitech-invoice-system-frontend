@@ -12,7 +12,7 @@ const monthStart = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
 };
 
-const BalanceCell = ({ value, bold = false }) => {
+const BalanceCell = ({ value, bold = false, fmt }) => {
   const positive = (value ?? 0) >= 0;
   return (
     <span
@@ -27,7 +27,7 @@ const BalanceCell = ({ value, bold = false }) => {
   );
 };
 
-const StatCard = ({ label, value, icon: Icon, color }) => (
+const StatCard = ({ label, value, icon: Icon, color, fmt }) => (
   <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-4">
     <div className="flex items-start justify-between gap-2 mb-2">
       <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</p>
@@ -35,7 +35,7 @@ const StatCard = ({ label, value, icon: Icon, color }) => (
         <Icon size={14} />
       </span>
     </div>
-    <BalanceCell value={value} bold />
+    <BalanceCell value={value} bold fmt={fmt} />
   </div>
 );
 
@@ -217,30 +217,10 @@ export default function AccountLedger() {
 
           {/* Stat cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <StatCard
-              label="Opening Balance"
-              value={ledger.openingBalance}
-              icon={BookOpen}
-              color="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
-            />
-            <StatCard
-              label="Total Debits"
-              value={ledger.totalDebits}
-              icon={TrendingDown}
-              color="bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400"
-            />
-            <StatCard
-              label="Total Credits"
-              value={ledger.totalCredits}
-              icon={TrendingUp}
-              color="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400"
-            />
-            <StatCard
-              label="Closing Balance"
-              value={ledger.closingBalance}
-              icon={BookOpen}
-              color="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
-            />
+            <StatCard label="Opening Balance" value={ledger.openingBalance} icon={BookOpen} color="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400" fmt={fmt} />
+            <StatCard label="Total Debits" value={ledger.totalDebits} icon={TrendingDown} color="bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400" fmt={fmt} />
+            <StatCard label="Total Credits" value={ledger.totalCredits} icon={TrendingUp} color="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400" fmt={fmt} />
+            <StatCard label="Closing Balance" value={ledger.closingBalance} icon={BookOpen} color="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" fmt={fmt} />
           </div>
 
           {/* Ledger table */}
@@ -294,7 +274,7 @@ export default function AccountLedger() {
                           {line.credit ? fmt(line.credit) : "—"}
                         </td>
                         <td className="px-4 py-2.5 text-right">
-                          <BalanceCell value={line.balance} bold />
+                          <BalanceCell value={line.balance} bold fmt={fmt} />
                         </td>
                       </tr>
                     ))}
@@ -312,7 +292,7 @@ export default function AccountLedger() {
                         {fmt(ledger.totalCredits)}
                       </td>
                       <td className="px-4 py-2.5 text-right">
-                        <BalanceCell value={ledger.closingBalance} bold />
+                        <BalanceCell value={ledger.closingBalance} bold fmt={fmt} />
                       </td>
                     </tr>
                   </tfoot>
