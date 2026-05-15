@@ -78,7 +78,7 @@ function ExpenseFormFields({ form, setForm }) {
   const { currencySymbol } = useOrg();
   return (
     <>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Amount ({currencySymbol}) *</label>
           <AmountInput
@@ -105,7 +105,7 @@ function ExpenseFormFields({ form, setForm }) {
         </select>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Vendor / Payee</label>
           <input type="text" placeholder="e.g. MTN, Shoprite"

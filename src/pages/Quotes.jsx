@@ -291,7 +291,7 @@ export default function Quotes() {
               </div>
 
               {/* Dates */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Issue Date *</label>
                   <input type="date" value={form.issueDate} onChange={e => setForm(f => ({ ...f, issueDate: e.target.value }))} required className={inputCls} />
@@ -303,7 +303,7 @@ export default function Quotes() {
               </div>
 
               {/* Tax */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">VAT Rate (%)</label>
                   <input type="number" min="0" max="100" step="0.01" placeholder="e.g. 7.5" value={form.vatRate} onChange={e => setForm(f => ({ ...f, vatRate: e.target.value }))} className={inputCls} />

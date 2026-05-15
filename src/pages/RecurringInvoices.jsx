@@ -283,7 +283,7 @@ export default function RecurringInvoices() {
             </div>
 
             <form onSubmit={handleSubmit} className="p-5 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Client *</label>
                   <select value={form.clientId} onChange={e => setForm(f => ({ ...f, clientId: e.target.value }))} required className={inputCls}>

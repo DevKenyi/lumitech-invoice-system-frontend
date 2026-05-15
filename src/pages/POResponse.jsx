@@ -169,7 +169,7 @@ export default function POResponse() {
           {po.items && po.items.length > 0 && (
             <div>
               <p className="text-xs text-slate-400 uppercase tracking-wide mb-2">Items</p>
-              <table className="w-full text-sm border-collapse">
+              <div className="overflow-x-auto"><table className="w-full text-sm border-collapse">
                 <thead>
                   <tr className="bg-slate-50 text-left text-xs text-slate-500 uppercase">
                     <th className="px-3 py-2">Description</th>
@@ -194,7 +194,7 @@ export default function POResponse() {
                     <td className="px-3 py-2 text-right font-bold text-slate-900">{fmt(po.total)}</td>
                   </tr>
                 </tfoot>
-              </table>
+              </table></div>
             </div>
           )}
         </div>

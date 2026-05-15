@@ -19,6 +19,7 @@ function SubSection({ label, rows, total, totalLabel, accentColor }) {
       <p className={`px-6 py-2 text-xs font-semibold uppercase tracking-wider ${accentColor} border-b border-slate-100 dark:border-slate-700/60`}>
         {label}
       </p>
+      <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
           {rows.map((row) => (
@@ -36,6 +37,7 @@ function SubSection({ label, rows, total, totalLabel, accentColor }) {
           </tr>
         </tfoot>
       </table>
+      </div>
     </div>
   );
 }
@@ -254,6 +256,7 @@ function BalanceSheet() {
             totalLabel="Total Equity"
             totalStyle="bg-purple-50/60 dark:bg-purple-900/10 text-purple-700 dark:text-purple-300"
           >
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                 {(data.equityRows ?? []).map((row) => (
@@ -272,6 +275,7 @@ function BalanceSheet() {
                 )}
               </tbody>
             </table>
+            </div>
           </SectionCard>
 
           {/* Summary */}

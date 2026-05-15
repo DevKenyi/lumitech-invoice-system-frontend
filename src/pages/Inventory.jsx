@@ -456,7 +456,7 @@ export default function Inventory() {
                   {expandedOrder === order.id && (
                     <div className="px-4 pb-4 bg-slate-50 dark:bg-slate-900/30 border-t border-slate-100 dark:border-slate-700">
                       {order.notes && <p className="text-xs text-slate-500 py-2 italic">Note: {order.notes}</p>}
-                      <table className="w-full text-xs mt-2">
+                      <div className="overflow-x-auto"><table className="w-full text-xs mt-2">
                         <thead>
                           <tr className="text-slate-400 uppercase tracking-wide">
                             <th className="text-left py-1.5 pr-4 font-semibold">Product</th>
@@ -475,7 +475,7 @@ export default function Inventory() {
                             </tr>
                           ))}
                         </tbody>
-                      </table>
+                      </table></div>
                     </div>
                   )}
                 </div>

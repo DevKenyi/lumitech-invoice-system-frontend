@@ -305,7 +305,7 @@ export default function Bills() {
             </div>
 
             <form onSubmit={handleCreateSubmit} className="p-5 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="col-span-2 sm:col-span-1">
                   <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Supplier Name *</label>
                   <input value={billForm.supplierName} onChange={e => setBillForm(f => ({ ...f, supplierName: e.target.value }))} required placeholder="Supplier name" className={inputCls} />
@@ -316,7 +316,7 @@ export default function Bills() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Issue Date *</label>
                   <input type="date" value={billForm.issueDate} onChange={e => setBillForm(f => ({ ...f, issueDate: e.target.value }))} required className={inputCls} />
@@ -333,7 +333,7 @@ export default function Bills() {
               </div>
 
               {/* Currency */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Currency</label>
                   <select

@@ -21,6 +21,7 @@ function AccountTable({ rows, emptyText }) {
     return <p className="px-6 py-6 text-sm text-slate-400 text-center">{emptyText}</p>;
   }
   return (
+    <div className="overflow-x-auto">
     <table className="w-full text-sm">
       <thead>
         <tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/60">
@@ -39,6 +40,7 @@ function AccountTable({ rows, emptyText }) {
         ))}
       </tbody>
     </table>
+    </div>
   );
 }
 
