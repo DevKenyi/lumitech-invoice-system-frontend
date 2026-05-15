@@ -143,8 +143,8 @@ function HeroCapitalWidget() {
           </div>
         </div>
       </div>
-      {/* Floating badge */}
-      <div className="absolute -right-6 top-10 bg-gradient-to-br from-emerald-500 to-teal-500 text-white rounded-2xl shadow-xl p-3.5 z-10">
+      {/* Floating badge — bottom-left so it never overlaps the card stats */}
+      <div className="absolute -bottom-4 -left-6 xl:-left-10 bg-gradient-to-br from-emerald-500 to-teal-500 text-white rounded-2xl shadow-xl p-3.5 z-10">
         <p className="text-[10px] font-semibold text-emerald-100 uppercase tracking-wide mb-0.5">This month</p>
         <p className="text-base font-extrabold">+₦84,000</p>
         <div className="flex items-center gap-1 mt-0.5">
