@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import api from "../services/api";
 import {
   Plus, X, FileText, Send, Check, Package, ArrowRight,
-  ChevronDown, ChevronUp, Search, RefreshCw, Trash2,
+  ChevronDown, ChevronUp, Search, RefreshCw, Trash2, Pencil,
 } from "lucide-react";
 import Toast from "../components/Toast";
 import { useOrg } from "../context/OrgContext";
@@ -32,6 +32,7 @@ export default function PurchaseOrders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingPo, setEditingPo] = useState(null); // PO being edited for resend
   const [form, setForm] = useState(emptyForm());
   const [saving, setSaving] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
@@ -62,20 +63,40 @@ export default function PurchaseOrders() {
   const removeItem = (idx) => setForm(f => ({ ...f, items: f.items.filter((_, i) => i !== idx) }));
   const subtotal = form.items.reduce((s, i) => s + (parseFloat(i.unitPrice) || 0) * (parseFloat(i.quantity) || 0), 0);
 
+  const openEdit = (po) => {
+    setEditingPo(po);
+    setForm({
+      supplierName: po.supplierName,
+      supplierEmail: po.supplierEmail || "",
+      issueDate: po.issueDate,
+      expectedDate: po.expectedDate || "",
+      notes: po.notes || "",
+      items: po.items.map(i => ({ description: i.description, quantity: i.quantity, unitPrice: i.unitPrice })),
+    });
+    setShowForm(true);
+  };
+
+  const closeForm = () => { setShowForm(false); setEditingPo(null); setForm(emptyForm()); };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
+    const payload = {
+      ...form,
+      items: form.items.map(i => ({ description: i.description, quantity: parseInt(i.quantity), unitPrice: parseFloat(i.unitPrice) })),
+    };
     try {
-      await api.post("/api/purchase-orders", {
-        ...form,
-        items: form.items.map(i => ({ description: i.description, quantity: parseInt(i.quantity), unitPrice: parseFloat(i.unitPrice) })),
-      });
-      notify("Purchase order created");
-      setShowForm(false);
-      setForm(emptyForm());
+      if (editingPo) {
+        await api.put(`/api/purchase-orders/${editingPo.id}/update-and-resend`, payload);
+        notify("PO updated and resent to supplier");
+      } else {
+        await api.post("/api/purchase-orders", payload);
+        notify("Purchase order created");
+      }
+      closeForm();
       load();
     } catch (err) {
-      notify(err.response?.data?.message || "Failed to create PO", "error");
+      notify(err.response?.data?.message || "Failed to save PO", "error");
     } finally { setSaving(false); }
   };
 
@@ -100,7 +121,7 @@ export default function PurchaseOrders() {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Purchase Orders</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Raise POs for suppliers and convert approved ones to bills</p>
         </div>
-        <button onClick={() => { setShowForm(true); setForm(emptyForm()); }}
+        <button onClick={() => { setEditingPo(null); setForm(emptyForm()); setShowForm(true); }}
           className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-xl text-sm font-semibold shadow-lg shadow-blue-600/20 hover:shadow-xl hover:scale-[1.02] transition-all">
           <Plus size={16} /> New PO
         </button>
@@ -194,6 +215,11 @@ export default function PurchaseOrders() {
                             <Send size={13} /> Send to Supplier
                           </button>
                         )}
+                        {po.status === "CHANGES_REQUESTED" && (
+                          <button onClick={() => openEdit(po)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                            <Pencil size={13} /> Edit & Resend
+                          </button>
+                        )}
                         {po.status === "SENT" && (
                           <button onClick={() => action(po.id, "approve")} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">
                             <Check size={13} /> Approve Manually
@@ -228,10 +254,25 @@ export default function PurchaseOrders() {
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-5 border-b border-slate-200 dark:border-slate-700 sticky top-0 bg-white dark:bg-slate-800 z-10">
-              <h2 className="font-semibold text-slate-900 dark:text-white">New Purchase Order</h2>
-              <button onClick={() => setShowForm(false)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition"><X size={18} className="text-slate-500 dark:text-slate-400" /></button>
+              <div>
+                <h2 className="font-semibold text-slate-900 dark:text-white">
+                  {editingPo ? `Edit PO — ${editingPo.poNumber}` : "New Purchase Order"}
+                </h2>
+                {editingPo && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                    Supplier requested changes. Update and resend below.
+                  </p>
+                )}
+              </div>
+              <button onClick={closeForm} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition"><X size={18} className="text-slate-500 dark:text-slate-400" /></button>
             </div>
             <form onSubmit={handleSubmit} className="p-5 space-y-4">
+              {editingPo?.supplierComment && (
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl px-4 py-3">
+                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-0.5">Supplier's requested changes</p>
+                  <p className="text-sm text-slate-700 dark:text-slate-300 italic">"{editingPo.supplierComment}"</p>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2 sm:col-span-1">
                   <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Supplier Name *</label>
@@ -274,9 +315,9 @@ export default function PurchaseOrders() {
                 <div className="flex justify-end mt-2 text-sm font-semibold text-slate-700 dark:text-slate-300">Total: {fmt(subtotal)}</div>
               </div>
               <div className="flex justify-end gap-3 pt-2">
-                <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-600 transition">Cancel</button>
+                <button type="button" onClick={closeForm} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-600 transition">Cancel</button>
                 <button type="submit" disabled={saving} className="px-4 py-2 text-sm font-semibold text-white bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow hover:shadow-md hover:scale-[1.02] transition-all disabled:opacity-50">
-                  {saving ? "Creating…" : "Create PO"}
+                  {saving ? "Saving…" : editingPo ? "Update & Resend" : "Create PO"}
                 </button>
               </div>
             </form>
