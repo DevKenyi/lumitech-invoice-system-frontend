@@ -175,7 +175,7 @@ export default function LandingHero() {
               </span>
             </h1>
             <p className="text-lg sm:text-xl text-slate-500 leading-relaxed mb-8 max-w-lg mx-auto lg:mx-0">
-              You've put money into your business — rent, stock, salaries. LumiLedger tracks every naira, cedi, and rand you've put in and shows exactly how much has come back.
+              You started this business with your own money. Most founders never know if they've actually paid themselves back. LumiLedger shows you exactly where you stand — in real time.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 mb-6 justify-center lg:justify-start">
               <Link to="/register" className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold rounded-xl shadow-xl shadow-blue-600/30 hover:shadow-2xl hover:scale-[1.02] transition-all text-base">

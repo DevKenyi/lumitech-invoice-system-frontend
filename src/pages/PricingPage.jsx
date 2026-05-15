@@ -6,6 +6,7 @@ import {
   Zap, Shield, Clock, AlertTriangle, CreditCard, Users,
   BookOpen, BarChart3, Wallet, Bell, Lock, ChevronRight,
 } from "lucide-react";
+import LandingNav from "../components/landing/LandingNav";
 
 /* ─── Plan comparison data ───────────────────────────────────────────────── */
 const PLANS = ["Free Trial", "Essential", "Business", "Accountant Pro"];
@@ -132,24 +133,7 @@ export default function PricingPage() {
     <div className="min-h-screen bg-white font-sans antialiased">
 
       {/* ── NAV ────────────────────────────────────────────────────────── */}
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-100/80">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2.5">
-            <div className="p-2 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow-md shadow-blue-600/20">
-              <FileText className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-bold text-slate-900 text-lg tracking-tight">
-              LumiLedger<span className="text-blue-600">.</span>
-            </span>
-          </Link>
-          <div className="flex items-center gap-3">
-            <Link to="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition hidden sm:block">Sign In</Link>
-            <Link to="/register" className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-br from-blue-600 to-indigo-600 text-white text-sm font-semibold rounded-xl shadow-lg shadow-blue-600/25 hover:shadow-xl hover:scale-[1.02] transition-all">
-              Start Free <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <LandingNav />
 
       {/* ── HERO ───────────────────────────────────────────────────────── */}
       <section className="bg-gradient-to-br from-blue-50/60 via-white to-indigo-50/40 py-20 px-4">
