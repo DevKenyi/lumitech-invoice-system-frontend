@@ -14,6 +14,7 @@ import Layout from "./components/Layout";
 import ClientList from "./pages/ClientList";
 import ClientDetail from "./pages/ClientDetail";
 import ClientPortal from "./pages/ClientPortal";
+import POResponse from "./pages/POResponse";
 import Landing from "./pages/Landing";
 import ForAccountants from "./pages/ForAccountants";
 import OrgSettings from "./pages/OrgSettings";
@@ -531,6 +532,7 @@ function App() {
 
           {/* CLIENT PORTAL — public, no auth */}
           <Route path="/portal/:token" element={<ClientPortal />} />
+          <Route path="/po-response/:token" element={<POResponse />} />
 
           {/* FALLBACK */}
           <Route path="*" element={<Navigate to="/login" />} />

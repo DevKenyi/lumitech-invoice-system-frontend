@@ -11,12 +11,14 @@ const today = () => new Date().toISOString().slice(0, 10);
 const inDays = (d) => new Date(Date.now() + d * 86400000).toISOString().slice(0, 10);
 
 const STATUS_CFG = {
-  DRAFT:     { label: "Draft",     cls: "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400" },
-  SENT:      { label: "Sent",      cls: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400" },
-  APPROVED:  { label: "Approved",  cls: "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400" },
-  RECEIVED:  { label: "Received",  cls: "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400" },
-  CONVERTED: { label: "Converted", cls: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400" },
-  CANCELLED: { label: "Cancelled", cls: "bg-rose-100 dark:bg-rose-900/30 text-rose-500 dark:text-rose-400" },
+  DRAFT:             { label: "Draft",             cls: "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400" },
+  SENT:              { label: "Sent",              cls: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400" },
+  APPROVED:          { label: "Accepted",          cls: "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400" },
+  REJECTED:          { label: "Rejected",          cls: "bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400" },
+  CHANGES_REQUESTED: { label: "Changes Requested", cls: "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400" },
+  RECEIVED:          { label: "Received",          cls: "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400" },
+  CONVERTED:         { label: "Converted",         cls: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400" },
+  CANCELLED:         { label: "Cancelled",         cls: "bg-rose-100 dark:bg-rose-900/30 text-rose-500 dark:text-rose-400" },
 };
 
 const inputCls = "w-full px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition";
@@ -176,6 +178,14 @@ export default function PurchaseOrders() {
                       </div>
 
                       {po.notes && <p className="text-xs text-slate-400 italic mb-3">{po.notes}</p>}
+
+                      {po.supplierComment && (
+                        <div className="mb-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2.5">
+                          <p className="text-xs font-medium text-amber-700 dark:text-amber-400 mb-0.5">Supplier Comment</p>
+                          <p className="text-sm text-slate-700 dark:text-slate-300 italic">"{po.supplierComment}"</p>
+                        </div>
+                      )}
+
                       {po.convertedBillId && <p className="text-xs text-emerald-600 dark:text-emerald-400 mb-3">Converted to bill</p>}
 
                       <div className="flex flex-wrap gap-2">
@@ -186,10 +196,10 @@ export default function PurchaseOrders() {
                         )}
                         {po.status === "SENT" && (
                           <button onClick={() => action(po.id, "approve")} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">
-                            <Check size={13} /> Approve
+                            <Check size={13} /> Approve Manually
                           </button>
                         )}
-                        {po.status === "APPROVED" && (
+                        {(po.status === "APPROVED" || po.status === "CHANGES_REQUESTED") && (
                           <button onClick={() => action(po.id, "receive")} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition">
                             <Package size={13} /> Mark Received
                           </button>
