@@ -12,7 +12,7 @@ const monthStart = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
 };
 
-const AmountCell = ({ value, bold = false }) => {
+const AmountCell = ({ value, bold = false, fmt }) => {
   const positive = (value ?? 0) >= 0;
   return (
     <span
@@ -28,7 +28,7 @@ const AmountCell = ({ value, bold = false }) => {
   );
 };
 
-const SectionCard = ({ title, inflow, outflow, net, colorAccent }) => (
+const SectionCard = ({ title, inflow, outflow, net, colorAccent, fmt }) => (
   <div
     className={`bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden`}
   >
@@ -43,7 +43,7 @@ const SectionCard = ({ title, inflow, outflow, net, colorAccent }) => (
       ].map(({ label, value }) => (
         <div key={label} className="p-4">
           <p className="text-xs text-slate-400 mb-1">{label}</p>
-          <AmountCell value={value} bold={label === "Net"} />
+          <AmountCell value={value} bold={label === "Net"} fmt={fmt} />
         </div>
       ))}
     </div>
@@ -186,27 +186,9 @@ export default function CashFlowStatement() {
 
           {/* Section cards */}
           <div className="grid grid-cols-1 gap-4">
-            <SectionCard
-              title="Operating Activities"
-              inflow={report.operatingInflow}
-              outflow={report.operatingOutflow}
-              net={report.operatingNet}
-              colorAccent="bg-emerald-50 dark:bg-emerald-900/10"
-            />
-            <SectionCard
-              title="Investing Activities"
-              inflow={report.investingInflow}
-              outflow={report.investingOutflow}
-              net={report.investingNet}
-              colorAccent="bg-blue-50 dark:bg-blue-900/10"
-            />
-            <SectionCard
-              title="Financing Activities"
-              inflow={report.financingInflow}
-              outflow={report.financingOutflow}
-              net={report.financingNet}
-              colorAccent="bg-violet-50 dark:bg-violet-900/10"
-            />
+            <SectionCard title="Operating Activities" inflow={report.operatingInflow} outflow={report.operatingOutflow} net={report.operatingNet} colorAccent="bg-emerald-50 dark:bg-emerald-900/10" fmt={fmt} />
+            <SectionCard title="Investing Activities" inflow={report.investingInflow} outflow={report.investingOutflow} net={report.investingNet} colorAccent="bg-blue-50 dark:bg-blue-900/10" fmt={fmt} />
+            <SectionCard title="Financing Activities" inflow={report.financingInflow} outflow={report.financingOutflow} net={report.financingNet} colorAccent="bg-violet-50 dark:bg-violet-900/10" fmt={fmt} />
           </div>
 
           {/* Summary row */}
@@ -224,7 +206,7 @@ export default function CashFlowStatement() {
               ].map(({ label, value }) => (
                 <div key={label} className="p-4">
                   <p className="text-xs text-slate-400 mb-1">{label}</p>
-                  <AmountCell value={value} bold />
+                  <AmountCell value={value} bold fmt={fmt} />
                 </div>
               ))}
             </div>
@@ -288,7 +270,7 @@ export default function CashFlowStatement() {
                                   {fmt(line.outflow)}
                                 </td>
                                 <td className="px-4 py-2.5 text-right">
-                                  <AmountCell value={line.net} />
+                                  <AmountCell value={line.net} fmt={fmt} />
                                 </td>
                               </tr>
                             ))}
