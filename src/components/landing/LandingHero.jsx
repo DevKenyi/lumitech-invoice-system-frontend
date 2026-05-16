@@ -1,93 +1,5 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  FileText, CheckCircle, TrendingUp, ArrowRight,
-  Star,
-} from "lucide-react";
-
-function MockDashboard() {
-  return (
-    <div className="relative w-full max-w-lg mx-auto select-none">
-      <div className="absolute -inset-6 bg-gradient-to-br from-blue-500/20 via-indigo-500/15 to-purple-500/10 rounded-3xl blur-3xl pointer-events-none" />
-      <div className="relative bg-white rounded-2xl shadow-2xl border border-slate-200/80 overflow-hidden">
-        {/* Window chrome */}
-        <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2 bg-slate-50">
-          <div className="w-3 h-3 rounded-full bg-rose-400" />
-          <div className="w-3 h-3 rounded-full bg-amber-400" />
-          <div className="w-3 h-3 rounded-full bg-emerald-400" />
-          <span className="ml-2 text-xs text-slate-400 font-medium">LumiLedger — Dashboard</span>
-        </div>
-        {/* Summary strip */}
-        <div className="mx-4 mt-4 mb-2 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
-          <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-2">Your Business Overview</p>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { label: "Invoiced",      value: "₵85,000",  color: "text-blue-700" },
-              { label: "Collected",     value: "₵52,000",  color: "text-emerald-700" },
-              { label: "Outstanding",   value: "₵33,000",  color: "text-rose-700" },
-            ].map(s => (
-              <div key={s.label} className="text-center">
-                <p className={`text-sm font-extrabold ${s.color}`}>{s.value}</p>
-                <p className="text-xs text-slate-400 mt-0.5 leading-tight">{s.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-        {/* Invoice rows */}
-        <div className="divide-y divide-slate-50">
-          {[
-            { label: "Mensah & Co — Branding",    amount: "₵28,000", status: "Paid",    color: "text-emerald-600 bg-emerald-50 border-emerald-200" },
-            { label: "Accra Tech Hub — Design",   amount: "₵18,500", status: "Partial", color: "text-amber-600 bg-amber-50 border-amber-200" },
-            { label: "Kofi Ventures — Audit",     amount: "₵14,000", status: "Unpaid",  color: "text-rose-600 bg-rose-50 border-rose-200" },
-          ].map(inv => (
-            <div key={inv.label} className="px-4 py-3 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
-                  <FileText className="w-3.5 h-3.5 text-white" />
-                </div>
-                <span className="text-xs text-slate-700 font-medium truncate">{inv.label}</span>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <span className="text-xs font-bold text-slate-900">{inv.amount}</span>
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${inv.color}`}>{inv.status}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-        {/* Footer bar */}
-        <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
-            <span className="text-xs text-emerald-600 font-bold">+31% vs last month</span>
-          </div>
-          <span className="text-xs text-slate-400">May 2026</span>
-        </div>
-      </div>
-
-      {/* Floating badge — payment received */}
-      <div className="absolute -right-4 sm:-right-8 top-6 bg-white rounded-2xl shadow-2xl border border-slate-100 p-3 z-10 min-w-[150px]">
-        <div className="flex items-center gap-2 mb-1">
-          <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-          <p className="text-[10px] text-slate-500 font-medium">Payment received</p>
-        </div>
-        <p className="text-base font-extrabold text-slate-900">₵28,000 ✓</p>
-        <div className="flex items-center gap-1 mt-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-[10px] text-slate-400">Just now · Paystack</span>
-        </div>
-      </div>
-
-      {/* Floating badge — VAT ready */}
-      <div className="absolute -left-4 sm:-left-8 bottom-10 bg-gradient-to-br from-indigo-600 to-violet-700 rounded-2xl shadow-xl p-3 z-10 min-w-[140px]">
-        <p className="text-[10px] text-indigo-200 font-semibold uppercase tracking-wide mb-1">VAT Report</p>
-        <p className="text-sm text-white font-extrabold">GRA-ready ✓</p>
-        <div className="flex items-center gap-0.5 mt-1">
-          {Array.from({ length: 5 }, (_, i) => <Star key={i} className="w-2.5 h-2.5 text-amber-300 fill-amber-300" />)}
-        </div>
-      </div>
-    </div>
-  );
-}
+import { CheckCircle, ArrowRight } from "lucide-react";
 
 function HeroCapitalWidget() {
   return (
@@ -104,6 +16,7 @@ function HeroCapitalWidget() {
         {/* Stats */}
         <div className="p-5">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Your business owes you</p>
+          <p className="text-[10px] text-slate-400 mb-2">Shown in NGN · works in GHS, ZAR &amp; USD</p>
           <div className="grid grid-cols-3 gap-3 mb-4">
             {[
               { label: "You Put In",  value: "₦850,000", color: "text-blue-700",    bg: "bg-blue-50 border-blue-100" },

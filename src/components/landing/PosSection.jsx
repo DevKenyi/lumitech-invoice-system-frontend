@@ -24,9 +24,14 @@ function PhoneMockup() {
   const [scanned, setScanned] = useState(false);
   const [cartCount, setCartCount] = useState(2);
   const [scanPos, setScanPos] = useState(20);
+  const [cycle, setCycle] = useState(0);
 
   useEffect(() => {
-    // Scan line animation
+    // Reset state at start of each cycle
+    setScanned(false);
+    setCartCount(2);
+    setScanPos(20);
+
     let pos = 20;
     let dir = 1;
     const interval = setInterval(() => {
@@ -36,16 +41,17 @@ function PhoneMockup() {
       setScanPos(pos);
     }, 40);
 
-    // Simulate scan hit
-    const scanTimer = setTimeout(() => setScanned(true), 1800);
-    const cartTimer = setTimeout(() => setCartCount(3), 2400);
+    const scanTimer  = setTimeout(() => setScanned(true),       1800);
+    const cartTimer  = setTimeout(() => setCartCount(3),        2400);
+    const resetTimer = setTimeout(() => setCycle(c => c + 1),  5800);
 
     return () => {
       clearInterval(interval);
       clearTimeout(scanTimer);
       clearTimeout(cartTimer);
+      clearTimeout(resetTimer);
     };
-  }, []);
+  }, [cycle]);
 
   return (
     <div className="relative w-[260px] mx-auto select-none">
