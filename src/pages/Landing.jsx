@@ -5,6 +5,7 @@ import HowItWorksSection   from "../components/landing/HowItWorksSection";
 import CapitalSection      from "../components/landing/CapitalSection";
 import SocialProofBar      from "../components/landing/SocialProofBar";
 import FeaturesSection     from "../components/landing/FeaturesSection";
+import PosSection         from "../components/landing/PosSection";
 import CountriesSection    from "../components/landing/CountriesSection";
 import TestimonialsSection from "../components/landing/TestimonialsSection";
 import PricingSection      from "../components/landing/PricingSection";
@@ -20,6 +21,7 @@ export default function Landing() {
       <CapitalSection />
       <SocialProofBar />
       <FeaturesSection />
+      <PosSection />
       <CountriesSection />
       <TestimonialsSection />
       <PricingSection />
