@@ -30,6 +30,7 @@ function Section({ icon: Icon, title, badge, action, children, allowOverflow }) 
 
 function CreateInvoice() {
   const [clients, setClients] = useState([]);
+  const [clientsLoaded, setClientsLoaded] = useState(false);
   const [projects, setProjects] = useState([]);
   const [products, setProducts] = useState([]);
   const [productOpen, setProductOpen] = useState(null); // item index with picker open
@@ -63,8 +64,8 @@ function CreateInvoice() {
 
   useEffect(() => {
     api.get("api/clients", { params: { page: 0, size: 100 } })
-      .then(res => setClients(res.data.content))
-      .catch(() => {});
+      .then(res => { setClients(res.data.content); setClientsLoaded(true); })
+      .catch(() => { setClientsLoaded(true); });
     api.get("/api/projects", { params: { page: 0, size: 100 } })
       .then(res => setProjects(res.data.content ?? res.data ?? []))
       .catch(() => {});
@@ -157,7 +158,29 @@ function CreateInvoice() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      {clientsLoaded && clients.length === 0 && (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-12 flex flex-col items-center text-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
+            <User className="w-7 h-7 text-blue-500" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">No clients yet</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-sm">
+              You need to add a client before you can create an invoice.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate("/clients/create")}
+            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition"
+          >
+            <Plus className="w-4 h-4" />
+            Add your first client
+          </button>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className={`space-y-6 ${clientsLoaded && clients.length === 0 ? "hidden" : ""}`}>
 
         {/* Section 1 — Invoice Details */}
         <Section icon={FileText} title="Invoice Details">
