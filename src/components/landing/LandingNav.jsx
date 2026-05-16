@@ -16,9 +16,9 @@ export default function LandingNav() {
           </span>
         </Link>
         <div className="hidden md:flex items-center gap-6">
-          <a href="/#features"  className="text-sm font-medium text-slate-500 hover:text-slate-900 transition">Features</a>
-          <a href="/#countries" className="text-sm font-medium text-slate-500 hover:text-slate-900 transition">Countries</a>
-          <a href="/#pricing"   className="text-sm font-medium text-slate-500 hover:text-slate-900 transition">Pricing</a>
+          <a href="/#how-it-works" className="text-sm font-medium text-slate-500 hover:text-slate-900 transition">How It Works</a>
+          <a href="/#features"    className="text-sm font-medium text-slate-500 hover:text-slate-900 transition">Features</a>
+          <a href="/#pricing"     className="text-sm font-medium text-slate-500 hover:text-slate-900 transition">Pricing</a>
           <Link to="/pricing"          className="text-sm font-medium text-slate-500 hover:text-slate-900 transition">Plans & FAQ</Link>
           <Link to="/for-accountants"  className="text-sm font-medium text-slate-500 hover:text-slate-900 transition">For Accountants</Link>
         </div>
@@ -35,9 +35,9 @@ export default function LandingNav() {
       {open && (
         <div className="md:hidden border-t border-slate-100 bg-white px-4 py-4 space-y-1">
           {[
-            { label: "Features",  href: "/#features" },
-            { label: "Countries", href: "/#countries" },
-            { label: "Pricing",   href: "/#pricing" },
+            { label: "How It Works", href: "/#how-it-works" },
+            { label: "Features",     href: "/#features" },
+            { label: "Pricing",      href: "/#pricing" },
           ].map(item => (
             <a key={item.label} href={item.href} onClick={() => setOpen(false)}
               className="block px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition">
