@@ -8,43 +8,43 @@ const FEATURES = [
     icon: FileText,
     color: "from-blue-500 to-indigo-500",
     bg: "bg-blue-50 dark:bg-blue-900/20",
-    title: "Invoice & get paid online",
-    desc: "Create professional invoices in seconds. Clients pay via Paystack, Flutterwave, bank transfer, or cash. Payment links sent automatically.",
+    title: "Send an invoice. Get paid. Done.",
+    desc: "Create a professional invoice in seconds and send it with a payment link attached. Clients pay by card, bank transfer, or mobile money — you get notified the moment they do.",
   },
   {
     icon: TrendingUp,
     color: "from-emerald-500 to-teal-500",
     bg: "bg-emerald-50 dark:bg-emerald-900/20",
-    title: "Know your numbers instantly",
-    desc: "P&L, Balance Sheet, Cash Flow, and Aging Report — all updated in real time as you invoice and record payments. No spreadsheets.",
+    title: "See if you're actually making money",
+    desc: "Your P&L, cash flow, and capital recovery tracker update in real time. Open your dashboard and know exactly where your business stands — no spreadsheet, no guessing.",
   },
   {
     icon: BookOpen,
     color: "from-violet-500 to-purple-500",
     bg: "bg-violet-50 dark:bg-violet-900/20",
-    title: "Full double-entry accounting",
-    desc: "Every invoice and payment automatically posts journal entries. Chart of accounts, reconciliation, and opening balances included.",
+    title: "Your books are always correct — automatically",
+    desc: "Every invoice, payment, and expense posts the right journal entries behind the scenes. Your Balance Sheet and accounts stay balanced without you touching them.",
   },
   {
     icon: UserCog,
     color: "from-amber-500 to-orange-500",
     bg: "bg-amber-50 dark:bg-amber-900/20",
-    title: "Payroll & PAYE in one click",
-    desc: "Run monthly payroll for your team. PAYE, SSNIT (Ghana) and UIF/SDL (South Africa) calculated automatically. Journal entries posted on approval.",
+    title: "Pay your team without the headache",
+    desc: "Run payroll in one click. PAYE, SSNIT (Ghana), and UIF/SDL (South Africa) calculated automatically. Payslips sent, books updated — all in under a minute.",
   },
   {
     icon: Receipt,
     color: "from-rose-500 to-pink-500",
     bg: "bg-rose-50 dark:bg-rose-900/20",
-    title: "VAT compliance built in",
-    desc: "VAT calculated on every invoice at the correct rate for your country. One-click export ready for GRA (Ghana) or SARS (South Africa).",
+    title: "Never worry about tax season again",
+    desc: "VAT calculated on every invoice at the right rate for your country. When tax time comes, your GRA or SARS report is one click away — already filled out.",
   },
   {
     icon: Globe,
     color: "from-sky-500 to-cyan-500",
     bg: "bg-sky-50 dark:bg-sky-900/20",
-    title: "Multi-currency invoicing",
-    desc: "Invoice in GHS, ZAR, USD, EUR and more. Exchange rates tracked per transaction. Your books stay accurate automatically.",
+    title: "Invoice anyone, anywhere, in their currency",
+    desc: "Send invoices in GHS, NGN, ZAR, USD, EUR and more. Exchange rates tracked per transaction so your books stay accurate no matter where your clients are.",
   },
 ];
 
@@ -114,10 +114,10 @@ export default function FeaturesSection() {
             Everything included · No add-ons
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white mb-4">
-            One platform. Everything you need.
+            Everything you need to run your business finances
           </h2>
           <p className="text-slate-500 dark:text-slate-400 max-w-xl mx-auto text-lg leading-relaxed">
-            Stop juggling spreadsheets, WhatsApp receipts, and separate payroll tools. LumiLedger puts your entire business in one place.
+            Stop juggling spreadsheets, WhatsApp receipts, and guesswork. LumiLedger replaces all of it — and your books stay correct automatically.
           </p>
         </div>
 

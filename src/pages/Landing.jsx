@@ -1,6 +1,7 @@
 // Landing.jsx — modular marketing page
 import LandingNav          from "../components/landing/LandingNav";
 import LandingHero         from "../components/landing/LandingHero";
+import HowItWorksSection   from "../components/landing/HowItWorksSection";
 import CapitalSection      from "../components/landing/CapitalSection";
 import SocialProofBar      from "../components/landing/SocialProofBar";
 import FeaturesSection     from "../components/landing/FeaturesSection";
@@ -15,6 +16,7 @@ export default function Landing() {
     <div className="min-h-screen bg-white font-sans antialiased" style={{ overflowX: "clip" }}>
       <LandingNav />
       <LandingHero />
+      <HowItWorksSection />
       <CapitalSection />
       <SocialProofBar />
       <FeaturesSection />
