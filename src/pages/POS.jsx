@@ -20,6 +20,7 @@ const PAYMENT_METHODS = ["CASH", "TRANSFER", "CARD", "POS_TERMINAL"];
 
 // ── Printer Setup Modal ───────────────────────────────────────────────────
 function PrinterSetupModal({ orgName, onClose }) {
+  const { currency, locale } = useOrg();
   const [usbDevice, setUsbDevice]     = useState(null);
   const [btConn, setBtConn]           = useState(null);
   const [knownUSB, setKnownUSB]       = useState([]);   // previously authorised
@@ -95,9 +96,9 @@ function PrinterSetupModal({ orgName, onClose }) {
       items: [{ productName: "Test Item", quantity: 1, unitPrice: 5000, subtotal: 5000 }],
     };
     try {
-      if (usbDevice)   { await printReceiptUSB(usbDevice, testReceipt, orgName);    setStatus("Test sent to USB printer ✓"); }
-      else if (btConn) { await printReceiptBluetooth(btConn, testReceipt, orgName); setStatus("Test sent to Bluetooth printer ✓"); }
-      else             { printReceiptBrowser(testReceipt, orgName);                 setStatus("Browser print dialog opened ✓"); }
+      if (usbDevice)   { await printReceiptUSB(usbDevice, testReceipt, orgName, currency, locale);    setStatus("Test sent to USB printer ✓"); }
+      else if (btConn) { await printReceiptBluetooth(btConn, testReceipt, orgName, currency, locale); setStatus("Test sent to Bluetooth printer ✓"); }
+      else             { printReceiptBrowser(testReceipt, orgName, currency, locale);                 setStatus("Browser print dialog opened ✓"); }
     } catch (e) {
       setError("Print error: " + e.message); setStatus("");
     } finally { setBusy(null); }
@@ -264,7 +265,7 @@ function PrinterSetupModal({ orgName, onClose }) {
 }
 
 export default function POS() {
-  const { fmt, currencySymbol } = useOrg();
+  const { fmt, currencySymbol, currency, locale } = useOrg();
   const [products, setProducts]     = useState([]);
   const [cart, setCart]             = useState([]);
   const [search, setSearch]         = useState("");
@@ -401,14 +402,14 @@ export default function POS() {
 
   const handlePrint = async (receipt) => {
     if (usbDevice) {
-      try { await printReceiptUSB(usbDevice, receipt, orgName); notify("Printed to USB printer"); return; }
+      try { await printReceiptUSB(usbDevice, receipt, orgName, currency, locale); notify("Printed to USB printer"); return; }
       catch { notify("USB print failed, using browser print", "info"); }
     }
     if (btConn) {
-      try { await printReceiptBluetooth(btConn, receipt, orgName); notify("Printed to Bluetooth printer"); return; }
+      try { await printReceiptBluetooth(btConn, receipt, orgName, currency, locale); notify("Printed to Bluetooth printer"); return; }
       catch { notify("Bluetooth print failed, using browser print", "info"); }
     }
-    printReceiptBrowser(receipt, orgName);
+    printReceiptBrowser(receipt, orgName, currency, locale);
   };
 
   const downloadReceipt = (receipt) => {

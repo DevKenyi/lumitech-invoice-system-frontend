@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import api from "../services/api";
+import { useOrg, CURRENCY_LOCALE } from "../context/OrgContext";
 import {
   FileText, RefreshCw, PlusCircle, ChevronDown, ChevronUp,
   Calendar, X, Send, XCircle, ArrowRight, Plus, Trash2, Search,
@@ -7,8 +8,10 @@ import {
 import Toast from "../components/Toast";
 import { CURRENCIES } from "../utils/currencies";
 
-const fmtCurrency = (v, currency) =>
-  (v || 0).toLocaleString("en-KE", { style: "currency", currency: currency || "KES" });
+const fmtCurrency = (v, currency) => {
+  const locale = CURRENCY_LOCALE[currency] || undefined;
+  return (v || 0).toLocaleString(locale, { style: "currency", currency: currency || "NGN" });
+};
 
 const today = () => new Date().toISOString().slice(0, 10);
 const inDays = (d) => new Date(Date.now() + d * 86400000).toISOString().slice(0, 10);
@@ -38,6 +41,7 @@ const emptyForm = (baseCurrency = "NGN", defaultVatRate = 7.5) => ({
 });
 
 export default function ProformaInvoices() {
+  const { currency: baseCurrency, defaultVatRate } = useOrg();
   const [proformas, setProformas] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -46,8 +50,6 @@ export default function ProformaInvoices() {
   const [saving, setSaving] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
   const [search, setSearch] = useState("");
-  const [baseCurrency, setBaseCurrency] = useState("NGN");
-  const [defaultVatRate, setDefaultVatRate] = useState(7.5);
   const [toast, setToast] = useState({ visible: false, message: "", type: "info" });
 
   const notify = (message, type = "success") =>
@@ -71,17 +73,8 @@ export default function ProformaInvoices() {
 
   useEffect(() => {
     load();
-    api
-      .get("/api/org")
-      .then((res) => {
-        const bc = res.data?.baseCurrency || "NGN";
-        const vat = res.data?.defaultVatRate ?? 7.5;
-        setBaseCurrency(bc);
-        setDefaultVatRate(vat);
-        setForm(emptyForm(bc, vat));
-      })
-      .catch(() => {});
-  }, [load]);
+    setForm(emptyForm(baseCurrency, defaultVatRate));
+  }, [load, baseCurrency, defaultVatRate]);
 
   const handleItemChange = (idx, field, value) => {
     setForm((f) => {

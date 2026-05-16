@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import NumericInput from "../components/NumericInput";
 import { CURRENCIES } from "../utils/currencies";
+import { useOrg, CURRENCY_SYMBOL, CURRENCY_LOCALE } from "../context/OrgContext";
 
 const inputCls = "w-full px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700/60 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition text-sm";
 const labelCls = "block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5";
@@ -29,6 +30,7 @@ function Section({ icon: Icon, title, badge, action, children, allowOverflow }) 
 }
 
 function CreateInvoice() {
+  const { currency: orgCurrency, defaultVatRate: orgVatRate } = useOrg();
   const [clients, setClients] = useState([]);
   const [clientsLoaded, setClientsLoaded] = useState(false);
   const [projects, setProjects] = useState([]);
@@ -38,11 +40,8 @@ function CreateInvoice() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [ccInput, setCcInput] = useState("");
-  const [baseCurrency, setBaseCurrency] = useState("NGN");
-  const [defaultVatRate, setDefaultVatRate] = useState(7.5);
   const [showCelebration, setShowCelebration] = useState(false);
   const navigate = useNavigate();
-
 
   const today = new Date().toISOString().split("T")[0];
   const isAccountantPro = getUserFromToken()?.plan === "ACCOUNTANT_PRO";
@@ -53,12 +52,12 @@ function CreateInvoice() {
     issueDate: today,
     dueDate: "",
     tax: 0,
-    vatRate: 7.5,
+    vatRate: orgVatRate,
     whtRate: 0,
     whtType: "",
     ccEmails: [],
     items: [{ description: "", quantity: 1, unitPrice: 0 }],
-    currency: "NGN",
+    currency: orgCurrency,
     exchangeRate: 1,
   });
 
@@ -68,15 +67,6 @@ function CreateInvoice() {
       .catch(() => { setClientsLoaded(true); });
     api.get("/api/projects", { params: { page: 0, size: 100 } })
       .then(res => setProjects(res.data.content ?? res.data ?? []))
-      .catch(() => {});
-    api.get("/api/org")
-      .then(res => {
-        const bc = res.data?.baseCurrency || "NGN";
-        const vat = res.data?.defaultVatRate ?? 7.5;
-        setBaseCurrency(bc);
-        setDefaultVatRate(vat);
-        setForm(f => ({ ...f, currency: bc, exchangeRate: 1, vatRate: vat }));
-      })
       .catch(() => {});
     api.get("/api/inventory/products", { params: { page: 0, size: 200 } })
       .then(res => setProducts(res.data?.content ?? []))
@@ -104,8 +94,11 @@ function CreateInvoice() {
     setCcInput("");
   };
 
+  const invoiceCurrency = form.currency || orgCurrency;
+  const invoiceLocale = CURRENCY_LOCALE[invoiceCurrency] || undefined;
+  const invoiceCurrencySymbol = CURRENCY_SYMBOL[invoiceCurrency] || invoiceCurrency;
   const fmt = (v) =>
-    new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", minimumFractionDigits: 0 }).format(v || 0);
+    new Intl.NumberFormat(invoiceLocale, { style: "currency", currency: invoiceCurrency, minimumFractionDigits: 0 }).format(v || 0);
 
   const filteredProducts = products.filter(p =>
     !productQuery || p.name?.toLowerCase().includes(productQuery.toLowerCase()) ||
@@ -244,7 +237,7 @@ function CreateInvoice() {
               <label className={labelCls}>Currency</label>
               <select
                 value={form.currency}
-                onChange={e => setForm({ ...form, currency: e.target.value, exchangeRate: e.target.value === baseCurrency ? 1 : form.exchangeRate })}
+                onChange={e => setForm({ ...form, currency: e.target.value, exchangeRate: e.target.value === orgCurrency ? 1 : form.exchangeRate })}
                 className={inputCls}
               >
                 {CURRENCIES.map(c => (
@@ -253,9 +246,9 @@ function CreateInvoice() {
               </select>
             </div>
 
-            {form.currency !== baseCurrency && (
+            {form.currency !== orgCurrency && (
               <div>
-                <label className={labelCls}>Exchange Rate to {baseCurrency}</label>
+                <label className={labelCls}>Exchange Rate to {orgCurrency}</label>
                 <input
                   type="number"
                   min="0"
@@ -270,11 +263,11 @@ function CreateInvoice() {
 
           </div>
 
-          {form.currency !== baseCurrency && (
+          {form.currency !== orgCurrency && (
             <div className="mt-4 flex items-start gap-2.5 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-xl text-sm text-blue-700 dark:text-blue-300">
               <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
               <span>
-                Invoice amounts are in <strong>{form.currency}</strong>. Journal entries will be posted in <strong>{baseCurrency}</strong> at rate <strong>{form.exchangeRate}</strong>.
+                Invoice amounts are in <strong>{form.currency}</strong>. Journal entries will be posted in <strong>{orgCurrency}</strong> at rate <strong>{form.exchangeRate}</strong>.
               </span>
             </div>
           )}
@@ -373,9 +366,9 @@ function CreateInvoice() {
                 </div>
 
                 <div className="sm:col-span-3">
-                  <label className="sm:hidden text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 block">Unit Price (₦)</label>
+                  <label className="sm:hidden text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 block">Unit Price ({invoiceCurrencySymbol})</label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 text-sm">₦</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 text-sm">{invoiceCurrencySymbol}</span>
                     <NumericInput
                       placeholder="0.00"
                       value={item.unitPrice}
@@ -468,9 +461,9 @@ function CreateInvoice() {
               </div>
 
               <div className="flex justify-between items-center text-sm">
-                <label className="text-slate-500 dark:text-slate-400">Other Tax (₦)</label>
+                <label className="text-slate-500 dark:text-slate-400">Other Tax ({invoiceCurrencySymbol})</label>
                 <div className="relative w-32">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₦</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">{invoiceCurrencySymbol}</span>
                   <NumericInput
                     value={form.tax}
                     onChange={e => setForm({ ...form, tax: Number(e.target.value.replace(/,/g, "")) })}

@@ -3,13 +3,13 @@ import api from "../services/api";
 
 const OrgContext = createContext(null);
 
-const CURRENCY_LOCALE = {
+export const CURRENCY_LOCALE = {
   NGN: "en-NG", GHS: "en-GH", ZAR: "en-ZA", KES: "en-KE",
   TZS: "en-TZ", RWF: "en-RW", UGX: "en-UG", ZMW: "en-ZM",
   USD: "en-US", GBP: "en-GB", EUR: "de-DE",
 };
 
-const CURRENCY_SYMBOL = {
+export const CURRENCY_SYMBOL = {
   NGN: "₦", GHS: "₵", ZAR: "R", KES: "KSh",
   TZS: "TSh", RWF: "RF", UGX: "USh", ZMW: "ZK",
   USD: "$", GBP: "£", EUR: "€",

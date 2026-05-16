@@ -3,13 +3,10 @@
  * Supports: Browser Print (CSS 80mm), WebUSB (ESC/POS), Web Bluetooth (ESC/POS)
  */
 
-const fmt = (v) =>
-  new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", minimumFractionDigits: 0 }).format(v || 0);
-
 // ── Browser / CSS Print (works with ANY printer set as default) ─────────────
 
-export function printReceiptBrowser(receipt, orgName) {
-  const html = buildReceiptHtml(receipt, orgName);
+export function printReceiptBrowser(receipt, orgName, currency = "NGN", locale = "en-NG") {
+  const html = buildReceiptHtml(receipt, orgName, currency, locale);
   const win = window.open("", "_blank", "width=380,height=750,scrollbars=no");
   if (!win) {
     alert("Please allow popups for this site to print receipts.");
@@ -26,8 +23,10 @@ export function printReceiptBrowser(receipt, orgName) {
   });
 }
 
-function buildReceiptHtml(receipt, orgName) {
-  const date = new Date(receipt.saleDate || Date.now()).toLocaleString("en-NG", {
+function buildReceiptHtml(receipt, orgName, currency = "NGN", locale = "en-NG") {
+  const fmt = (v) =>
+    new Intl.NumberFormat(locale, { style: "currency", currency, minimumFractionDigits: 0 }).format(v || 0);
+  const date = new Date(receipt.saleDate || Date.now()).toLocaleString(locale, {
     day: "2-digit", month: "short", year: "numeric",
     hour: "2-digit", minute: "2-digit",
   });
@@ -130,8 +129,8 @@ export async function connectUSBPrinter() {
   return await navigator.usb.requestDevice({ filters: [] });
 }
 
-export async function printReceiptUSB(device, receipt, orgName) {
-  const data = buildEscPos(receipt, orgName);
+export async function printReceiptUSB(device, receipt, orgName, currency = "NGN", locale = "en-NG") {
+  const data = buildEscPos(receipt, orgName, currency, locale);
   try {
     await device.open();
     if (device.configuration === null) await device.selectConfiguration(1);
@@ -190,8 +189,8 @@ export async function connectBluetoothPrinter() {
   return reconnectBluetoothPrinter(device);
 }
 
-export async function printReceiptBluetooth(connection, receipt, orgName) {
-  const data = buildEscPos(receipt, orgName);
+export async function printReceiptBluetooth(connection, receipt, orgName, currency = "NGN", locale = "en-NG") {
+  const data = buildEscPos(receipt, orgName, currency, locale);
   const CHUNK = 512;
   for (let i = 0; i < data.length; i += CHUNK) {
     await connection.characteristic.writeValueWithoutResponse(data.slice(i, i + CHUNK));
@@ -201,7 +200,10 @@ export async function printReceiptBluetooth(connection, receipt, orgName) {
 
 // ── ESC/POS command builder ────────────────────────────────────────────────
 
-function buildEscPos(receipt, orgName) {
+function buildEscPos(receipt, orgName, currency = "NGN", locale = "en-NG") {
+  const fmtShort = makeFmtShort(
+    (() => { try { return (0).toLocaleString(locale, { style: "currency", currency, minimumFractionDigits: 0 }).replace(/[\d.,\s]/g, "").trim() || currency; } catch { return currency; } })()
+  );
   const enc = new TextEncoder();
   const ESC = 0x1b, GS = 0x1d, LF = 0x0a;
   const buf = [];
@@ -229,8 +231,8 @@ function buildEscPos(receipt, orgName) {
   hr();
 
   const d = new Date(receipt.saleDate || Date.now());
-  const dateStr = d.toLocaleDateString("en-NG") + " " +
-    d.toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" });
+  const dateStr = d.toLocaleDateString(locale) + " " +
+    d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
 
   text("Receipt#: " + receipt.receiptNumber); nl();
   text("Date    : " + dateStr); nl();
@@ -282,10 +284,12 @@ function buildEscPos(receipt, orgName) {
   return new Uint8Array(buf);
 }
 
-function fmtShort(val) {
-  if (val == null) return "N0";
-  const n = Number(val);
-  if (n >= 1_000_000) return "N" + (n / 1_000_000).toFixed(1) + "M";
-  if (n >= 1_000)     return "N" + (n / 1_000).toFixed(1) + "k";
-  return "N" + Math.round(n);
+function makeFmtShort(sym) {
+  return (val) => {
+    if (val == null) return sym + "0";
+    const n = Number(val);
+    if (n >= 1_000_000) return sym + (n / 1_000_000).toFixed(1) + "M";
+    if (n >= 1_000)     return sym + (n / 1_000).toFixed(1) + "k";
+    return sym + Math.round(n);
+  };
 }

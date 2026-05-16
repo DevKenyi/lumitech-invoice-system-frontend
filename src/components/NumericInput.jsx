@@ -15,7 +15,7 @@ export default function NumericInput({ value, onChange, onFocus, onBlur, classNa
     if (isNaN(num)) return clean;
     // Preserve decimal portion as-is, only format integer part
     const [intPart, decPart] = clean.split(".");
-    const formatted = parseInt(intPart || "0", 10).toLocaleString("en-NG");
+    const formatted = parseInt(intPart || "0", 10).toLocaleString(undefined);
     return decPart !== undefined ? `${formatted}.${decPart}` : formatted;
   };
 
