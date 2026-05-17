@@ -1,4 +1,5 @@
 import { Star } from "lucide-react";
+import useInView from "../../hooks/useInView";
 
 const testimonials = [
   {
@@ -19,9 +20,10 @@ const testimonials = [
 ];
 
 export default function TestimonialsSection() {
+  const [ref, inView] = useInView();
   return (
     <section className="py-24 bg-[#0a0a0f]">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div ref={ref} className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-14">
           <div className="flex items-center justify-center gap-1 mb-5">
             {Array.from({ length: 5 }, (_, i) => (
@@ -35,9 +37,10 @@ export default function TestimonialsSection() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {testimonials.map(t => (
+          {testimonials.map((t, i) => (
             <div key={t.name}
-              className="bg-white/4 rounded-2xl p-6 border border-white/8 hover:border-white/14 transition-colors flex flex-col">
+              className="bg-white/4 rounded-2xl p-6 border border-white/8 hover:border-white/14 transition-all duration-500 flex flex-col"
+              style={{ opacity: inView ? 1 : 0, transform: inView ? "translateY(0)" : "translateY(28px)", transitionDelay: `${i * 120}ms` }}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-0.5">
                   {Array.from({ length: 5 }, (_, i) => (

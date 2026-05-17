@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
+import useInView from "../../hooks/useInView";
 
 const BEFORE = [
   "Spreadsheets that never add up",
@@ -20,9 +21,10 @@ const AFTER = [
 ];
 
 export default function ProblemSection() {
+  const [ref, inView] = useInView();
   return (
     <section className="py-24 bg-[#0a0a0f]">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div ref={ref} className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-14">
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/6 border border-white/10 text-slate-300 text-xs font-semibold rounded-full mb-6">
             Sound familiar?
@@ -37,7 +39,8 @@ export default function ProblemSection() {
 
         <div className="grid md:grid-cols-2 gap-6 mb-12">
           {/* Before */}
-          <div className="bg-rose-950/30 border border-rose-500/20 rounded-2xl p-6">
+          <div className="bg-rose-950/30 border border-rose-500/20 rounded-2xl p-6 transition-all duration-500"
+            style={{ opacity: inView ? 1 : 0, transform: inView ? "translateX(0)" : "translateX(-32px)" }}>
             <div className="flex items-center gap-2 mb-5">
               <span className="text-xl">❌</span>
               <span className="text-sm font-bold text-rose-400 uppercase tracking-widest">Before LumiLedger</span>
@@ -53,7 +56,8 @@ export default function ProblemSection() {
           </div>
 
           {/* After */}
-          <div className="bg-emerald-950/30 border border-emerald-500/20 rounded-2xl p-6">
+          <div className="bg-emerald-950/30 border border-emerald-500/20 rounded-2xl p-6 transition-all duration-500 delay-150"
+            style={{ opacity: inView ? 1 : 0, transform: inView ? "translateX(0)" : "translateX(32px)", transitionDelay: "150ms" }}>
             <div className="flex items-center gap-2 mb-5">
               <span className="text-xl">✅</span>
               <span className="text-sm font-bold text-emerald-400 uppercase tracking-widest">With LumiLedger</span>

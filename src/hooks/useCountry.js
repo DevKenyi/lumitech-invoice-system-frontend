@@ -11,9 +11,9 @@ export const COUNTRY_CONFIG = {
     vatLabel: "VAT (7.5%)",
     taxBody: "FIRS",
     plans: {
-      essential:      { price: "₦9,900",  sub: "Then ₦9,900/month. Cancel anytime." },
-      business:       { price: "₦24,900", sub: "Then ₦24,900/month. Cancel anytime." },
-      accountantPro:  { price: "₦59,900", sub: "Then ₦59,900/month." },
+      essential:     { price: "₦9,900",  annual: "₦7,900",  save: "₦23,900", sub: "Then ₦9,900/month. Cancel anytime." },
+      business:      { price: "₦24,900", annual: "₦19,900", save: "₦59,900", sub: "Then ₦24,900/month. Cancel anytime." },
+      accountantPro: { price: "₦59,900", annual: "₦47,900", save: "₦143,900", sub: "Then ₦59,900/month." },
     },
   },
   GH: {
@@ -25,9 +25,9 @@ export const COUNTRY_CONFIG = {
     vatLabel: "VAT (15%)",
     taxBody: "GRA",
     plans: {
-      essential:      { price: "GH₵599",  sub: "Then GH₵599/month. Cancel anytime." },
-      business:       { price: "GH₵1,499", sub: "Then GH₵1,499/month. Cancel anytime." },
-      accountantPro:  { price: "GH₵3,599", sub: "Then GH₵3,599/month." },
+      essential:     { price: "GH₵599",  annual: "GH₵479",  save: "GH₵1,440", sub: "Then GH₵599/month. Cancel anytime." },
+      business:      { price: "GH₵1,499", annual: "GH₵1,199", save: "GH₵3,600", sub: "Then GH₵1,499/month. Cancel anytime." },
+      accountantPro: { price: "GH₵3,599", annual: "GH₵2,879", save: "GH₵8,640", sub: "Then GH₵3,599/month." },
     },
   },
   ZA: {
@@ -39,9 +39,9 @@ export const COUNTRY_CONFIG = {
     vatLabel: "VAT (15%)",
     taxBody: "SARS",
     plans: {
-      essential:      { price: "R299",   sub: "Then R299/month. Cancel anytime." },
-      business:       { price: "R749",   sub: "Then R749/month. Cancel anytime." },
-      accountantPro:  { price: "R1,799", sub: "Then R1,799/month." },
+      essential:     { price: "R299",   annual: "R239",   save: "R720",   sub: "Then R299/month. Cancel anytime." },
+      business:      { price: "R749",   annual: "R599",   save: "R1,800", sub: "Then R749/month. Cancel anytime." },
+      accountantPro: { price: "R1,799", annual: "R1,439", save: "R4,320", sub: "Then R1,799/month." },
     },
   },
 };

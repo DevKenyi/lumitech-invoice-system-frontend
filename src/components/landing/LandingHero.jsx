@@ -23,7 +23,7 @@ const MARQUEE_ROW_2 = [
 
 function InvoiceCard({ id, client, amount, status, color }) {
   return (
-    <div className="flex-shrink-0 w-56 bg-white/5 border border-white/10 rounded-xl p-3.5 mx-2 backdrop-blur-sm">
+    <div className="flex-shrink-0 w-56 bg-white/5 border border-white/10 rounded-xl p-3.5 mx-2 backdrop-blur-sm hover:bg-white/10 hover:border-white/20 hover:scale-[1.03] hover:shadow-lg hover:shadow-blue-500/10 transition-all duration-200 cursor-default">
       <div className="flex items-center justify-between mb-2">
         <span className="text-[10px] font-mono text-slate-500">{id}</span>
         <span className={`text-[10px] font-bold ${color}`}>{status}</span>
@@ -97,9 +97,11 @@ export default function LandingHero() {
         @keyframes marquee-right { from { transform: translateX(-50%); } to { transform: translateX(0); } }
         .marquee-left  { animation: marquee-left  30s linear infinite; }
         .marquee-right { animation: marquee-right 28s linear infinite; }
+        .marquee-wrap:hover .marquee-left,
+        .marquee-wrap:hover .marquee-right { animation-play-state: paused; }
       `}</style>
 
-      <div className="relative">
+      <div className="relative marquee-wrap">
         {/* Left/right fade masks */}
         <div className="pointer-events-none absolute inset-y-0 left-0 w-32 z-10 bg-gradient-to-r from-[#0a0a0f] to-transparent" />
         <div className="pointer-events-none absolute inset-y-0 right-0 w-32 z-10 bg-gradient-to-l from-[#0a0a0f] to-transparent" />

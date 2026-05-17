@@ -1,4 +1,5 @@
 import { useState } from "react";
+import useInView from "../../hooks/useInView";
 import {
   FileText, TrendingUp, UserCog, Receipt, BookOpen, Globe, Sparkles, ChevronRight,
 } from "lucide-react";
@@ -96,9 +97,10 @@ function AiAccountantCard() {
 }
 
 export default function FeaturesSection() {
+  const [ref, inView] = useInView();
   return (
     <section id="features" className="py-24 bg-[#0a0a0f]">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div ref={ref} className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-14">
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/6 border border-white/10 text-slate-300 text-xs font-semibold rounded-full mb-5">
             Everything included · No add-ons
@@ -112,9 +114,11 @@ export default function FeaturesSection() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {FEATURES.map(f => (
+          {FEATURES.map((f, i) => (
             <div key={f.title}
-              className="group bg-white/4 rounded-2xl p-6 border border-white/8 hover:bg-white/7 hover:border-white/14 hover:-translate-y-1 transition-all duration-200">
+              className="group bg-white/4 rounded-2xl p-6 border border-white/8 hover:bg-white/7 hover:border-white/14 hover:-translate-y-1 transition-all duration-500"
+              style={{ opacity: inView ? 1 : 0, transform: inView ? "translateY(0)" : "translateY(24px)", transitionDelay: `${i * 80}ms` }}
+            >
               <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${f.gradient} flex items-center justify-center mb-5 shadow-sm group-hover:scale-110 transition-transform`}>
                 <f.icon className="w-5 h-5 text-white" />
               </div>

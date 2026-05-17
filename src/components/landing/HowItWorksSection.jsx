@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
+import useInView from "../../hooks/useInView";
 
 const STEPS = [
   {
@@ -32,9 +33,10 @@ const STEPS = [
 ];
 
 export default function HowItWorksSection() {
+  const [ref, inView] = useInView();
   return (
     <section id="how-it-works" className="py-24 bg-[#0a0a0f]">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div ref={ref} className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/6 border border-white/10 text-slate-300 text-xs font-semibold rounded-full mb-5">
             How it works
@@ -48,8 +50,11 @@ export default function HowItWorksSection() {
         </div>
 
         <div className="grid md:grid-cols-3 gap-6 mb-14">
-          {STEPS.map((s) => (
-            <div key={s.number} className="bg-white/4 border border-white/8 rounded-2xl p-6 hover:bg-white/6 transition-colors">
+          {STEPS.map((s, i) => (
+            <div key={s.number}
+              className="bg-white/4 border border-white/8 rounded-2xl p-6 hover:bg-white/6 transition-all duration-500"
+              style={{ opacity: inView ? 1 : 0, transform: inView ? "translateY(0)" : "translateY(24px)", transitionDelay: `${i * 120}ms` }}
+            >
               <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${s.accent} flex items-center justify-center mb-5 shadow-lg`}>
                 <span className="text-2xl">{s.emoji}</span>
               </div>

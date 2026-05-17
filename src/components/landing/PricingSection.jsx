@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { CheckCircle, ArrowRight, Shield, Clock, Layers, Globe } from "lucide-react";
 import useCountry, { COUNTRY_CONFIG } from "../../hooks/useCountry";
@@ -5,6 +6,9 @@ import useCountry, { COUNTRY_CONFIG } from "../../hooks/useCountry";
 export default function PricingSection() {
   const { countryCode, config, setCountry } = useCountry();
   const { plans } = config;
+  const [annual, setAnnual] = useState(false);
+
+  const price = (plan) => annual ? plan.annual : plan.price;
 
   return (
     <section id="pricing" className="py-24 bg-[#0a0a0f] border-y border-white/8">
@@ -17,14 +21,14 @@ export default function PricingSection() {
         </div>
 
         {/* Country switcher */}
-        <div className="flex items-center justify-center gap-2 mb-8 flex-wrap">
+        <div className="flex items-center justify-center gap-2 mb-6 flex-wrap">
           <Globe className="w-4 h-4 text-slate-400" />
           <span className="text-sm text-slate-400">Pricing for:</span>
           {Object.values(COUNTRY_CONFIG).map(c => (
             <button
               key={c.code}
               onClick={() => setCountry(c.code)}
-              className={`px-3 py-1 rounded-full text-xs font-semibold border transition ${
+              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
                 countryCode === c.code
                   ? "bg-blue-600 text-white border-blue-600"
                   : "bg-white/6 text-slate-300 border-white/10 hover:border-white/20"
@@ -35,6 +39,28 @@ export default function PricingSection() {
           ))}
         </div>
 
+        {/* Monthly / Annual toggle */}
+        <div className="flex items-center justify-center gap-3 mb-8">
+          <span className={`text-sm font-medium transition-colors ${!annual ? "text-white" : "text-slate-500"}`}>Monthly</span>
+          <button
+            onClick={() => setAnnual(a => !a)}
+            className={`relative w-12 h-6 rounded-full transition-colors duration-300 focus:outline-none ${annual ? "bg-blue-600" : "bg-white/15"}`}
+            aria-label="Toggle annual billing"
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-300 ${annual ? "translate-x-6" : "translate-x-0"}`}
+            />
+          </button>
+          <span className={`text-sm font-medium transition-colors ${annual ? "text-white" : "text-slate-500"}`}>
+            Annual
+          </span>
+          {annual && (
+            <span className="inline-flex items-center px-2 py-0.5 bg-emerald-500/15 text-emerald-400 text-xs font-bold rounded-full border border-emerald-500/25 animate-pulse">
+              2 months free 🎉
+            </span>
+          )}
+        </div>
+
         {/* Free trial banner */}
         <div className="flex items-center justify-center gap-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl px-6 py-4 mb-10 flex-wrap text-center">
           <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse flex-shrink-0" />
@@ -43,11 +69,14 @@ export default function PricingSection() {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 items-stretch">
           {/* ESSENTIAL */}
-          <div className="bg-white/5 rounded-2xl border-2 border-white/10 p-6 flex flex-col">
+          <div className="bg-white/5 rounded-2xl border-2 border-white/10 p-6 flex flex-col transition-all duration-300">
             <div className="inline-flex items-center px-3 py-1 bg-white/8 text-slate-300 text-xs font-bold rounded-full mb-5 self-start border border-white/10 tracking-widest uppercase">Essential</div>
-            <div className="mb-1">
-              <span className="text-3xl font-extrabold text-white">{plans.essential.price}</span>
-              <span className="text-slate-500 text-sm ml-1">/month</span>
+            <div className="mb-1 flex items-end gap-1">
+              <span className="text-3xl font-extrabold text-white transition-all duration-300">{price(plans.essential)}</span>
+              <span className="text-slate-500 text-sm mb-1">/mo</span>
+              {annual && (
+                <span className="text-xs text-emerald-400 font-semibold mb-1 ml-1">Save {plans.essential.save}/yr</span>
+              )}
             </div>
             <p className="text-slate-400 text-sm mb-5">For business owners managing their finances</p>
             <ul className="space-y-2.5 mb-6 flex-1">
@@ -66,14 +95,17 @@ export default function PricingSection() {
           </div>
 
           {/* BUSINESS — Most Popular */}
-          <div className="relative bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 rounded-2xl p-6 pt-8 shadow-2xl shadow-blue-600/40 flex flex-col sm:-mt-4 sm:-mb-4">
+          <div className="relative bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 rounded-2xl p-6 pt-8 shadow-2xl shadow-blue-600/40 flex flex-col sm:-mt-4 sm:-mb-4 transition-all duration-300">
             <div className="absolute -top-4 left-1/2 -translate-x-1/2 whitespace-nowrap">
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white text-blue-700 text-xs font-extrabold rounded-full shadow-lg border border-blue-100">⭐ Most Popular</span>
             </div>
             <div className="inline-flex items-center px-3 py-1 bg-white/20 text-white text-xs font-bold rounded-full mb-5 self-start tracking-widest uppercase">Business</div>
-            <div className="mb-1">
-              <span className="text-4xl font-extrabold text-white">{plans.business.price}</span>
-              <span className="text-blue-200 text-sm ml-1">/month</span>
+            <div className="mb-1 flex items-end gap-1">
+              <span className="text-4xl font-extrabold text-white transition-all duration-300">{price(plans.business)}</span>
+              <span className="text-blue-200 text-sm mb-1">/mo</span>
+              {annual && (
+                <span className="text-xs text-emerald-300 font-semibold mb-1 ml-1">Save {plans.business.save}/yr</span>
+              )}
             </div>
             <p className="text-blue-200 text-sm mb-5">For growing businesses that need more</p>
             <ul className="space-y-2.5 mb-6 flex-1">
@@ -92,11 +124,14 @@ export default function PricingSection() {
           </div>
 
           {/* ACCOUNTANT PRO */}
-          <div className="bg-white/5 rounded-2xl border-2 border-violet-500/30 p-6 flex flex-col">
+          <div className="bg-white/5 rounded-2xl border-2 border-violet-500/30 p-6 flex flex-col transition-all duration-300">
             <div className="inline-flex items-center px-3 py-1 bg-violet-500/15 text-violet-400 text-xs font-bold rounded-full mb-5 self-start border border-violet-500/25 tracking-widest uppercase">Accountant Pro</div>
-            <div className="mb-1">
-              <span className="text-3xl font-extrabold text-white">{plans.accountantPro.price}</span>
-              <span className="text-slate-500 text-sm ml-1">/month</span>
+            <div className="mb-1 flex items-end gap-1">
+              <span className="text-3xl font-extrabold text-white transition-all duration-300">{price(plans.accountantPro)}</span>
+              <span className="text-slate-500 text-sm mb-1">/mo</span>
+              {annual && (
+                <span className="text-xs text-emerald-400 font-semibold mb-1 ml-1">Save {plans.accountantPro.save}/yr</span>
+              )}
             </div>
             <p className="text-slate-400 text-sm mb-5">For accountants managing multiple clients</p>
             <ul className="space-y-2.5 mb-6 flex-1">
