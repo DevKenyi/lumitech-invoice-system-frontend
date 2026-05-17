@@ -1,5 +1,6 @@
 import LandingNav          from "../components/landing/LandingNav";
 import LandingHero         from "../components/landing/LandingHero";
+import JoyFace             from "../components/landing/JoyFace";
 import SocialProofBar      from "../components/landing/SocialProofBar";
 import ProblemSection      from "../components/landing/ProblemSection";
 import HowItWorksSection   from "../components/landing/HowItWorksSection";
@@ -16,6 +17,7 @@ export default function Landing() {
     <div className="min-h-screen bg-[#0a0a0f] font-sans antialiased" style={{ overflowX: "clip" }}>
       <LandingNav />
       <LandingHero />
+      <JoyFace />
       <SocialProofBar />
       <ProblemSection />
       <HowItWorksSection />
