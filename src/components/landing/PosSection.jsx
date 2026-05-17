@@ -279,7 +279,7 @@ const BULLETS = [
 
 export default function PosSection() {
   return (
-    <section className="py-24 bg-slate-900 overflow-hidden relative">
+    <section className="py-24 bg-[#0a0a0f] overflow-hidden relative">
       {/* Background glows */}
       <div className="absolute -top-40 -right-40 w-[600px] h-[600px] bg-orange-600/8 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] bg-blue-600/8 rounded-full blur-3xl pointer-events-none" />

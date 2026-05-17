@@ -1,27 +1,26 @@
+const STATS = [
+  { value: "100+",      label: "Businesses on LumiLedger" },
+  { value: "₦50M+",    label: "Tracked through the platform" },
+  { value: "🇳🇬 🇬🇭 🇿🇦", label: "Nigeria · Ghana · South Africa" },
+  { value: "30 days",  label: "Free trial · No card required" },
+];
+
 export default function SocialProofBar() {
   return (
-    <section className="border-y border-slate-100 bg-white py-10">
+    <section className="border-y border-white/8 bg-white/3 py-10">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-10 flex-wrap">
-          <div className="text-center">
-            <p className="text-3xl font-extrabold text-slate-900">100+</p>
-            <p className="text-sm text-slate-500 mt-0.5">Businesses using LumiLedger</p>
-          </div>
-          <div className="hidden sm:block w-px h-10 bg-slate-100" />
-          <div className="text-center">
-            <p className="text-3xl font-extrabold text-slate-900">₦50M+</p>
-            <p className="text-sm text-slate-500 mt-0.5">Tracked through the platform</p>
-          </div>
-          <div className="hidden sm:block w-px h-10 bg-slate-100" />
-          <div className="text-center">
-            <p className="text-3xl font-extrabold text-slate-900">🇳🇬 🇬🇭 🇿🇦</p>
-            <p className="text-sm text-slate-500 mt-0.5">Nigeria · Ghana · South Africa</p>
-          </div>
-          <div className="hidden sm:block w-px h-10 bg-slate-100" />
-          <div className="text-center">
-            <p className="text-3xl font-extrabold text-slate-900">30 days</p>
-            <p className="text-sm text-slate-500 mt-0.5">Free trial · No card required</p>
-          </div>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-8 sm:gap-12 flex-wrap">
+          {STATS.map((s, i) => (
+            <div key={s.label} className="flex items-center gap-8 sm:gap-12">
+              <div className="text-center">
+                <p className="text-2xl sm:text-3xl font-extrabold text-white">{s.value}</p>
+                <p className="text-xs text-slate-500 mt-1">{s.label}</p>
+              </div>
+              {i < STATS.length - 1 && (
+                <div className="hidden sm:block w-px h-10 bg-white/10" />
+              )}
+            </div>
+          ))}
         </div>
       </div>
     </section>

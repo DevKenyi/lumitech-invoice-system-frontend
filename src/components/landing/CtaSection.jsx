@@ -3,7 +3,7 @@ import { ArrowRight, CheckCircle } from "lucide-react";
 
 export default function CtaSection() {
   return (
-    <section className="py-24 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="py-24 bg-[#0a0a0f]"><div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="relative bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 rounded-3xl px-5 sm:px-8 py-14 sm:py-20 shadow-2xl shadow-blue-600/30 overflow-hidden text-center">
         <div className="absolute -top-20 -right-20 w-80 h-80 bg-white/5 rounded-full pointer-events-none" />
         <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-white/5 rounded-full pointer-events-none" />
@@ -57,6 +57,6 @@ export default function CtaSection() {
           </p>
         </div>
       </div>
-    </section>
+    </div></section>
   );
 }

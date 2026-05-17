@@ -1,114 +1,130 @@
 import { Link } from "react-router-dom";
-import { CheckCircle, ArrowRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
-function HeroCapitalWidget() {
+const MARQUEE_ROW_1 = [
+  { id: "INV-2026-0042", client: "Araba Mensah & Co",     amount: "₵12,400",    status: "Paid",    color: "text-emerald-400" },
+  { id: "INV-2026-0007", client: "Chinonso Foods Ltd",    amount: "₦485,000",   status: "Paid",    color: "text-emerald-400" },
+  { id: "INV-2026-0091", client: "Cape Town Creatives",   amount: "R32,500",    status: "Sent",    color: "text-blue-400" },
+  { id: "INV-2026-0018", client: "Accra Digital Hub",     amount: "₵8,750",     status: "Paid",    color: "text-emerald-400" },
+  { id: "INV-2026-0033", client: "Lagos Style House",     amount: "₦1,200,000", status: "Overdue", color: "text-rose-400" },
+  { id: "INV-2026-0055", client: "Pretoria Services",     amount: "R18,200",    status: "Paid",    color: "text-emerald-400" },
+  { id: "INV-2026-0063", client: "Kumasi Crafts Ltd",     amount: "₵6,200",     status: "Paid",    color: "text-emerald-400" },
+];
+
+const MARQUEE_ROW_2 = [
+  { id: "INV-2026-0024", client: "Abuja Tech Solutions",  amount: "₦750,000",   status: "Sent",    color: "text-blue-400" },
+  { id: "INV-2026-0079", client: "Durban Maritime Co",    amount: "R45,000",    status: "Paid",    color: "text-emerald-400" },
+  { id: "INV-2026-0038", client: "Tema Logistics",        amount: "₵22,100",    status: "Paid",    color: "text-emerald-400" },
+  { id: "INV-2026-0049", client: "Port Harcourt Oil",     amount: "₦2,800,000", status: "Overdue", color: "text-rose-400" },
+  { id: "INV-2026-0086", client: "Sandton Consulting",    amount: "R92,000",    status: "Paid",    color: "text-emerald-400" },
+  { id: "INV-2026-0014", client: "Takoradi Ship Co",      amount: "₵31,500",    status: "Sent",    color: "text-blue-400" },
+  { id: "INV-2026-0071", client: "Enugu Power Supply",    amount: "₦320,000",   status: "Paid",    color: "text-emerald-400" },
+];
+
+function InvoiceCard({ id, client, amount, status, color }) {
   return (
-    <div className="relative w-full max-w-md mx-auto select-none">
-      <div className="absolute -inset-6 bg-gradient-to-br from-blue-400/20 via-indigo-400/15 to-violet-400/10 rounded-3xl blur-3xl pointer-events-none" />
-      <div className="relative bg-white rounded-2xl shadow-2xl border border-slate-200/80 overflow-hidden">
-        {/* Window chrome */}
-        <div className="px-4 py-3 bg-slate-50 border-b border-slate-100 flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-rose-400" />
-          <div className="w-3 h-3 rounded-full bg-amber-400" />
-          <div className="w-3 h-3 rounded-full bg-emerald-400" />
-          <span className="ml-2 text-xs text-slate-400 font-medium">LumiLedger — Capital Tracker</span>
-        </div>
-        {/* Stats */}
-        <div className="p-5">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Your business owes you</p>
-          <p className="text-[10px] text-slate-400 mb-2">Shown in NGN · works in GHS, ZAR &amp; USD</p>
-          <div className="grid grid-cols-3 gap-3 mb-4">
-            {[
-              { label: "You Put In",  value: "₦850,000", color: "text-blue-700",    bg: "bg-blue-50 border-blue-100" },
-              { label: "Recovered",   value: "₦520,000", color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100" },
-              { label: "Still Owed",  value: "₦330,000", color: "text-rose-600",    bg: "bg-rose-50 border-rose-100" },
-            ].map(s => (
-              <div key={s.label} className={`${s.bg} border rounded-xl p-3 text-center`}>
-                <p className={`text-sm font-extrabold ${s.color}`}>{s.value}</p>
-                <p className="text-xs text-slate-400 mt-0.5 leading-tight">{s.label}</p>
-              </div>
-            ))}
-          </div>
-          {/* Progress bar */}
-          <div className="mb-4">
-            <div className="flex justify-between text-xs text-slate-500 mb-1.5">
-              <span>Capital recovery</span>
-              <span className="font-bold text-blue-600">61% recovered</span>
-            </div>
-            <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
-              <div className="h-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full" style={{ width: "61%" }} />
-            </div>
-          </div>
-          {/* Recent entries */}
-          <div className="space-y-2">
-            {[
-              { note: "Initial capital injection", date: "Jan 10, 2026", amount: "₦500,000" },
-              { note: "Equipment purchase",        date: "Mar 5, 2026",  amount: "₦350,000" },
-            ].map(p => (
-              <div key={p.date} className="flex items-center justify-between bg-blue-50 rounded-lg px-3 py-2 border border-blue-100">
-                <div>
-                  <p className="text-xs font-semibold text-slate-800">{p.note}</p>
-                  <p className="text-xs text-slate-400">{p.date}</p>
-                </div>
-                <span className="text-xs font-bold text-blue-600">{p.amount}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+    <div className="flex-shrink-0 w-56 bg-white/5 border border-white/10 rounded-xl p-3.5 mx-2 backdrop-blur-sm">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[10px] font-mono text-slate-500">{id}</span>
+        <span className={`text-[10px] font-bold ${color}`}>{status}</span>
       </div>
+      <p className="text-xs font-semibold text-white truncate mb-1">{client}</p>
+      <p className="text-base font-extrabold text-white">{amount}</p>
     </div>
   );
 }
 
 export default function LandingHero() {
   return (
-    <section className="relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-50/60 via-white to-indigo-50/40 pointer-events-none" />
-      <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-blue-100/40 to-transparent rounded-full blur-3xl pointer-events-none" />
-      <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-14 sm:pt-20 pb-20 sm:pb-28">
-        <div className="grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
-          <div className="text-center lg:text-left">
-            {/* Countries flag strip */}
-            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-1.5 mb-5">
-              <span className="text-xs text-slate-400 font-medium mr-1">Built for</span>
-              {[
-                { flag: "🇳🇬", name: "Nigeria" },
-                { flag: "🇬🇭", name: "Ghana" },
-                { flag: "🇿🇦", name: "South Africa" },
-              ].map(c => (
-                <span key={c.name} title={c.name}
-                  className="text-lg leading-none hover:scale-125 transition-transform cursor-default select-none">{c.flag}</span>
-              ))}
-              <span className="ml-1 text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">Nigeria · Ghana · South Africa</span>
-            </div>
-            <h1 className="text-3xl sm:text-4xl lg:text-[52px] font-extrabold text-slate-900 leading-[1.1] tracking-tight mb-5 sm:mb-6">
-              Does your business{" "}
-              <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent">
-                owe you money?
-              </span>
-            </h1>
-            <p className="text-lg sm:text-xl text-slate-500 leading-relaxed mb-8 max-w-lg mx-auto lg:mx-0">
-              You started this business with your own money. Most founders never know if they've actually paid themselves back. LumiLedger shows you exactly where you stand — in real time.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 mb-6 justify-center lg:justify-start">
-              <Link to="/register" className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold rounded-xl shadow-xl shadow-blue-600/30 hover:shadow-2xl hover:scale-[1.02] transition-all text-base">
-                Start 30-Day Free Trial <ArrowRight className="w-4 h-4" />
-              </Link>
-              <a href="#how-it-works" className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-white border border-slate-200 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 transition shadow-sm text-base">
-                See How It Works
-              </a>
-            </div>
-            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 text-xs text-slate-400">
-              <div className="flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5 text-emerald-500" />No credit card required</div>
-              <div className="flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5 text-emerald-500" />Set up in under 2 minutes</div>
-              <div className="flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5 text-emerald-500" />Cancel anytime</div>
-            </div>
+    <section className="relative overflow-hidden bg-[#0a0a0f] pt-16 pb-0">
+      {/* Glow orbs */}
+      <div className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-blue-600/20 rounded-full blur-[120px]" />
+      <div className="pointer-events-none absolute top-20 -left-32 w-72 h-72 bg-indigo-600/15 rounded-full blur-[90px]" />
+      <div className="pointer-events-none absolute top-32 -right-32 w-72 h-72 bg-violet-600/15 rounded-full blur-[90px]" />
+
+      <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        {/* Social proof pill */}
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/8 border border-white/12 rounded-full text-xs text-slate-300 font-medium mb-8">
+          <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          100+ businesses across Africa trust LumiLedger
+        </div>
+
+        {/* Headline */}
+        <h1 className="text-4xl sm:text-5xl lg:text-[64px] font-extrabold text-white leading-[1.08] tracking-tight mb-6">
+          Run your business{" "}
+          <span className="bg-gradient-to-r from-blue-400 via-indigo-400 to-violet-400 bg-clip-text text-transparent">
+            finances on autopilot
+          </span>{" "}
+          💸
+        </h1>
+
+        <p className="text-lg sm:text-xl text-slate-400 leading-relaxed mb-8 max-w-2xl mx-auto">
+          Invoices, payroll, expenses, and live P&amp;L — built for Nigeria, Ghana &amp; South Africa.
+          Your books update themselves. You just focus on selling.
+        </p>
+
+        {/* Feature bullets */}
+        <div className="flex flex-wrap items-center justify-center gap-4 mb-10 text-sm text-slate-300">
+          <span>🌍 NGN · GHS · ZAR · USD</span>
+          <span className="text-white/20">·</span>
+          <span>💱 Auto VAT &amp; tax reports</span>
+          <span className="text-white/20">·</span>
+          <span>⚡ Send invoice in 60 seconds</span>
+        </div>
+
+        {/* CTAs */}
+        <div className="flex flex-col sm:flex-row gap-3 justify-center mb-6">
+          <Link
+            to="/register"
+            className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-white text-slate-900 text-sm font-bold rounded-xl hover:bg-slate-100 transition shadow-lg shadow-white/10"
+          >
+            Start Free — 30 Days <ChevronRight className="w-4 h-4" />
+          </Link>
+          <a
+            href="#how-it-works"
+            className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-white/8 border border-white/12 text-white text-sm font-semibold rounded-xl hover:bg-white/12 transition"
+          >
+            See how it works
+          </a>
+        </div>
+
+        <p className="text-xs text-slate-600 mb-16">No credit card required · Set up in under 2 minutes · Cancel anytime</p>
+      </div>
+
+      {/* Marquee rows */}
+      <style>{`
+        @keyframes marquee-left  { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+        @keyframes marquee-right { from { transform: translateX(-50%); } to { transform: translateX(0); } }
+        .marquee-left  { animation: marquee-left  30s linear infinite; }
+        .marquee-right { animation: marquee-right 28s linear infinite; }
+      `}</style>
+
+      <div className="relative">
+        {/* Left/right fade masks */}
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-32 z-10 bg-gradient-to-r from-[#0a0a0f] to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-32 z-10 bg-gradient-to-l from-[#0a0a0f] to-transparent" />
+
+        {/* Row 1 — scrolls left */}
+        <div className="flex overflow-hidden mb-3">
+          <div className="marquee-left flex">
+            {[...MARQUEE_ROW_1, ...MARQUEE_ROW_1].map((c, i) => (
+              <InvoiceCard key={i} {...c} />
+            ))}
           </div>
-          <div className="hidden lg:block">
-            <HeroCapitalWidget />
+        </div>
+
+        {/* Row 2 — scrolls right */}
+        <div className="flex overflow-hidden mb-0">
+          <div className="marquee-right flex">
+            {[...MARQUEE_ROW_2, ...MARQUEE_ROW_2].map((c, i) => (
+              <InvoiceCard key={i} {...c} />
+            ))}
           </div>
         </div>
       </div>
+
+      {/* Bottom fade into next section */}
+      <div className="h-24 bg-gradient-to-b from-transparent to-[#0a0a0f]" />
     </section>
   );
 }
