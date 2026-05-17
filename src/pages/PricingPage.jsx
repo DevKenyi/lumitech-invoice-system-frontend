@@ -1,30 +1,28 @@
-// PricingPage.jsx — standalone public page explaining plans, trial, and FAQs
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   CheckCircle, XCircle, ArrowRight, ChevronDown, FileText,
-  Zap, Shield, Clock, AlertTriangle, CreditCard, Users,
-  BookOpen, BarChart3, Wallet, Bell, Lock, ChevronRight,
+  Zap, Shield, Clock, AlertTriangle, CreditCard, Layers, ChevronRight,
 } from "lucide-react";
 import LandingNav from "../components/landing/LandingNav";
+import LandingFooter from "../components/landing/LandingFooter";
 
-/* ─── Plan comparison data ───────────────────────────────────────────────── */
+/* ─── Plan comparison data ─────────────────────────────────────────── */
 const PLANS = ["Free Trial", "Essential", "Business", "Accountant Pro"];
 const PRICES = ["₦0", "₦9,900/mo", "₦24,900/mo", "₦59,900/mo"];
-const PLAN_KEYS = ["FREE", "STARTER", "GROWTH", "ACCOUNTANT_PRO"];
 
 const features = [
   {
     category: "Core",
     rows: [
-      { label: "Invoicing & payments",         values: [true,  true,  true,  true]  },
-      { label: "Client management",             values: ["5 clients", "50 clients", "Unlimited", "Unlimited"] },
-      { label: "Projects",                      values: ["2 projects", "10 projects", "Unlimited", "Unlimited"] },
-      { label: "Capital tracking",              values: [true,  true,  true,  true]  },
-      { label: "Financial reports (Aging, P&L)",values: [true,  true,  true,  true]  },
-      { label: "Email payment reminders",       values: [true,  true,  true,  true]  },
-      { label: "Paystack online payments",      values: [true,  true,  true,  true]  },
-      { label: "Client payment portal",         values: [true,  true,  true,  true]  },
+      { label: "Invoicing & payments",          values: [true,  true,  true,  true]  },
+      { label: "Client management",              values: ["5 clients", "50 clients", "Unlimited", "Unlimited"] },
+      { label: "Projects",                       values: ["2 projects", "10 projects", "Unlimited", "Unlimited"] },
+      { label: "Capital tracking",               values: [true,  true,  true,  true]  },
+      { label: "Financial reports (Aging, P&L)", values: [true,  true,  true,  true]  },
+      { label: "Email payment reminders",        values: [true,  true,  true,  true]  },
+      { label: "Paystack online payments",       values: [true,  true,  true,  true]  },
+      { label: "Client payment portal",          values: [true,  true,  true,  true]  },
     ],
   },
   {
@@ -40,31 +38,31 @@ const features = [
   {
     category: "Expense Reporting",
     rows: [
-      { label: "Expense claims & approvals",     values: [false, false, false, true]  },
-      { label: "Receipt upload & storage",       values: [false, false, false, true]  },
-      { label: "Staff expense roles",            values: [false, false, false, true]  },
-      { label: "Auto journal on approval",       values: [false, false, false, true]  },
+      { label: "Expense claims & approvals",    values: [false, false, false, true]  },
+      { label: "Receipt upload & storage",      values: [false, false, false, true]  },
+      { label: "Staff expense roles",           values: [false, false, false, true]  },
+      { label: "Auto journal on approval",      values: [false, false, false, true]  },
     ],
   },
   {
     category: "Compliance & Audit",
     rows: [
-      { label: "Audit Trail (full activity log)",values: [false, false, false, true]  },
-      { label: "VAT & WHT tracking (FIRS)",     values: [false, false, false, true]  },
+      { label: "Audit Trail (full activity log)", values: [false, false, false, true]  },
+      { label: "VAT & WHT tracking (FIRS)",       values: [false, false, false, true]  },
     ],
   },
   {
     category: "Team & Access",
     rows: [
-      { label: "Team members (users)",          values: ["2 users", "5 users", "Unlimited", "Unlimited"] },
-      { label: "Team roles (Admin / Staff)",    values: [false, false, true,  true]  },
-      { label: "Multi-business management",     values: [false, false, false, true]  },
-      { label: "Priority support",              values: [false, false, false, true]  },
+      { label: "Team members (users)",            values: ["2 users", "5 users", "Unlimited", "Unlimited"] },
+      { label: "Team roles (Admin / Staff)",      values: [false, false, true,  true]  },
+      { label: "Multi-business management",       values: [false, false, false, true]  },
+      { label: "Priority support",                values: [false, false, false, true]  },
     ],
   },
 ];
 
-/* ─── FAQ data ───────────────────────────────────────────────────────────── */
+/* ─── FAQ data ─────────────────────────────────────────────────────── */
 const faqs = [
   {
     q: "What happens when my 30-day trial ends?",
@@ -80,7 +78,7 @@ const faqs = [
   },
   {
     q: "What's the difference between Business Owner mode and Accountant mode?",
-    a: "Same data, different experience. Business Owner mode uses plain language — 'Collections', 'Capital you've put in', 'Business owes you'. Accountant mode uses standard accounting terminology and gives full access to all journal and reporting tools. If you registered as a Business Owner, you stay in that mode. If you registered as an Accountant, you can toggle between both views.",
+    a: "Same data, different experience. Business Owner mode uses plain language — 'Collections', 'Capital you've put in', 'Business owes you'. Accountant mode uses standard accounting terminology and gives full access to all journal and reporting tools.",
   },
   {
     q: "Why does the Essential plan not include Chart of Accounts?",
@@ -100,73 +98,71 @@ const faqs = [
   },
 ];
 
-/* ─── Components ─────────────────────────────────────────────────────────── */
+/* ─── Components ───────────────────────────────────────────────────── */
 function CheckCell({ value }) {
-  if (value === true)  return <CheckCircle className="w-5 h-5 text-emerald-500 mx-auto" />;
-  if (value === false) return <XCircle    className="w-5 h-5 text-slate-200 mx-auto" />;
-  return <span className="text-xs font-medium text-slate-600 text-center block">{value}</span>;
+  if (value === true)  return <CheckCircle className="w-5 h-5 text-emerald-400 mx-auto" />;
+  if (value === false) return <XCircle    className="w-5 h-5 text-white/15 mx-auto" />;
+  return <span className="text-xs font-medium text-slate-400 text-center block">{value}</span>;
 }
 
 function FaqItem({ q, a }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="border border-slate-200 rounded-xl overflow-hidden">
+    <div className={`border rounded-xl overflow-hidden transition-colors ${open ? "border-white/20" : "border-white/8"}`}>
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-5 py-4 text-left bg-white hover:bg-slate-50 transition"
+        className="w-full flex items-center justify-between px-5 py-4 text-left bg-white/4 hover:bg-white/7 transition"
       >
-        <span className="font-semibold text-slate-900 text-sm pr-4">{q}</span>
-        <ChevronDown size={16} className={`text-slate-400 flex-shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
+        <span className="font-semibold text-white text-sm pr-4">{q}</span>
+        <ChevronDown size={16} className={`text-slate-400 flex-shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
-        <div className="px-5 pb-4 bg-white border-t border-slate-100">
-          <p className="text-sm text-slate-600 leading-relaxed pt-3">{a}</p>
+        <div className="px-5 pb-5 bg-white/3 border-t border-white/8">
+          <p className="text-sm text-slate-400 leading-relaxed pt-4">{a}</p>
         </div>
       )}
     </div>
   );
 }
 
-/* ─── Page ───────────────────────────────────────────────────────────────── */
+/* ─── Page ─────────────────────────────────────────────────────────── */
 export default function PricingPage() {
   return (
-    <div className="min-h-screen bg-white font-sans antialiased">
-
-      {/* ── NAV ────────────────────────────────────────────────────────── */}
+    <div className="min-h-screen bg-[#0a0a0f] font-sans antialiased" style={{ overflowX: "clip" }}>
       <LandingNav />
 
-      {/* ── HERO ───────────────────────────────────────────────────────── */}
-      <section className="bg-gradient-to-br from-blue-50/60 via-white to-indigo-50/40 py-20 px-4">
-        <div className="max-w-3xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-full border border-blue-100 mb-6">
-            <Zap className="w-3.5 h-3.5" /> 30-Day Free Trial — No Card Required
+      {/* ── HERO ── */}
+      <section className="relative overflow-hidden pt-24 pb-20 px-4">
+        <div className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-blue-600/20 rounded-full blur-[100px]" />
+        <div className="relative max-w-3xl mx-auto text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/6 border border-white/10 text-slate-300 text-xs font-semibold rounded-full mb-6">
+            <Zap className="w-3.5 h-3.5 text-blue-400" /> 30-Day Free Trial — No Card Required
           </div>
-          <h1 className="text-4xl sm:text-5xl font-extrabold text-slate-900 leading-tight mb-4">
-            Simple pricing.<br />
-            <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+          <h1 className="text-4xl sm:text-5xl font-extrabold text-white leading-tight mb-4">
+            Simple pricing.{" "}
+            <span className="bg-gradient-to-r from-blue-400 via-indigo-400 to-violet-400 bg-clip-text text-transparent">
               Transparent, no surprises.
             </span>
           </h1>
-          <p className="text-lg text-slate-500 max-w-xl mx-auto mb-8">
+          <p className="text-lg text-slate-400 max-w-xl mx-auto mb-8">
             Start free. Use everything for 30 days. Pick a plan when you're ready — or walk away, no hard feelings.
           </p>
-          <Link to="/register" className="inline-flex items-center gap-2 px-7 py-3.5 bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold rounded-xl shadow-xl shadow-blue-600/30 hover:shadow-2xl hover:scale-[1.02] transition-all">
+          <Link to="/register" className="inline-flex items-center gap-2 px-7 py-3.5 bg-white text-slate-900 font-bold rounded-xl shadow-lg shadow-white/10 hover:bg-slate-100 transition">
             Start Free Trial <ArrowRight className="w-4 h-4" />
           </Link>
-          <p className="mt-3 text-xs text-slate-400">No credit card. No commitment. Cancel anytime.</p>
+          <p className="mt-3 text-xs text-slate-600">No credit card. No commitment. Cancel anytime.</p>
         </div>
       </section>
 
-      {/* ── HOW THE TRIAL WORKS ────────────────────────────────────────── */}
-      <section className="py-20 bg-white border-y border-slate-100">
+      {/* ── HOW THE TRIAL WORKS ── */}
+      <section className="py-20 border-y border-white/8">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-3">How the trial works</h2>
-            <p className="text-slate-500 max-w-lg mx-auto">No hidden limits. No bait-and-switch features. Here's exactly what happens.</p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">How the trial works</h2>
+            <p className="text-slate-400 max-w-lg mx-auto">No hidden limits. No bait-and-switch features. Here's exactly what happens.</p>
           </div>
-
           <div className="grid md:grid-cols-3 gap-6">
-            {/* Step 1 */}
+
             <div className="relative bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-6 text-white shadow-xl shadow-blue-600/25">
               <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-4 text-lg font-extrabold">1</div>
               <h3 className="font-bold text-lg mb-2">Sign up — get everything</h3>
@@ -180,57 +176,56 @@ export default function PricingPage() {
               </div>
             </div>
 
-            {/* Step 2 */}
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6">
-              <div className="w-10 h-10 bg-slate-200 rounded-xl flex items-center justify-center mb-4 text-lg font-extrabold text-slate-700">2</div>
-              <h3 className="font-bold text-lg text-slate-900 mb-2">Use it for 30 days</h3>
-              <p className="text-slate-500 text-sm leading-relaxed">
+            <div className="bg-white/4 border border-white/8 rounded-2xl p-6">
+              <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center mb-4 text-lg font-extrabold text-white">2</div>
+              <h3 className="font-bold text-lg text-white mb-2">Use it for 30 days</h3>
+              <p className="text-slate-400 text-sm leading-relaxed">
                 Run your business. Create invoices, record capital, generate reports. Your dashboard shows exactly how many days remain. We'll email you a reminder before it ends.
               </p>
-              <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2">
-                <Clock className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-amber-700">Trial countdown starts from the day you register.</p>
+              <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-start gap-2">
+                <Clock className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-300">Trial countdown starts from the day you register.</p>
               </div>
             </div>
 
-            {/* Step 3 */}
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6">
-              <div className="w-10 h-10 bg-slate-200 rounded-xl flex items-center justify-center mb-4 text-lg font-extrabold text-slate-700">3</div>
-              <h3 className="font-bold text-lg text-slate-900 mb-2">Pick a plan or leave</h3>
-              <p className="text-slate-500 text-sm leading-relaxed">
-                Subscribe before day 30 and continue uninterrupted. If you don't subscribe, your account is suspended — but <strong className="text-slate-700">nothing is deleted</strong>. Subscribe anytime to restore full access instantly.
+            <div className="bg-white/4 border border-white/8 rounded-2xl p-6">
+              <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center mb-4 text-lg font-extrabold text-white">3</div>
+              <h3 className="font-bold text-lg text-white mb-2">Pick a plan or leave</h3>
+              <p className="text-slate-400 text-sm leading-relaxed">
+                Subscribe before day 30 and continue uninterrupted. If you don't subscribe, your account is suspended — but <strong className="text-white">nothing is deleted</strong>. Subscribe anytime to restore full access instantly.
               </p>
-              <div className="mt-4 p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-rose-500 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-rose-600">Suspension locks access — it doesn't delete your data.</p>
+              <div className="mt-4 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-rose-300">Suspension locks access — it doesn't delete your data.</p>
               </div>
             </div>
+
           </div>
         </div>
       </section>
 
-      {/* ── PLAN CARDS ─────────────────────────────────────────────────── */}
-      <section className="py-20 bg-slate-50 border-b border-slate-100">
+      {/* ── PLAN CARDS ── */}
+      <section className="py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-3">Choose your plan</h2>
-            <p className="text-slate-500 max-w-lg mx-auto">All plans start with a 30-day free trial. Subscribe when you're ready.</p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">Choose your plan</h2>
+            <p className="text-slate-400 max-w-lg mx-auto">All plans start with a 30-day free trial. Subscribe when you're ready.</p>
           </div>
           <div className="grid md:grid-cols-4 gap-5 items-stretch">
 
             {/* FREE */}
-            <div className="bg-white rounded-2xl border-2 border-dashed border-slate-200 p-6 flex flex-col">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-full mb-4 self-start border border-emerald-100">
-                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Free Trial
+            <div className="bg-white/4 rounded-2xl border-2 border-dashed border-white/12 p-6 flex flex-col">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/15 text-emerald-400 text-xs font-bold rounded-full mb-4 self-start border border-emerald-500/25">
+                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" /> Free Trial
               </div>
-              <p className="text-3xl font-extrabold text-slate-900 mb-0.5">₦0</p>
+              <p className="text-3xl font-extrabold text-white mb-0.5">₦0</p>
               <p className="text-sm text-slate-500 mb-4">for 30 days</p>
-              <p className="text-xs text-slate-400 mb-5 leading-relaxed">Full access to every feature. No restrictions whatsoever.</p>
+              <p className="text-xs text-slate-500 mb-5 leading-relaxed">Full access to every feature. No restrictions whatsoever.</p>
               <div className="mt-auto">
-                <Link to="/register" className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-sm transition">
+                <Link to="/register" className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-slate-900 font-bold rounded-xl text-sm transition hover:bg-slate-100">
                   Start Free Trial
                 </Link>
-                <p className="text-center text-xs text-slate-400 mt-2">No card. No commitment.</p>
+                <p className="text-center text-xs text-slate-600 mt-2">No card. No commitment.</p>
               </div>
             </div>
 
@@ -252,10 +247,10 @@ export default function PricingPage() {
             </div>
 
             {/* BUSINESS */}
-            <div className="bg-slate-900 rounded-2xl border-2 border-slate-700 p-6 flex flex-col">
+            <div className="bg-white/5 rounded-2xl border-2 border-white/10 p-6 flex flex-col">
               <div className="inline-flex px-3 py-1 bg-indigo-500/20 text-indigo-300 text-xs font-bold rounded-full mb-4 self-start border border-indigo-500/30 tracking-widest uppercase">Business</div>
               <p className="text-3xl font-extrabold text-white mb-0.5">₦24,900</p>
-              <p className="text-sm text-slate-400 mb-4">/month</p>
+              <p className="text-sm text-slate-500 mb-4">/month</p>
               <p className="text-xs text-slate-400 mb-5 leading-relaxed">For growing businesses that need accounting tools and team access.</p>
               <div className="mt-auto">
                 <Link to="/register" className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm transition shadow-lg">
@@ -266,58 +261,55 @@ export default function PricingPage() {
             </div>
 
             {/* ACCOUNTANT PRO */}
-            <div className="bg-white rounded-2xl border-2 border-violet-200 p-6 flex flex-col">
-              <div className="inline-flex px-3 py-1 bg-violet-100 text-violet-700 text-xs font-bold rounded-full mb-4 self-start border border-violet-200 tracking-widest uppercase">Accountant Pro</div>
-              <p className="text-3xl font-extrabold text-slate-900 mb-0.5">₦59,900</p>
-              <p className="text-sm text-slate-400 mb-4">/month</p>
-              <p className="text-xs text-slate-500 mb-5 leading-relaxed">For accountants managing multiple client businesses.</p>
+            <div className="bg-white/5 rounded-2xl border-2 border-violet-500/30 p-6 flex flex-col">
+              <div className="inline-flex px-3 py-1 bg-violet-500/15 text-violet-400 text-xs font-bold rounded-full mb-4 self-start border border-violet-500/25 tracking-widest uppercase">Accountant Pro</div>
+              <p className="text-3xl font-extrabold text-white mb-0.5">₦59,900</p>
+              <p className="text-sm text-slate-500 mb-4">/month</p>
+              <p className="text-xs text-slate-400 mb-5 leading-relaxed">For accountants managing multiple client businesses.</p>
               <div className="mt-auto">
                 <Link to="/register" className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-xl text-sm transition shadow-lg">
                   Start Free Trial <ArrowRight className="w-4 h-4" />
                 </Link>
-                <p className="text-center text-xs text-slate-400 mt-2">Then ₦59,900/month.</p>
+                <p className="text-center text-xs text-slate-500 mt-2">Then ₦59,900/month.</p>
               </div>
             </div>
+
           </div>
         </div>
       </section>
 
-      {/* ── FEATURE TABLE ──────────────────────────────────────────────── */}
-      <section className="py-20 bg-white">
+      {/* ── FEATURE TABLE ── */}
+      <section className="py-20 border-y border-white/8">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-3">What's included in each plan</h2>
-            <p className="text-slate-500">Every plan starts with a full 30-day free trial.</p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">What's included in each plan</h2>
+            <p className="text-slate-400">Every plan starts with a full 30-day free trial.</p>
           </div>
-
-          <div className="rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+          <div className="rounded-2xl border border-white/10 overflow-hidden">
             {/* Header */}
-            <div className="grid grid-cols-5 bg-slate-50 border-b border-slate-200">
+            <div className="grid grid-cols-5 bg-white/5 border-b border-white/10">
               <div className="px-5 py-4 col-span-1" />
               {PLANS.map((plan, i) => (
                 <div key={plan} className={`px-3 py-4 text-center ${i === 1 ? "bg-blue-600" : ""}`}>
                   <p className={`text-xs font-bold uppercase tracking-widest mb-0.5 ${i === 1 ? "text-blue-200" : "text-slate-500"}`}>{plan}</p>
-                  <p className={`text-sm font-extrabold ${i === 1 ? "text-white" : "text-slate-900"}`}>{PRICES[i]}</p>
+                  <p className={`text-sm font-extrabold ${i === 1 ? "text-white" : "text-white"}`}>{PRICES[i]}</p>
                 </div>
               ))}
             </div>
-
-            {/* Feature rows */}
-            {features.map((section, si) => (
+            {features.map((section) => (
               <div key={section.category}>
-                <div className="px-5 py-2.5 bg-slate-50 border-y border-slate-200">
+                <div className="px-5 py-2.5 bg-white/4 border-y border-white/8">
                   <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{section.category}</p>
                 </div>
                 {section.rows.map((row, ri) => (
-                  <div
-                    key={row.label}
-                    className={`grid grid-cols-5 border-b border-slate-100 last:border-0 ${ri % 2 === 0 ? "bg-white" : "bg-slate-50/50"}`}
+                  <div key={row.label}
+                    className={`grid grid-cols-5 border-b border-white/6 last:border-0 ${ri % 2 === 0 ? "bg-transparent" : "bg-white/3"}`}
                   >
                     <div className="px-5 py-3.5 col-span-1">
-                      <p className="text-sm text-slate-700">{row.label}</p>
+                      <p className="text-sm text-slate-300">{row.label}</p>
                     </div>
                     {row.values.map((val, vi) => (
-                      <div key={vi} className={`px-3 py-3.5 flex items-center justify-center ${vi === 1 ? "bg-blue-50" : ""}`}>
+                      <div key={vi} className={`px-3 py-3.5 flex items-center justify-center ${vi === 1 ? "bg-blue-600/10" : ""}`}>
                         <CheckCell value={val} />
                       </div>
                     ))}
@@ -326,31 +318,28 @@ export default function PricingPage() {
               </div>
             ))}
           </div>
-
-          <p className="text-center text-xs text-slate-400 mt-4">
+          <p className="text-center text-xs text-slate-600 mt-4">
             * Free trial unlocks everything — including Advanced Accounting. Feature access adjusts to your plan after the trial.
           </p>
         </div>
       </section>
 
-      {/* ── BUSINESS OWNER vs ACCOUNTANT ───────────────────────────────── */}
-      <section className="py-20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* ── BUSINESS OWNER vs ACCOUNTANT ── */}
+      <section className="py-20">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">One platform. Two experiences.</h2>
-            <p className="text-slate-400 max-w-lg mx-auto">LumiLedger adapts to how you work. Choose your mode when you register — it shapes the entire experience.</p>
+            <p className="text-slate-400 max-w-lg mx-auto">LumiLedger adapts to how you work. Choose your mode when you register.</p>
           </div>
           <div className="grid md:grid-cols-2 gap-6">
-
-            {/* Business Owner */}
-            <div className="bg-slate-800/60 border border-slate-700 rounded-2xl p-7">
+            <div className="bg-white/4 border border-white/8 rounded-2xl p-7">
               <div className="flex items-center gap-3 mb-5">
-                <div className="p-2.5 bg-emerald-500/20 rounded-xl border border-emerald-500/20">
-                  <Wallet className="w-5 h-5 text-emerald-400" />
+                <div className="p-2.5 bg-emerald-500/15 rounded-xl border border-emerald-500/20">
+                  <FileText className="w-5 h-5 text-emerald-400" />
                 </div>
                 <div>
                   <h3 className="font-bold text-white text-lg">Business Owner</h3>
-                  <p className="text-xs text-slate-400">Plain language. No accounting jargon.</p>
+                  <p className="text-xs text-slate-500">Plain language. No accounting jargon.</p>
                 </div>
               </div>
               <div className="space-y-3 mb-5">
@@ -367,21 +356,18 @@ export default function PricingPage() {
                 ))}
               </div>
               <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-                <p className="text-xs text-amber-300 font-medium">
-                  Business Owner mode is permanent — registered SME users do not switch to Accountant mode.
-                </p>
+                <p className="text-xs text-amber-300 font-medium">Business Owner mode is permanent — registered SME users do not switch to Accountant mode.</p>
               </div>
             </div>
 
-            {/* Accountant */}
-            <div className="bg-slate-800/60 border border-indigo-500/30 rounded-2xl p-7">
+            <div className="bg-white/4 border border-indigo-500/30 rounded-2xl p-7">
               <div className="flex items-center gap-3 mb-5">
-                <div className="p-2.5 bg-indigo-500/20 rounded-xl border border-indigo-500/20">
-                  <BookOpen className="w-5 h-5 text-indigo-400" />
+                <div className="p-2.5 bg-indigo-500/15 rounded-xl border border-indigo-500/20">
+                  <Layers className="w-5 h-5 text-indigo-400" />
                 </div>
                 <div>
                   <h3 className="font-bold text-white text-lg">Accountant</h3>
-                  <p className="text-xs text-slate-400">Standard accounting terminology. Full control.</p>
+                  <p className="text-xs text-slate-500">Standard accounting terminology. Full control.</p>
                 </div>
               </div>
               <div className="space-y-3 mb-5">
@@ -398,21 +384,19 @@ export default function PricingPage() {
                 ))}
               </div>
               <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl">
-                <p className="text-xs text-indigo-300 font-medium">
-                  Accountants can toggle between Accountant and Business Owner view at any time.
-                </p>
+                <p className="text-xs text-indigo-300 font-medium">Accountants can toggle between Accountant and Business Owner view at any time.</p>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── FAQ ────────────────────────────────────────────────────────── */}
-      <section className="py-20 bg-white border-t border-slate-100">
+      {/* ── FAQ ── */}
+      <section className="py-20 border-t border-white/8">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-3">Frequently asked questions</h2>
-            <p className="text-slate-500">Straight answers. No marketing fluff.</p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">Frequently asked questions</h2>
+            <p className="text-slate-400">Straight answers. No marketing fluff.</p>
           </div>
           <div className="space-y-3">
             {faqs.map(faq => <FaqItem key={faq.q} {...faq} />)}
@@ -420,44 +404,28 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* ── CTA ────────────────────────────────────────────────────────── */}
-      <section className="py-20 bg-slate-50 border-t border-slate-100">
+      {/* ── CTA ── */}
+      <section className="py-20 border-t border-white/8">
         <div className="max-w-3xl mx-auto px-4 text-center">
-          <div className="flex flex-wrap justify-center gap-6 mb-10 text-sm text-slate-500">
+          <div className="flex flex-wrap justify-center gap-6 mb-10 text-sm text-slate-400">
             {[
-              { icon: <Shield className="w-4 h-4 text-emerald-500" />,  text: "No hidden fees" },
-              { icon: <Clock  className="w-4 h-4 text-emerald-500" />,  text: "Cancel anytime" },
-              { icon: <CreditCard className="w-4 h-4 text-emerald-500" />, text: "No card for trial" },
-              { icon: <CheckCircle className="w-4 h-4 text-emerald-500" />, text: "Your data is safe" },
+              { icon: <Shield className="w-4 h-4 text-emerald-400" />,   text: "No hidden fees" },
+              { icon: <Clock  className="w-4 h-4 text-emerald-400" />,   text: "Cancel anytime" },
+              { icon: <CreditCard className="w-4 h-4 text-emerald-400" />, text: "No card for trial" },
+              { icon: <CheckCircle className="w-4 h-4 text-emerald-400" />, text: "Your data is safe" },
             ].map(t => (
               <div key={t.text} className="flex items-center gap-2">{t.icon}{t.text}</div>
             ))}
           </div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 mb-4">Ready to get started?</h2>
-          <p className="text-slate-500 mb-8">30 days free. Full access. No credit card.</p>
-          <Link to="/register" className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-extrabold rounded-xl shadow-xl shadow-blue-600/30 hover:shadow-2xl hover:scale-[1.02] transition-all text-base">
-            Start Free Trial <ArrowRight className="w-5 h-5" />
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4">Ready to get started?</h2>
+          <p className="text-slate-400 mb-8">30 days free. Full access. No credit card.</p>
+          <Link to="/register" className="inline-flex items-center gap-2 px-8 py-4 bg-white text-slate-900 font-extrabold rounded-xl shadow-lg shadow-white/10 hover:bg-slate-100 transition text-base">
+            Start Free Trial <ChevronRight className="w-5 h-5" />
           </Link>
         </div>
       </section>
 
-      {/* ── FOOTER ─────────────────────────────────────────────────────── */}
-      <footer className="border-t border-slate-100 py-8 bg-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="p-1.5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg">
-              <FileText className="w-3.5 h-3.5 text-white" />
-            </div>
-            <span className="font-bold text-slate-900 text-sm">LumiLedger<span className="text-blue-600">.</span></span>
-          </Link>
-          <p className="text-xs text-slate-400">© {new Date().getFullYear()} LumiLedger by Lumitech Systems.</p>
-          <div className="flex items-center gap-4">
-            <Link to="/"        className="text-xs text-slate-500 hover:text-blue-600 transition">Home</Link>
-            <Link to="/login"   className="text-xs text-slate-500 hover:text-blue-600 transition">Sign In</Link>
-            <Link to="/register" className="text-xs text-slate-500 hover:text-blue-600 transition">Register</Link>
-          </div>
-        </div>
-      </footer>
+      <LandingFooter />
     </div>
   );
 }
