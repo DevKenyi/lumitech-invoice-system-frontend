@@ -61,139 +61,82 @@ import AccountLedger from "./pages/AccountLedger";
 import CashFlowForecast from "./pages/CashFlowForecast";
 import ProformaInvoices from "./pages/ProformaInvoices";
 
-function App() {
-  const [planLimitMessage, setPlanLimitMessage] = useState(null);
+// Shown instead of the full app when the account is suspended or trial has ended.
+// Lives inside OrgProvider so <Billing /> can use OrgContext.
+function SuspendGate({ children }) {
   const [isSuspended, setIsSuspended] = useState(false);
   const [isTrialExpired, setIsTrialExpired] = useState(false);
-  const onBillingPage = window.location.pathname === "/settings/billing";
 
   useEffect(() => {
-    const onPlanLimit = (e) => setPlanLimitMessage(e.detail);
     const onSuspended = () => setIsSuspended(true);
     const onTrialExpired = () => setIsTrialExpired(true);
-    window.addEventListener("plan-limit", onPlanLimit);
     window.addEventListener("account-suspended", onSuspended);
     window.addEventListener("trial-expired", onTrialExpired);
     return () => {
-      window.removeEventListener("plan-limit", onPlanLimit);
       window.removeEventListener("account-suspended", onSuspended);
       window.removeEventListener("trial-expired", onTrialExpired);
     };
   }, []);
 
+  if (isSuspended || isTrialExpired) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 overflow-auto">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+          {/* Minimal header */}
+          <div className="flex items-center justify-between mb-6">
+            <span className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+              Lumi<span className="text-blue-600">Ledger</span>
+            </span>
+            <button
+              onClick={() => { localStorage.removeItem("token"); window.location.href = "/login"; }}
+              className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
+            >
+              Sign out
+            </button>
+          </div>
+
+          {/* Context message */}
+          <div className={`rounded-2xl border px-5 py-4 mb-8 flex items-start gap-3 ${
+            isSuspended
+              ? "bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800"
+              : "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800"
+          }`}>
+            <svg className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isSuspended ? "text-rose-500" : "text-amber-500"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            </svg>
+            <div>
+              <p className={`text-sm font-semibold ${isSuspended ? "text-rose-700 dark:text-rose-300" : "text-amber-700 dark:text-amber-300"}`}>
+                {isSuspended ? "Your account has been suspended" : "Your free trial has ended"}
+              </p>
+              <p className={`text-xs mt-0.5 ${isSuspended ? "text-rose-600 dark:text-rose-400" : "text-amber-600 dark:text-amber-400"}`}>
+                {isSuspended
+                  ? "Upgrade below to restore full access immediately. Nothing has been deleted."
+                  : "Subscribe below to continue. Your data is safe — pick up exactly where you left off."}
+              </p>
+            </div>
+          </div>
+
+          {/* Billing page — no sidebar, no nav */}
+          <Billing />
+        </div>
+      </div>
+    );
+  }
+
+  return children;
+}
+
+function App() {
+  const [planLimitMessage, setPlanLimitMessage] = useState(null);
+
+  useEffect(() => {
+    const onPlanLimit = (e) => setPlanLimitMessage(e.detail);
+    window.addEventListener("plan-limit", onPlanLimit);
+    return () => window.removeEventListener("plan-limit", onPlanLimit);
+  }, []);
+
   return (
     <>
-      {/* Account Suspended — full-screen block */}
-      {isSuspended && !onBillingPage && (
-        <div className="fixed inset-0 z-[9999] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-6">
-          <div className="text-center max-w-lg w-full">
-            {/* Icon */}
-            <div className="relative inline-flex mb-8">
-              <div className="w-24 h-24 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
-                <div className="w-16 h-16 rounded-full bg-rose-500/20 flex items-center justify-center">
-                  <svg className="w-8 h-8 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            {/* Heading */}
-            <h1 className="text-3xl font-bold text-white mb-3">Account Suspended</h1>
-            <p className="text-slate-400 text-base leading-relaxed mb-10 max-w-sm mx-auto">
-              Your organisation's access has been suspended. Upgrade your plan or contact our support team to restore access immediately.
-            </p>
-
-            {/* Actions */}
-            <div className="flex flex-col sm:flex-row gap-3 justify-center mb-10">
-              <a
-                href="/settings/billing"
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-br from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold rounded-xl shadow-lg shadow-blue-600/30 hover:shadow-xl hover:scale-[1.02] transition-all"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                </svg>
-                Upgrade Plan
-              </a>
-              <a
-                href="mailto:support@lumitechsystems.com"
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/15 border border-white/10 text-white font-medium rounded-xl transition backdrop-blur-sm"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                Contact Support
-              </a>
-            </div>
-
-            {/* Divider */}
-            <div className="border-t border-white/10 pt-6">
-              <p className="text-xs text-slate-500">
-                Already resolved?{" "}
-                <button
-                  onClick={() => { localStorage.removeItem("token"); window.location.href = "/login"; }}
-                  className="text-slate-400 hover:text-white underline underline-offset-2 transition"
-                >
-                  Sign in again
-                </button>
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Trial Expired — full-screen block */}
-      {isTrialExpired && !isSuspended && !onBillingPage && (
-        <div className="fixed inset-0 z-[9999] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-6">
-          <div className="text-center max-w-lg w-full">
-            <div className="relative inline-flex mb-8">
-              <div className="w-24 h-24 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                <div className="w-16 h-16 rounded-full bg-amber-500/20 flex items-center justify-center">
-                  <svg className="w-8 h-8 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-            <h1 className="text-3xl font-bold text-white mb-3">Your Free Trial Has Ended</h1>
-            <p className="text-slate-400 text-base leading-relaxed mb-10 max-w-sm mx-auto">
-              Your 30-day free trial has expired. Upgrade to a paid plan to keep your invoices, clients, and data — and continue running your business.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center mb-10">
-              <a
-                href="/settings/billing"
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-br from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold rounded-xl shadow-lg shadow-blue-600/30 hover:shadow-xl hover:scale-[1.02] transition-all"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                </svg>
-                Upgrade Now
-              </a>
-              <a
-                href="mailto:support@lumitechsystems.com"
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/15 border border-white/10 text-white font-medium rounded-xl transition backdrop-blur-sm"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                Talk to Us
-              </a>
-            </div>
-            <div className="border-t border-white/10 pt-6">
-              <p className="text-xs text-slate-500">
-                Already upgraded?{" "}
-                <button
-                  onClick={() => { localStorage.removeItem("token"); window.location.href = "/login"; }}
-                  className="text-slate-400 hover:text-white underline underline-offset-2 transition"
-                >
-                  Sign in again
-                </button>
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Plan Limit — modal banner */}
       {planLimitMessage && (
         <div className="fixed inset-0 z-[9998] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6">
@@ -225,6 +168,7 @@ function App() {
 
       <OrgProvider>
       <BrowserRouter>
+      <SuspendGate>
         <Routes>
 
           {/* PUBLIC */}
@@ -595,6 +539,7 @@ function App() {
           <Route path="*" element={<Navigate to="/login" />} />
 
         </Routes>
+      </SuspendGate>
       </BrowserRouter>
       </OrgProvider>
     </>
