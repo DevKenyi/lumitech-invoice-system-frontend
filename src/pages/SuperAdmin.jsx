@@ -37,6 +37,16 @@ const fmtDateShort = (d) => {
   if (!d) return "—";
   return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 };
+const trialStatus = (trialEndsAt, suspended) => {
+  if (!trialEndsAt) return null;
+  const now = new Date();
+  const end = new Date(trialEndsAt);
+  const daysLeft = Math.ceil((end - now) / (1000 * 60 * 60 * 24));
+  if (daysLeft < 0 || suspended) return { label: "Expired", color: "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300" };
+  if (daysLeft <= 3)  return { label: `${daysLeft}d left`, color: "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300" };
+  if (daysLeft <= 7)  return { label: `${daysLeft}d left`, color: "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300" };
+  return { label: `${daysLeft}d left`, color: "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400" };
+};
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 function Spinner({ size = 6 }) {
@@ -574,14 +584,17 @@ function SuperAdmin() {
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider hidden sm:table-cell">Country</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Joined</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Plan</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider hidden md:table-cell">Trial</th>
                     <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Users</th>
                     <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Invoices</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                   {loading ? (
-                    <tr><td colSpan={6} className="px-6 py-10 text-center"><Spinner /></td></tr>
-                  ) : (dashboard?.recentRegistrations ?? []).map(org => (
+                    <tr><td colSpan={7} className="px-6 py-10 text-center"><Spinner /></td></tr>
+                  ) : (dashboard?.recentRegistrations ?? []).map(org => {
+                    const trial = trialStatus(org.trialEndsAt, org.suspended);
+                    return (
                     <tr key={org.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                       <td className="px-6 py-3">
                         <div className="flex items-center gap-2">
@@ -604,6 +617,13 @@ function SuperAdmin() {
                           {PLAN_LABEL[org.plan] ?? "Free"}
                         </span>
                       </td>
+                      <td className="px-4 py-3 hidden md:table-cell">
+                        {trial ? (
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${trial.color}`}>
+                            {trial.label}
+                          </span>
+                        ) : <span className="text-xs text-slate-300 dark:text-slate-600">—</span>}
+                      </td>
                       <td className="px-4 py-3 text-center text-xs text-slate-600 dark:text-slate-300">{org.userCount}</td>
                       <td className="px-4 py-3 text-center text-xs">
                         <span className={org.invoiceCount === 0 ? "text-rose-500 font-semibold" : "text-slate-600 dark:text-slate-300"}>
@@ -611,7 +631,8 @@ function SuperAdmin() {
                         </span>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

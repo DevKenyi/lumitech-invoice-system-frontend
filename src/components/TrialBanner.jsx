@@ -10,7 +10,13 @@ function TrialBanner() {
 
   useEffect(() => {
     api.get("/api/billing/status")
-      .then(res => setStatus(res.data))
+      .then(res => {
+        setStatus(res.data);
+        // Hard-lock immediately — don't wait for the nightly suspension job
+        if (res.data?.trialExpired && !res.data?.hasActiveSubscription) {
+          window.dispatchEvent(new CustomEvent("trial-expired"));
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -18,19 +24,11 @@ function TrialBanner() {
 
   const { currentPlan, hasActiveSubscription, trialExpired, daysLeftInTrial } = status;
 
-  // Hide if subscription is active
-  if (hasActiveSubscription) return null;
+  if (hasActiveSubscription || trialExpired) return null;
 
-  // Determine which banner to show
   let variant = null;
 
-  if (trialExpired) {
-    variant = {
-      type: "error",
-      message: "Your free trial has expired. Upgrade to continue using LumiLedger.",
-      cta: "Upgrade Now",
-    };
-  } else if (currentPlan === "FREE" && typeof daysLeftInTrial === "number" && daysLeftInTrial <= 7) {
+  if (currentPlan === "FREE" && typeof daysLeftInTrial === "number" && daysLeftInTrial <= 7) {
     variant = {
       type: daysLeftInTrial <= 2 ? "error" : "warning",
       message: daysLeftInTrial === 0
