@@ -69,8 +69,11 @@ function Billing() {
   };
 
   const currentPlan = billing?.currentPlan ?? "FREE";
-  const currentStatus = billing?.subscriptionStatus ?? (currentPlan === "FREE" ? "TRIAL" : "ACTIVE");
-  const isTrial = currentPlan === "FREE";
+  const trialExpired = billing?.trialExpired ?? false;
+  const currentStatus = trialExpired
+    ? "EXPIRED"
+    : (billing?.subscriptionStatus ?? (currentPlan === "FREE" ? "TRIAL" : "ACTIVE"));
+  const isTrial = currentPlan === "FREE" && !trialExpired;
 
   const fmtPrice = (planKey) => {
     const p = planPricing[planKey];
@@ -122,11 +125,12 @@ function Billing() {
                   <div className="flex items-center gap-2">
                     <span className="text-lg font-bold text-slate-900">{PLAN_DISPLAY[currentPlan] ?? currentPlan}</span>
                     <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                      currentStatus === "ACTIVE" ? "bg-emerald-100 text-emerald-700" :
-                      currentStatus === "TRIAL"  ? "bg-amber-100 text-amber-700" :
-                                                   "bg-rose-100 text-rose-700"
+                      currentStatus === "ACTIVE"  ? "bg-emerald-100 text-emerald-700" :
+                      currentStatus === "TRIAL"   ? "bg-amber-100 text-amber-700" :
+                      currentStatus === "EXPIRED" ? "bg-rose-100 text-rose-700" :
+                                                    "bg-slate-100 text-slate-600"
                     }`}>
-                      {currentStatus === "TRIAL" ? "Free Trial" : currentStatus}
+                      {currentStatus === "TRIAL" ? "Free Trial" : currentStatus === "EXPIRED" ? "Expired" : currentStatus}
                     </span>
                   </div>
                   {billing?.trialEndsAt && isTrial && (
