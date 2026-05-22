@@ -33,7 +33,7 @@ function ForgotPassword() {
             <Mail className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-            Lumi<span className="text-blue-600">Cash</span>
+            Lumi<span className="text-blue-600">Ledger</span>
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Reset your password</p>
         </div>
