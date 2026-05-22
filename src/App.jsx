@@ -65,6 +65,7 @@ function App() {
   const [planLimitMessage, setPlanLimitMessage] = useState(null);
   const [isSuspended, setIsSuspended] = useState(false);
   const [isTrialExpired, setIsTrialExpired] = useState(false);
+  const onBillingPage = window.location.pathname === "/settings/billing";
 
   useEffect(() => {
     const onPlanLimit = (e) => setPlanLimitMessage(e.detail);
@@ -83,7 +84,7 @@ function App() {
   return (
     <>
       {/* Account Suspended — full-screen block */}
-      {isSuspended && (
+      {isSuspended && !onBillingPage && (
         <div className="fixed inset-0 z-[9999] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-6">
           <div className="text-center max-w-lg w-full">
             {/* Icon */}
@@ -142,7 +143,7 @@ function App() {
       )}
 
       {/* Trial Expired — full-screen block */}
-      {isTrialExpired && !isSuspended && (
+      {isTrialExpired && !isSuspended && !onBillingPage && (
         <div className="fixed inset-0 z-[9999] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-6">
           <div className="text-center max-w-lg w-full">
             <div className="relative inline-flex mb-8">
