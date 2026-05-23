@@ -16,10 +16,10 @@ export default function CtaSection() {
           </div>
 
           <h2 className="text-3xl sm:text-5xl font-extrabold text-white mb-5 leading-tight">
-            Stop guessing.<br />Start knowing.
+            Your money is out there.<br />Go get it.
           </h2>
           <p className="text-blue-100 text-lg mb-8 leading-relaxed max-w-lg mx-auto">
-            Your business may owe you thousands. In 2 minutes, you'll know exactly how much — and watch that number shrink every month.
+            Stop chasing payments on WhatsApp. In 2 minutes you'll have professional invoices, payment links, and a live P&L — all in one place.
           </p>
 
           {/* Trust bullets */}
@@ -42,7 +42,7 @@ export default function CtaSection() {
               to="/register"
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-blue-700 font-extrabold rounded-xl shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all text-base"
             >
-              Start My Free Trial <ArrowRight className="w-5 h-5" />
+              Start Free — No Card Needed <ArrowRight className="w-5 h-5" />
             </Link>
             <a
               href="#how-it-works"

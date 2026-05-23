@@ -3,21 +3,17 @@ import { ChevronRight } from "lucide-react";
 import useInView from "../../hooks/useInView";
 
 const BEFORE = [
-  "Spreadsheets that never add up",
-  "Chasing clients for payment over WhatsApp",
-  "No idea if you're actually profitable",
-  "Tax season = panic and guesswork",
-  "Not knowing how much your business owes you",
-  "Manually entering everything twice",
+  "Chasing clients for payment over WhatsApp — for weeks",
+  "No idea if your business is actually making money",
+  "Tax time = panic, missing receipts, guesswork",
+  "Spreadsheets that are always wrong or out of date",
 ];
 
 const AFTER = [
-  "Books that update themselves automatically",
-  "Clients pay via payment links in seconds",
-  "Real-time P&L and cash flow dashboard",
-  "VAT calculated, reports one click away",
-  "Capital tracker shows exactly what you're owed",
-  "One platform — invoices, payroll, expenses",
+  "Clients pay via payment link in seconds — Paystack & Flutterwave built in",
+  "Real-time P&L dashboard — see your profit the moment it's made",
+  "VAT auto-calculated. One-click reports, any time",
+  "Books that update themselves. Always correct",
 ];
 
 export default function ProblemSection() {
@@ -30,10 +26,10 @@ export default function ProblemSection() {
             Sound familiar?
           </span>
           <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4 leading-tight">
-            Stop running your business in the dark
+            You built the business.<br />Why don't you know if it's profitable?
           </h2>
           <p className="text-slate-400 max-w-xl mx-auto text-lg">
-            Most African founders manage money on WhatsApp notes and gut feeling. LumiLedger fixes that.
+            Most African founders manage money on WhatsApp notes and gut feeling. There's a better way.
           </p>
         </div>
 
@@ -76,10 +72,11 @@ export default function ProblemSection() {
         <div className="text-center">
           <Link
             to="/register"
-            className="inline-flex items-center gap-2 px-7 py-3.5 bg-white text-slate-900 text-sm font-bold rounded-xl hover:bg-slate-100 transition shadow-lg shadow-white/10"
+            className="inline-flex items-center gap-2 px-8 py-4 bg-white text-slate-900 text-base font-bold rounded-xl hover:bg-slate-100 transition shadow-lg shadow-white/10"
           >
-            Get started free <ChevronRight className="w-4 h-4" />
+            Yes, show me my numbers — Free <ChevronRight className="w-4 h-4" />
           </Link>
+          <p className="mt-3 text-xs text-slate-600">No credit card · 30-day free trial · Cancel anytime</p>
         </div>
       </div>
     </section>

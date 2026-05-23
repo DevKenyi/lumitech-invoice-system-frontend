@@ -51,16 +51,15 @@ export default function LandingHero() {
 
         {/* Headline */}
         <h1 className="text-4xl sm:text-5xl lg:text-[64px] font-extrabold text-white leading-[1.08] tracking-tight mb-6">
-          Run your business{" "}
+          Stop chasing clients.{" "}
           <span className="bg-gradient-to-r from-blue-400 via-indigo-400 to-violet-400 bg-clip-text text-transparent">
-            finances on autopilot
-          </span>{" "}
-          💸
+            Start getting paid.
+          </span>
         </h1>
 
         <p className="text-lg sm:text-xl text-slate-400 leading-relaxed mb-8 max-w-2xl mx-auto">
-          Invoices, payroll, expenses, and live P&amp;L — built for Nigeria, Ghana &amp; South Africa.
-          Your books update themselves. You just focus on selling.
+          Send professional invoices in 60 seconds, collect payment instantly, and finally know
+          if your business is actually profitable — built for Nigeria, Ghana &amp; South Africa.
         </p>
 
         {/* Feature bullets */}
@@ -69,7 +68,7 @@ export default function LandingHero() {
           <span className="text-white/20">·</span>
           <span>💱 Auto VAT &amp; tax reports</span>
           <span className="text-white/20">·</span>
-          <span>⚡ Send invoice in 60 seconds</span>
+          <span>⚡ Invoice out in 60 seconds</span>
         </div>
 
         {/* CTAs */}
@@ -78,7 +77,7 @@ export default function LandingHero() {
             to="/register"
             className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-white text-slate-900 text-sm font-bold rounded-xl hover:bg-slate-100 transition shadow-lg shadow-white/10"
           >
-            Start Free — 30 Days <ChevronRight className="w-4 h-4" />
+            Get Paid Faster — Start Free <ChevronRight className="w-4 h-4" />
           </Link>
           <a
             href="#how-it-works"

@@ -4,18 +4,18 @@ import useInView from "../../hooks/useInView";
 const testimonials = [
   {
     quote: "I finally know how much my business owes me. I had put in over ₦800,000 and had no idea how much was coming back. LumiLedger showed me everything on day one.",
-    name: "Amara O.", role: "Business Owner, Lagos", initials: "AO",
+    name: "Amara O.", role: "Business Owner, Lagos 🇳🇬", initials: "AO",
     gradient: "from-blue-500 to-indigo-600", metric: "₦800K tracked",
   },
   {
-    quote: "As an accountant managing 6 businesses, this is the only tool that gives me the full picture — journal entries, balance sheet, and capital tracking all in one place.",
-    name: "Chidi N.", role: "Accountant, Abuja", initials: "CN",
-    gradient: "from-emerald-500 to-teal-600", metric: "6 clients managed",
+    quote: "I used to chase clients on WhatsApp for weeks. Now I send a payment link with every invoice and most clients pay within 24 hours. My cash flow has completely changed.",
+    name: "Kwame A.", role: "Logistics Founder, Accra 🇬🇭", initials: "KA",
+    gradient: "from-emerald-500 to-teal-600", metric: "Paid in 24hrs",
   },
   {
-    quote: "Set up in 5 minutes. My dashboard now shows revenue, expenses, profit — and how much my business owes me personally. I've never had this clarity before.",
-    name: "Funmilayo B.", role: "Branding Consultant, Ibadan", initials: "FB",
-    gradient: "from-violet-500 to-purple-600", metric: "Set up in 5 min",
+    quote: "As a small agency in Johannesburg, we had no idea if we were actually profitable month to month. LumiLedger's live P&L dashboard changed everything — set up took under 10 minutes.",
+    name: "Thabo M.", role: "Creative Agency, Johannesburg 🇿🇦", initials: "TM",
+    gradient: "from-violet-500 to-purple-600", metric: "Live P&L in 10 min",
   },
 ];
 
@@ -33,7 +33,7 @@ export default function TestimonialsSection() {
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
             Trusted by 100+ businesses
           </h2>
-          <p className="text-slate-400 max-w-lg mx-auto">₦50M+ tracked. Real businesses. Real clarity.</p>
+          <p className="text-slate-400 max-w-lg mx-auto">Nigeria · Ghana · South Africa — real businesses, real clarity.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
