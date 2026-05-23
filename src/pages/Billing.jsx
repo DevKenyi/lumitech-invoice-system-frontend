@@ -336,7 +336,7 @@ function Billing() {
                   "✦ Expense reporting & claims",
                   "Receipt upload & approval flow",
                   "Audit Trail (full activity log)",
-                  "VAT & WHT tracking (FIRS)",
+                  "VAT & WHT tracking (NRS)",
                   "Multi-business management",
                   "Team roles & permissions",
                   "Priority support",

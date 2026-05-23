@@ -9,7 +9,7 @@ export const COUNTRY_CONFIG = {
     symbol: "₦",
     locale: "en-NG",
     vatLabel: "VAT (7.5%)",
-    taxBody: "FIRS",
+    taxBody: "NRS",
     plans: {
       essential:     { price: "₦9,900",  annual: "₦7,900",  save: "₦23,900", sub: "Then ₦9,900/month. Cancel anytime." },
       business:      { price: "₦24,900", annual: "₦19,900", save: "₦59,900", sub: "Then ₦24,900/month. Cancel anytime." },

@@ -19,7 +19,7 @@ const DEFAULTS = {
   baseCurrency: "NGN",
   country: "NG",
   defaultVatRate: 7.5,
-  taxAuthorityLabel: "FIRS",
+  taxAuthorityLabel: "NRS",
   orgName: "",
 };
 
@@ -40,7 +40,7 @@ export function OrgProvider({ children }) {
           baseCurrency: d.baseCurrency || "NGN",
           country: d.country || "NG",
           defaultVatRate: d.defaultVatRate ?? 7.5,
-          taxAuthorityLabel: d.taxAuthorityLabel || "FIRS",
+          taxAuthorityLabel: d.taxAuthorityLabel || "NRS",
           orgName: d.name || "",
         });
       })

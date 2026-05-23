@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 const COUNTRIES = [
   {
     flag: "🇳🇬", country: "Nigeria",      currency: "NGN — Naira",
-    tax: "VAT 7.5% · FIRS", payroll: "PAYE · Pension · NHF",
+    tax: "VAT 7.5% · NRS", payroll: "PAYE · Pension · NHF",
     accent: "from-green-500/20 to-white/10", border: "border-green-500/30",
   },
   {
@@ -76,8 +76,8 @@ export default function CountriesSection() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             {[
               { icon: "💱", title: "Correct currency", desc: "Nigeria → ₦. Ghana → ₵. South Africa → R. No settings needed — it just works from the moment you register." },
-              { icon: "📊", title: "Right VAT rate", desc: "Nigeria 7.5% FIRS. Ghana 15% GRA. South Africa 15% SARS. Applied automatically to every invoice." },
-              { icon: "🏛️", title: "Local compliance", desc: "Tax reports formatted for your authority — FIRS, GRA, or SARS — ready to file when you need them." },
+              { icon: "📊", title: "Right VAT rate", desc: "Nigeria 7.5% NRS. Ghana 15% GRA. South Africa 15% SARS. Applied automatically to every invoice." },
+              { icon: "🏛️", title: "Local compliance", desc: "Tax reports formatted for your authority — NRS, GRA, or SARS — ready to file when you need them." },
             ].map(f => (
               <div key={f.title} className="flex gap-3">
                 <span className="text-2xl shrink-0">{f.icon}</span>

@@ -35,7 +35,7 @@ const FEATURES = [
   {
     icon: FileText,
     gradient: "from-rose-500 to-pink-500",
-    title: "VAT & WHT tracking (FIRS/GRA/SARS)",
+    title: "VAT & WHT tracking (NRS/GRA/SARS)",
     desc: "Correct rates applied automatically per country. One-click export ready for tax filing.",
   },
   {
@@ -66,7 +66,7 @@ const FEATURES = [
 
 const COUNTRIES = [
   {
-    flag: "🇳🇬", name: "Nigeria",      currency: "₦ Naira", vat: "7.5%",  authority: "FIRS", deductions: "PAYE, Pension, NHF",
+    flag: "🇳🇬", name: "Nigeria",      currency: "₦ Naira", vat: "7.5%",  authority: "NRS", deductions: "PAYE, Pension, NHF",
     border: "border-emerald-500/25", badge: "bg-emerald-500/15 text-emerald-400",
   },
   {
@@ -100,7 +100,7 @@ const PLAN_FEATURES = {
     "Budget vs Actual & Cash Flow Forecast",
     "Expense reporting & claims",
     "Full audit trail",
-    "VAT & WHT tracking (FIRS/GRA/SARS)",
+    "VAT & WHT tracking (NRS/GRA/SARS)",
     "Multi-business management",
     "Priority support",
   ],

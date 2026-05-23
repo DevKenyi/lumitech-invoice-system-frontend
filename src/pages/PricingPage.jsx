@@ -48,7 +48,7 @@ const features = [
     category: "Compliance & Audit",
     rows: [
       { label: "Audit Trail (full activity log)", values: [false, false, false, true]  },
-      { label: "VAT & WHT tracking (FIRS)",       values: [false, false, false, true]  },
+      { label: "VAT & WHT tracking (NRS)",       values: [false, false, false, true]  },
     ],
   },
   {

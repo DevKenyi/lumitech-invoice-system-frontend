@@ -26,7 +26,7 @@ const THEMES = [
 ];
 
 const COUNTRIES = [
-  { code: "NG", flag: "🇳🇬", name: "Nigeria",      currency: "NGN", vat: "7.5%",  authority: "FIRS" },
+  { code: "NG", flag: "🇳🇬", name: "Nigeria",      currency: "NGN", vat: "7.5%",  authority: "NRS" },
   { code: "GH", flag: "🇬🇭", name: "Ghana",        currency: "GHS", vat: "15%",   authority: "GRA"  },
   { code: "ZA", flag: "🇿🇦", name: "South Africa", currency: "ZAR", vat: "15%",   authority: "SARS" },
   { code: "KE", flag: "🇰🇪", name: "Kenya",        currency: "KES", vat: "16%",   authority: "KRA"  },
@@ -46,7 +46,7 @@ const EMPTY_FORM = {
   flutterwaveSecretKeyConfigured: false, flutterwaveWebhookSecretConfigured: false,
   acceptFlutterwave: false,
   acceptBankTransfer: true, acceptCash: false,
-  baseCurrency: "NGN", country: "NG", defaultVatRate: 7.5, taxAuthorityLabel: "FIRS",
+  baseCurrency: "NGN", country: "NG", defaultVatRate: 7.5, taxAuthorityLabel: "NRS",
 };
 
 function OrgSettings() {
