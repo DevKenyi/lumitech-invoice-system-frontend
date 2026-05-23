@@ -40,7 +40,7 @@ export default function CtaSection() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               to="/register"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-blue-700 font-extrabold rounded-xl shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all text-base"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-blue-700 font-extrabold rounded-xl shadow-2xl shadow-white/30 hover:shadow-white/50 hover:scale-[1.04] hover:bg-blue-50 transition-all text-base"
             >
               Start Free — No Card Needed <ArrowRight className="w-5 h-5" />
             </Link>

@@ -73,12 +73,16 @@ export default function LandingHero() {
 
         {/* CTAs */}
         <div className="flex flex-col sm:flex-row gap-3 justify-center mb-6">
-          <Link
-            to="/register"
-            className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-white text-slate-900 text-sm font-bold rounded-xl hover:bg-slate-100 transition shadow-lg shadow-white/10"
-          >
-            Get Paid Faster — Start Free <ChevronRight className="w-4 h-4" />
-          </Link>
+          <div className="relative group">
+            {/* Pulse ring behind button */}
+            <span className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 opacity-60 blur-md scale-105 group-hover:opacity-80 group-hover:scale-110 transition-all duration-300 animate-pulse" />
+            <Link
+              to="/register"
+              className="relative inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-600 text-white text-sm font-bold rounded-xl hover:from-blue-400 hover:via-indigo-400 hover:to-violet-500 transition-all shadow-xl shadow-indigo-500/50 hover:shadow-indigo-500/70 hover:scale-[1.03]"
+            >
+              Get Paid Faster — Start Free <ChevronRight className="w-4 h-4" />
+            </Link>
+          </div>
           <a
             href="#how-it-works"
             className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-white/8 border border-white/12 text-white text-sm font-semibold rounded-xl hover:bg-white/12 transition"

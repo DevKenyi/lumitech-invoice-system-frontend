@@ -28,7 +28,7 @@ export default function LandingNav() {
           <Link to="/login" className="text-sm font-medium text-slate-400 hover:text-white transition hidden sm:block">
             Login
           </Link>
-          <Link to="/register" className="inline-flex items-center gap-1.5 px-4 py-2 bg-white text-slate-900 text-sm font-bold rounded-xl hover:bg-slate-100 transition shadow-lg shadow-white/10">
+          <Link to="/register" className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-sm font-bold rounded-xl hover:from-blue-400 hover:to-indigo-500 transition-all shadow-lg shadow-indigo-500/40 hover:shadow-indigo-500/60 hover:scale-[1.03]">
             Start Free <ChevronRight className="w-3.5 h-3.5" />
           </Link>
           <button onClick={() => setOpen(!open)} className="md:hidden p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition">

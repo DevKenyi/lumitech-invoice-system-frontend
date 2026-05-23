@@ -72,7 +72,7 @@ export default function ProblemSection() {
         <div className="text-center">
           <Link
             to="/register"
-            className="inline-flex items-center gap-2 px-8 py-4 bg-white text-slate-900 text-base font-bold rounded-xl hover:bg-slate-100 transition shadow-lg shadow-white/10"
+            className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-600 text-white text-base font-bold rounded-xl hover:from-blue-400 hover:via-indigo-400 hover:to-violet-500 transition-all shadow-xl shadow-indigo-500/50 hover:shadow-indigo-500/70 hover:scale-[1.02]"
           >
             Yes, show me my numbers — Free <ChevronRight className="w-4 h-4" />
           </Link>
