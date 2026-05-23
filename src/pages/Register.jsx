@@ -64,6 +64,7 @@ export default function Register() {
       await api.post("/api/auth/register", { ...form, userType: selectedUserType.toUpperCase() });
       setUserType(selectedUserType);
       setRegisteredAs(selectedUserType);
+      if (window.fbq) window.fbq('track', 'CompleteRegistration', { content_name: selectedUserType });
       setRegistered(true);
     } catch (err) {
       setError(err.response?.data?.message || "Registration failed. Please try again.");
@@ -136,7 +137,7 @@ export default function Register() {
                   <button
                     key={value}
                     type="button"
-                    onClick={() => { setSelectedUserType(value); setStep(1); }}
+                    onClick={() => { setSelectedUserType(value); if (window.fbq) window.fbq('track', 'Lead', { content_name: value }); setStep(1); }}
                     className={`w-full flex items-start gap-4 p-5 rounded-2xl border-2 text-left transition-all duration-200 group hover:scale-[1.01] ${
                       selectedUserType === value
                         ? color === "blue" ? "border-blue-500 bg-blue-50" : "border-violet-500 bg-violet-50"

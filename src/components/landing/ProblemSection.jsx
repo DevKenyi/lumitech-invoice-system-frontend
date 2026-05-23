@@ -72,6 +72,7 @@ export default function ProblemSection() {
         <div className="text-center">
           <Link
             to="/register"
+            onClick={() => window.fbq && window.fbq('track', 'Lead', { content_name: 'problem_cta' })}
             className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-600 text-white text-base font-bold rounded-xl hover:from-blue-400 hover:via-indigo-400 hover:to-violet-500 transition-all shadow-xl shadow-indigo-500/50 hover:shadow-indigo-500/70 hover:scale-[1.02]"
           >
             Yes, show me my numbers — Free <ChevronRight className="w-4 h-4" />

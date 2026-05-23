@@ -78,6 +78,7 @@ export default function LandingHero() {
             <span className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 opacity-60 blur-md scale-105 group-hover:opacity-80 group-hover:scale-110 transition-all duration-300 animate-pulse" />
             <Link
               to="/register"
+              onClick={() => window.fbq && window.fbq('track', 'Lead', { content_name: 'hero_cta' })}
               className="relative inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-600 text-white text-sm font-bold rounded-xl hover:from-blue-400 hover:via-indigo-400 hover:to-violet-500 transition-all shadow-xl shadow-indigo-500/50 hover:shadow-indigo-500/70 hover:scale-[1.03]"
             >
               Get Paid Faster — Start Free <ChevronRight className="w-4 h-4" />
