@@ -91,7 +91,7 @@ const TESTIMONIALS = [
 ];
 
 const PLAN_FEATURES = {
-  essential:     ["Invoicing & payments", "Expense tracking", "Financial reports", "Capital tracking", "Up to 50 clients", "Email reminders"],
+  essential:     ["Invoicing & payments", "Financial reports", "Capital tracking", "Up to 50 clients", "Email reminders"],
   business:      ["Everything in Essential", "Unlimited clients", "Multi-user access", "Chart of accounts & journal entries", "Bank reconciliation", "Fixed assets & depreciation"],
   accountantPro: [
     "Everything in Business",

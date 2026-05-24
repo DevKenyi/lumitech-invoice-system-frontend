@@ -80,7 +80,7 @@ export default function PricingSection() {
             </div>
             <p className="text-slate-400 text-sm mb-5">For business owners managing their finances</p>
             <ul className="space-y-2.5 mb-6 flex-1">
-              {["Invoicing & payments", "Expense tracking", "Financial reports", "Capital tracking", "Up to 50 clients", "Email reminders"].map(f => (
+              {["Invoicing & payments", "Financial reports", "Capital tracking", "Up to 50 clients", "Email reminders"].map(f => (
                 <li key={f} className="flex items-start gap-2 text-sm text-slate-300">
                   <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />{f}
                 </li>

@@ -233,7 +233,6 @@ function Billing() {
               <ul className="space-y-2.5 mb-6 flex-1">
                 {[
                   "Invoicing & payments",
-                  "Expense tracking",
                   "Financial reports",
                   "Capital tracking",
                   "Up to 50 clients",
