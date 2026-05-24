@@ -262,6 +262,7 @@ function OrgRow({ org, isOwnOrg, onSuspend, onUnsuspend, onDelete, onPlanChange 
 const TABS = [
   { id: "overview",      label: "Overview",       icon: Activity },
   { id: "followup",      label: "Follow-up",      icon: Bell },
+  { id: "engagement",    label: "Engagement",     icon: TrendingUp },
   { id: "crm",           label: "CRM",            icon: MessageSquare },
   { id: "organisations", label: "Organisations",  icon: Building2 },
   { id: "suspicious",    label: "Suspicious",     icon: AlertTriangle },
@@ -302,6 +303,8 @@ function SuperAdmin() {
   const [boardToken, setBoardToken]     = useState(null);
   const [crmSearch, setCrmSearch]       = useState("");
   const [showExcluded, setShowExcluded] = useState(false);
+  const [engagement, setEngagement]     = useState([]);
+  const [engSearch, setEngSearch]       = useState("");
   const [loading, setLoading]   = useState(true);
   const [savingPricing, setSavingPricing] = useState(false);
   const [suspendTarget, setSuspendTarget] = useState(null);
@@ -324,8 +327,9 @@ function SuperAdmin() {
       api.get("/api/superadmin/suspicious-registrations").catch(() => ({ data: [] })),
       api.get("/api/superadmin/followup/list").catch(() => ({ data: [] })),
       api.get("/api/superadmin/followup/board-token").catch(() => ({ data: {} })),
+      api.get("/api/superadmin/engagement").catch(() => ({ data: [] })),
     ])
-      .then(([dashRes, orgsRes, pricingRes, suspiciousRes, followupRes, boardRes]) => {
+      .then(([dashRes, orgsRes, pricingRes, suspiciousRes, followupRes, boardRes, engRes]) => {
         setDashboard(dashRes.data);
         setOrgs(orgsRes.data.content ?? orgsRes.data ?? []);
         const rows = pricingRes.data ?? [];
@@ -336,6 +340,7 @@ function SuperAdmin() {
         setSuspicious(suspiciousRes.data ?? []);
         setFollowupOrgs(followupRes.data ?? []);
         setBoardToken(boardRes.data?.boardToken ?? null);
+        setEngagement(engRes.data ?? []);
       })
       .catch(() => showToast("Failed to load platform data", "error"))
       .finally(() => setLoading(false));
@@ -837,6 +842,139 @@ function SuperAdmin() {
                 </table>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── ENGAGEMENT TAB ──────────────────────────────────────────────────── */}
+      {tab === "engagement" && (
+        <div className="space-y-4">
+          {/* Explainer */}
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl px-5 py-4 text-sm text-blue-700 dark:text-blue-300">
+            <strong>Engagement score</strong> — 4 milestones tracked per org. Each tick = they did the thing. Score 4/4 = fully activated user.
+            <span className="ml-2 text-blue-500 dark:text-blue-400">Logins track from today onwards (historical logins not captured).</span>
+          </div>
+
+          {/* Toolbar */}
+          <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 flex flex-wrap items-center gap-3">
+            <div className="relative flex-1 min-w-48">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search org name or email…"
+                value={engSearch}
+                onChange={e => setEngSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700/50 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition"
+              />
+            </div>
+            <span className="text-xs text-slate-400">{engagement.length} organisations</span>
+          </div>
+
+          {/* Table */}
+          <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 dark:bg-slate-800/50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Organisation</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Score</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">1st Invoice</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Returned</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-wider">Added Client</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">Reports</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Plan</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Signed up</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                  {engagement
+                    .filter(o => {
+                      const q = engSearch.toLowerCase();
+                      return !q || o.orgName?.toLowerCase().includes(q) || o.orgEmail?.toLowerCase().includes(q);
+                    })
+                    .map(o => {
+                      const scoreColor = o.score === 4 ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300"
+                        : o.score >= 2 ? "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
+                        : o.score === 1 ? "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
+                        : "bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400";
+                      return (
+                        <tr key={o.orgId} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+                                {o.orgName?.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <p className="font-medium text-slate-900 dark:text-white">{o.orgName}</p>
+                                {o.orgEmail && <p className="text-xs text-slate-400">{o.orgEmail}</p>}
+                                {o.ownerPhone && <p className="text-xs text-slate-400">{o.ownerPhone}</p>}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span className={`inline-flex items-center justify-center w-10 h-7 rounded-full text-xs font-extrabold ${scoreColor}`}>
+                              {o.score}/4
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {o.createdFirstInvoice
+                              ? <div className="flex flex-col items-center gap-0.5">
+                                  <span className="text-lg leading-none">✅</span>
+                                  <span className="text-[10px] text-slate-400">{o.totalInvoices} total</span>
+                                  {o.firstInvoiceAt && <span className="text-[10px] text-slate-400">{fmtDateShort(o.firstInvoiceAt)}</span>}
+                                </div>
+                              : <span className="text-lg leading-none">❌</span>
+                            }
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {o.returnedAfterSignup
+                              ? <div className="flex flex-col items-center gap-0.5">
+                                  <span className="text-lg leading-none">✅</span>
+                                  <span className="text-[10px] text-slate-400">{o.totalLogins} logins</span>
+                                  {o.lastLoginAt && <span className="text-[10px] text-slate-400">Last: {fmtDateShort(o.lastLoginAt)}</span>}
+                                </div>
+                              : <span className="text-lg leading-none" title={o.totalLogins === 1 ? "Only logged in once (signup)" : "Not yet"}>
+                                  {o.totalLogins === 1 ? "1×" : "❌"}
+                                </span>
+                            }
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {o.addedCustomer
+                              ? <div className="flex flex-col items-center gap-0.5">
+                                  <span className="text-lg leading-none">✅</span>
+                                  <span className="text-[10px] text-slate-400">{o.totalClients} clients</span>
+                                </div>
+                              : <span className="text-lg leading-none">❌</span>
+                            }
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {o.exploredReports
+                              ? <div className="flex flex-col items-center gap-0.5">
+                                  <span className="text-lg leading-none">✅</span>
+                                  <span className="text-[10px] text-slate-400">{o.totalReportViews}× viewed</span>
+                                  {o.firstReportAt && <span className="text-[10px] text-slate-400">{fmtDateShort(o.firstReportAt)}</span>}
+                                </div>
+                              : <span className="text-lg leading-none">❌</span>
+                            }
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-0.5 rounded text-xs font-semibold ${PLAN_STYLE[o.plan] ?? ""}`}>
+                              {PLAN_LABEL[o.plan] ?? o.plan}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-xs text-slate-400">{fmtDate(o.registeredAt)}</td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+              {engagement.filter(o => {
+                const q = engSearch.toLowerCase();
+                return !q || o.orgName?.toLowerCase().includes(q) || o.orgEmail?.toLowerCase().includes(q);
+              }).length === 0 && (
+                <div className="py-12 text-center text-sm text-slate-400">No organisations found.</div>
+              )}
+            </div>
           </div>
         </div>
       )}
