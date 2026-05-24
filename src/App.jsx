@@ -66,14 +66,19 @@ import FollowupBoard from "./pages/FollowupBoard";
 // Shown instead of the full app when the account is suspended or trial has ended.
 // Lives inside OrgProvider so <Billing /> can use OrgContext.
 function SuspendGate({ children }) {
-  const [checked, setChecked] = useState(false);
-  const [isSuspended, setIsSuspended] = useState(false);
-  const [isTrialExpired, setIsTrialExpired] = useState(false);
-  const [billingStatus, setBillingStatus] = useState(null);
+  // Single atomic state — all values land in one render, eliminating the
+  // inter-render window where isSuspended=true but fraudFlagged is still null.
+  const [gate, setGate] = useState({
+    checked: false,
+    suspended: false,
+    trialExpired: false,
+    fraudFlagged: false,
+    billingData: null,
+  });
 
   useEffect(() => {
-    const onSuspended = () => setIsSuspended(true);
-    const onTrialExpired = () => setIsTrialExpired(true);
+    const onSuspended  = () => setGate(prev => ({ ...prev, suspended: true }));
+    const onTrialExpired = () => setGate(prev => ({ ...prev, trialExpired: true }));
     window.addEventListener("account-suspended", onSuspended);
     window.addEventListener("trial-expired", onTrialExpired);
 
@@ -85,21 +90,20 @@ function SuspendGate({ children }) {
       import("./services/api").then(({ default: api }) => {
         api.get("/api/billing/status")
           .then(res => {
-            const { suspended, trialExpired, hasActiveSubscription } = res.data;
-            setBillingStatus(res.data);
-            if (suspended || (trialExpired && !hasActiveSubscription)) {
-              if (trialExpired && !hasActiveSubscription) {
-                setIsTrialExpired(true);
-              } else {
-                setIsSuspended(true);
-              }
-            }
+            const { suspended, trialExpired, hasActiveSubscription, fraudFlagged } = res.data;
+            setGate({
+              checked: true,
+              suspended: !!suspended,
+              trialExpired: !!(trialExpired && !hasActiveSubscription),
+              fraudFlagged: !!fraudFlagged,
+              billingData: res.data,
+            });
           })
           .catch(() => { /* interceptor fires the right event on 403 */ })
-          .finally(() => setChecked(true));
+          .finally(() => setGate(prev => ({ ...prev, checked: true })));
       });
     } else {
-      setChecked(true);
+      setGate(prev => ({ ...prev, checked: true }));
     }
 
     return () => {
@@ -109,9 +113,10 @@ function SuspendGate({ children }) {
   }, []);
 
   // Hold rendering until initial billing check completes — prevents flash of the app
-  if (!checked && !isSuspended && !isTrialExpired) return null;
+  if (!gate.checked && !gate.suspended && !gate.trialExpired) return null;
 
-  const isFraudFlagged = billingStatus?.fraudFlagged;
+  const { suspended: isSuspended, trialExpired: isTrialExpired, fraudFlagged: isFraudFlagged } = gate;
+  const billingStatus = gate.billingData;
 
   // ── Fraud / account-under-review gate ────────────────────────────────────
   if (isSuspended && isFraudFlagged) {
