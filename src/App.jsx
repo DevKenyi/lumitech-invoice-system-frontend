@@ -95,7 +95,7 @@ function SuspendGate({ children }) {
               }
             }
           })
-          .catch(() => {/* interceptor fires the right event on 403 */})
+          .catch(() => { /* interceptor fires the right event on 403 */ })
           .finally(() => setChecked(true));
       });
     } else {
@@ -111,6 +111,79 @@ function SuspendGate({ children }) {
   // Hold rendering until initial billing check completes — prevents flash of the app
   if (!checked && !isSuspended && !isTrialExpired) return null;
 
+  const isFraudFlagged = billingStatus?.fraudFlagged;
+
+  // ── Fraud / account-under-review gate ────────────────────────────────────
+  if (isSuspended && isFraudFlagged) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center px-4">
+        <div className="w-full max-w-md">
+          {/* Logo */}
+          <div className="text-center mb-8">
+            <span className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+              Lumi<span className="text-blue-600">Ledger</span>
+            </span>
+          </div>
+
+          {/* Card */}
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-rose-200 dark:border-rose-800 shadow-lg overflow-hidden">
+            {/* Red header strip */}
+            <div className="bg-rose-600 px-6 py-4 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M4.93 19h14.14a2 2 0 001.73-3L13.73 4a2 2 0 00-3.46 0L3.2 16a2 2 0 001.73 3z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-white font-semibold text-sm">Account Under Review</p>
+                <p className="text-rose-200 text-xs">Action required to restore access</p>
+              </div>
+            </div>
+
+            <div className="px-6 py-6 space-y-5">
+              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                Your account has been temporarily suspended because our system detected activity that matches a pattern of duplicate or fraudulent registrations.
+              </p>
+
+              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                If this is a genuine account, please send <strong className="text-slate-800 dark:text-slate-100">proof of identity</strong> (e.g. a government-issued ID or business registration document) to:
+              </p>
+
+              <a
+                href="mailto:support@lumitechsystems.com?subject=Account%20Review%20Request"
+                className="flex items-center gap-3 px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/40 transition group"
+              >
+                <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                <div>
+                  <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 group-hover:underline">support@lumitechsystems.com</p>
+                  <p className="text-xs text-blue-500 dark:text-blue-400">Click to send an email</p>
+                </div>
+              </a>
+
+              <div className="bg-slate-50 dark:bg-slate-700/40 rounded-xl px-4 py-3">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Once verified, our team will restore your access — typically within 24 hours. Your data is safe and has not been deleted.
+                </p>
+              </div>
+            </div>
+
+            <div className="px-6 pb-6">
+              <button
+                onClick={() => { localStorage.removeItem("token"); window.location.href = "/login"; }}
+                className="w-full py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition"
+              >
+                Sign out
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Billing / trial-expired gate ──────────────────────────────────────────
   if (isSuspended || isTrialExpired) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900 overflow-auto">
