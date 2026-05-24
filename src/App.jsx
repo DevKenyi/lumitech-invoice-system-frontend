@@ -140,17 +140,23 @@ function SuspendGate({ children }) {
               </div>
             </div>
 
-            <div className="px-6 py-6 space-y-5">
-              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                Your account has been temporarily suspended because our system detected activity that matches a pattern of duplicate or fraudulent registrations.
-              </p>
+            <div className="px-6 py-6 space-y-4">
+              {/* Reason box */}
+              <div className="bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800 rounded-xl px-4 py-3">
+                <p className="text-[11px] font-semibold text-rose-500 dark:text-rose-400 uppercase tracking-wider mb-1">Reason</p>
+                <p className="text-sm text-rose-700 dark:text-rose-300 leading-relaxed">
+                  {billingStatus?.suspendedReason
+                    ? billingStatus.suspendedReason.split(".")[0] + "."
+                    : "Your account has been flagged for suspected duplicate or fraudulent registration."}
+                </p>
+              </div>
 
               <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                If this is a genuine account, please send <strong className="text-slate-800 dark:text-slate-100">proof of identity</strong> (e.g. a government-issued ID or business registration document) to:
+                If this is a genuine business account, please send <strong className="text-slate-800 dark:text-slate-100">proof of identity</strong> — a government-issued ID or business registration document — to our support team and we will review within 24 hours.
               </p>
 
               <a
-                href="mailto:support@lumitechsystems.com?subject=Account%20Review%20Request"
+                href={`mailto:support@lumitechsystems.com?subject=Account%20Review%20Request&body=Hi%20LumiLedger%20Support%2C%0A%0AMy%20account%20has%20been%20suspended.%20I%20would%20like%20to%20request%20a%20review.%0A%0AOrganisation%3A%20${encodeURIComponent(billingStatus?.orgName ?? "")}`}
                 className="flex items-center gap-3 px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/40 transition group"
               >
                 <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -158,13 +164,13 @@ function SuspendGate({ children }) {
                 </svg>
                 <div>
                   <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 group-hover:underline">support@lumitechsystems.com</p>
-                  <p className="text-xs text-blue-500 dark:text-blue-400">Click to send an email</p>
+                  <p className="text-xs text-blue-500 dark:text-blue-400">Click to open email — attach your ID document</p>
                 </div>
               </a>
 
               <div className="bg-slate-50 dark:bg-slate-700/40 rounded-xl px-4 py-3">
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Once verified, our team will restore your access — typically within 24 hours. Your data is safe and has not been deleted.
+                  Your data is safe and has not been deleted. Access is restored as soon as our team verifies your identity.
                 </p>
               </div>
             </div>
