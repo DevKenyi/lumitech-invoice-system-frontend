@@ -813,53 +813,57 @@ export default function Docs() {
   useEffect(() => { setMobileTocOpen(false); }, []);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
+    // overflow-x-hidden prevents any accidental horizontal scroll on narrow screens
+    <div className="min-h-screen bg-white dark:bg-slate-900 text-slate-900 dark:text-white overflow-x-hidden">
 
       {/* ── Top bar ── */}
       <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-b border-slate-200 dark:border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-3">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 h-14 flex items-center gap-2 sm:gap-3">
 
           {/* Logo */}
-          <Link to="/" className="text-base font-bold tracking-tight shrink-0">
+          <Link to="/" className="text-sm sm:text-base font-bold tracking-tight shrink-0">
             Lumi<span className="text-blue-600">Ledger</span>
           </Link>
-          <span className="text-slate-300 dark:text-slate-700 select-none">|</span>
+          <span className="text-slate-300 dark:text-slate-700 select-none hidden sm:block">|</span>
           <span className="text-sm text-slate-500 dark:text-slate-400 shrink-0 hidden sm:block">Docs</span>
 
-          {/* Search */}
-          <div className="flex-1 max-w-lg relative mx-2">
+          {/* Search — font-size 16px prevents iOS Safari from zooming on focus */}
+          <div className="flex-1 relative mx-1 sm:mx-2">
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
-              type="text"
-              placeholder="Search documentation…"
+              type="search"
+              placeholder="Search docs…"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full pl-9 pr-8 py-2 text-sm bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 focus:bg-white dark:focus:bg-slate-700 rounded-lg outline-none transition placeholder-slate-400"
+              style={{ fontSize: 16 }}
+              className="w-full pl-9 pr-10 py-2 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 focus:bg-white dark:focus:bg-slate-700 rounded-lg outline-none transition placeholder-slate-400 text-slate-900 dark:text-white"
             />
             {search && (
+              // 44×44px tap target for the clear button
               <button
                 onClick={() => setSearch("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 hover:text-slate-600 flex items-center justify-center"
+                className="absolute right-0 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                aria-label="Clear search"
               >
                 ✕
               </button>
             )}
           </div>
 
-          {/* Back to app */}
+          {/* Back — desktop only */}
           <button
             onClick={() => navigate(-1)}
-            className="ml-auto shrink-0 text-xs text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition hidden sm:block"
+            className="shrink-0 text-xs text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition hidden sm:block whitespace-nowrap"
           >
             ← Back
           </button>
 
-          {/* Mobile TOC toggle */}
+          {/* Mobile TOC toggle — 44×44px touch target */}
           <button
             onClick={() => setMobileTocOpen(v => !v)}
-            className="lg:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition shrink-0"
+            className="lg:hidden w-11 h-11 flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition shrink-0 -mr-1"
             aria-label="Open table of contents"
           >
             <svg className="w-5 h-5 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -874,38 +878,51 @@ export default function Docs() {
         {/* ── Sidebar TOC ── */}
         <aside
           className={`
-            fixed lg:sticky top-14 h-[calc(100vh-56px)] w-72 shrink-0 z-30
+            fixed lg:sticky top-14 h-[calc(100vh-56px)] shrink-0 z-30
+            w-[min(17rem,85vw)] lg:w-64
             bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800
             overflow-y-auto transition-transform duration-200 ease-in-out
             ${mobileTocOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
           `}
         >
-          <nav className="p-4 pb-8">
-            <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2 mb-3">
-              Contents
-            </p>
+          <nav className="p-4 pb-10">
+            <div className="flex items-center justify-between mb-3 px-1">
+              <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                Contents
+              </p>
+              {/* Mobile close button inside TOC */}
+              <button
+                onClick={() => setMobileTocOpen(false)}
+                className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
 
             {filtered.length === 0 && (
               <p className="text-sm text-slate-400 px-2 py-4">No results for "{search}"</p>
             )}
 
             {filtered.map(section => (
-              <div key={section.id} className="mb-5">
+              <div key={section.id} className="mb-4">
+                {/* Category — 44px touch height */}
                 <button
                   onClick={() => scrollTo(section.id)}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left hover:bg-slate-100 dark:hover:bg-slate-800 transition group"
+                  className="w-full flex items-center gap-2 px-2 py-2.5 rounded-xl text-left hover:bg-slate-100 dark:hover:bg-slate-800 transition group min-h-[44px]"
                 >
                   <span className="text-base shrink-0">{section.emoji}</span>
-                  <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
+                  <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition leading-tight">
                     {section.category}
                   </span>
                 </button>
-                <ul className="ml-7 mt-1 space-y-0.5">
+                {/* Items — 44px touch height each */}
+                <ul className="ml-7 mt-0.5 space-y-0.5">
                   {section.items.map(item => (
                     <li key={item.id}>
                       <button
                         onClick={() => scrollTo(item.id)}
-                        className="w-full text-left px-2 py-1 text-[13px] text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition truncate"
+                        className="w-full text-left px-2 py-2.5 text-[13px] text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition min-h-[44px] flex items-center leading-tight"
                       >
                         {item.title}
                       </button>
@@ -917,7 +934,7 @@ export default function Docs() {
           </nav>
         </aside>
 
-        {/* Mobile overlay */}
+        {/* Mobile overlay — tap to close sidebar */}
         {mobileTocOpen && (
           <div
             className="fixed inset-0 bg-black/40 z-20 lg:hidden"
@@ -926,26 +943,27 @@ export default function Docs() {
         )}
 
         {/* ── Main content ── */}
-        <main className="flex-1 min-w-0 px-4 sm:px-8 lg:px-12 py-8 pb-24">
+        <main className="flex-1 min-w-0 px-4 sm:px-8 lg:px-12 py-6 sm:py-8 pb-24">
 
           {/* Hero — only when not searching */}
           {!q && (
-            <div className="mb-12">
-              <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white mb-3 tracking-tight">
+            <div className="mb-10 sm:mb-12">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 dark:text-white mb-2 sm:mb-3 tracking-tight">
                 LumiLedger Documentation
               </h1>
-              <p className="text-slate-500 dark:text-slate-400 text-base max-w-2xl leading-relaxed">
+              <p className="text-slate-500 dark:text-slate-400 text-sm sm:text-base max-w-2xl leading-relaxed">
                 Everything you need to use LumiLedger confidently. Browse by section or search for any topic above.
               </p>
-              <div className="mt-6 flex flex-wrap gap-2">
+              {/* Quick-jump pills */}
+              <div className="mt-5 flex flex-wrap gap-2">
                 {SECTIONS.map(s => (
                   <button
                     key={s.id}
                     onClick={() => scrollTo(s.id)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 hover:text-blue-700 dark:hover:text-blue-300 transition"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 hover:text-blue-700 dark:hover:text-blue-300 transition min-h-[36px]"
                   >
                     <span>{s.emoji}</span>
-                    {s.category}
+                    <span className="hidden xs:inline">{s.category}</span>
                   </button>
                 ))}
               </div>
@@ -954,19 +972,24 @@ export default function Docs() {
 
           {/* Search results header */}
           {q && (
-            <div className="mb-8">
+            <div className="mb-6 sm:mb-8">
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                <strong className="text-slate-800 dark:text-slate-200">{totalResults}</strong> result{totalResults !== 1 ? "s" : ""} for{" "}
+                <strong className="text-slate-800 dark:text-slate-200">{totalResults}</strong>{" "}
+                result{totalResults !== 1 ? "s" : ""} for{" "}
                 <strong className="text-slate-800 dark:text-slate-200">"{search}"</strong>
               </p>
             </div>
           )}
 
+          {/* No results */}
           {filtered.length === 0 && (
             <div className="text-center py-20">
               <p className="text-4xl mb-3">🔍</p>
-              <p className="text-slate-500 dark:text-slate-400">No documentation found for "{search}".</p>
-              <button onClick={() => setSearch("")} className="mt-3 text-sm text-blue-600 hover:underline">
+              <p className="text-slate-500 dark:text-slate-400 text-sm">No results for "{search}".</p>
+              <button
+                onClick={() => setSearch("")}
+                className="mt-4 px-4 py-2 text-sm text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition"
+              >
                 Clear search
               </button>
             </div>
@@ -974,41 +997,44 @@ export default function Docs() {
 
           {/* Sections */}
           {filtered.map(section => (
-            <section key={section.id} id={section.id} className="mb-14 scroll-mt-20">
-
+            <section
+              key={section.id}
+              id={section.id}
+              className="mb-12 sm:mb-14 scroll-mt-[72px]"
+            >
               {/* Section heading */}
-              <div className="flex items-center gap-3 mb-5 pb-3 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-2xl">{section.emoji}</span>
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white">{section.category}</h2>
+              <div className="flex items-center gap-3 mb-4 sm:mb-5 pb-3 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-xl sm:text-2xl">{section.emoji}</span>
+                <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">{section.category}</h2>
               </div>
 
-              {/* Items */}
-              <div className="space-y-3">
+              {/* Accordion items */}
+              <div className="space-y-2.5 sm:space-y-3">
                 {section.items.map(item => {
                   const open = isOpen(item.id);
                   return (
                     <div
                       key={item.id}
                       id={item.id}
-                      className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden scroll-mt-20"
+                      className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden scroll-mt-[72px]"
                     >
-                      {/* Item header */}
+                      {/* Item header — min 56px for comfortable touch */}
                       <button
                         onClick={() => toggle(item.id)}
-                        className="w-full flex items-center justify-between px-5 py-4 text-left bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition"
+                        className="w-full flex items-center justify-between px-4 sm:px-5 py-4 text-left bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition active:bg-slate-100 dark:active:bg-slate-700 min-h-[56px]"
                       >
-                        <div className="min-w-0 pr-4">
-                          <p className="font-semibold text-slate-900 dark:text-white text-sm">
+                        <div className="min-w-0 pr-3">
+                          <p className="font-semibold text-slate-900 dark:text-white text-sm leading-snug">
                             {highlight(item.title, search)}
                           </p>
                           {item.summary && (
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-snug line-clamp-2 sm:line-clamp-1">
                               {highlight(item.summary, search)}
                             </p>
                           )}
                         </div>
                         <svg
-                          className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+                          className={`w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
                           fill="none" stroke="currentColor" viewBox="0 0 24 24"
                         >
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -1017,7 +1043,7 @@ export default function Docs() {
 
                       {/* Item body */}
                       {open && (
-                        <div className="px-5 py-5 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-200 dark:border-slate-700 space-y-5">
+                        <div className="px-4 sm:px-5 py-4 sm:py-5 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-200 dark:border-slate-700 space-y-4 sm:space-y-5">
 
                           {/* Free-form content */}
                           {item.content && (
@@ -1032,13 +1058,13 @@ export default function Docs() {
                               <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
                                 Step-by-step
                               </p>
-                              <ol className="space-y-2.5">
+                              <ol className="space-y-3">
                                 {item.steps.map((step, i) => (
                                   <li key={i} className="flex gap-3 text-sm text-slate-700 dark:text-slate-300">
-                                    <span className="flex-shrink-0 w-5 h-5 mt-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-[11px] font-bold flex items-center justify-center">
+                                    <span className="flex-shrink-0 w-6 h-6 mt-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-[11px] font-bold flex items-center justify-center">
                                       {i + 1}
                                     </span>
-                                    <span className="leading-relaxed">{highlight(step, search)}</span>
+                                    <span className="leading-relaxed pt-0.5">{highlight(step, search)}</span>
                                   </li>
                                 ))}
                               </ol>
@@ -1049,11 +1075,11 @@ export default function Docs() {
                           {item.tips?.length > 0 && (
                             <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-xl px-4 py-3.5">
                               <p className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-widest mb-2.5">Tips</p>
-                              <ul className="space-y-1.5">
+                              <ul className="space-y-2">
                                 {item.tips.map((tip, i) => (
                                   <li key={i} className="flex gap-2 text-sm text-amber-800 dark:text-amber-300 leading-relaxed">
                                     <span className="text-amber-500 shrink-0 mt-0.5">•</span>
-                                    {highlight(tip, search)}
+                                    <span>{highlight(tip, search)}</span>
                                   </li>
                                 ))}
                               </ul>
@@ -1073,7 +1099,7 @@ export default function Docs() {
 
           {/* Footer */}
           {!q && (
-            <div className="mt-16 pt-8 border-t border-slate-100 dark:border-slate-800 text-center">
+            <div className="mt-12 sm:mt-16 pt-8 border-t border-slate-100 dark:border-slate-800 text-center">
               <p className="text-sm text-slate-400 dark:text-slate-500">
                 Still need help?{" "}
                 <a
@@ -1082,7 +1108,7 @@ export default function Docs() {
                 >
                   Contact support
                 </a>{" "}
-                and our team will get back to you within 24 hours.
+                — our team responds within 24 hours.
               </p>
             </div>
           )}
