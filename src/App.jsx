@@ -77,38 +77,52 @@ function SuspendGate({ children }) {
   });
 
   useEffect(() => {
-    const onSuspended  = () => setGate(prev => ({ ...prev, suspended: true }));
+    const onSuspended    = () => setGate(prev => ({ ...prev, suspended: true }));
     const onTrialExpired = () => setGate(prev => ({ ...prev, trialExpired: true }));
     window.addEventListener("account-suspended", onSuspended);
     window.addEventListener("trial-expired", onTrialExpired);
 
-    // Initial check — runs before rendering children so there's no flash of the
-    // full app for expired/suspended accounts. /api/billing/status is whitelisted
-    // in JwtAuthenticationFilter even when suspended.
-    const token = localStorage.getItem("token");
-    if (token) {
-      import("./services/api").then(({ default: api }) => {
-        api.get("/api/billing/status")
-          .then(res => {
-            const { suspended, trialExpired, hasActiveSubscription, fraudFlagged } = res.data;
-            setGate({
-              checked: true,
-              suspended: !!suspended,
-              trialExpired: !!(trialExpired && !hasActiveSubscription),
-              fraudFlagged: !!fraudFlagged,
-              billingData: res.data,
-            });
-          })
-          .catch(() => { /* interceptor fires the right event on 403 */ })
-          .finally(() => setGate(prev => ({ ...prev, checked: true })));
-      });
-    } else {
-      setGate(prev => ({ ...prev, checked: true }));
-    }
+    // Extracted so it can be called both on initial mount and after login.
+    // /api/billing/status is whitelisted in JwtAuthenticationFilter even when
+    // suspended, so this always reaches the server for a logged-in user.
+    const runCheck = () => {
+      const token = localStorage.getItem("token");
+      if (token) {
+        import("./services/api").then(({ default: api }) => {
+          api.get("/api/billing/status")
+            .then(res => {
+              const { suspended, trialExpired, hasActiveSubscription, fraudFlagged } = res.data;
+              setGate({
+                checked: true,
+                suspended: !!suspended,
+                trialExpired: !!(trialExpired && !hasActiveSubscription),
+                fraudFlagged: !!fraudFlagged,
+                billingData: res.data,
+              });
+            })
+            .catch(() => { /* interceptor fires the right event on 403 */ })
+            .finally(() => setGate(prev => ({ ...prev, checked: true })));
+        });
+      } else {
+        setGate(prev => ({ ...prev, checked: true }));
+      }
+    };
+
+    // Re-run the billing check whenever the user logs in during the same session.
+    // Without this, the gate stays open from the initial no-token check on the
+    // login page and never re-evaluates after the token is stored.
+    const onLoggedIn = () => {
+      setGate({ checked: false, suspended: false, trialExpired: false, fraudFlagged: false, billingData: null });
+      runCheck();
+    };
+    window.addEventListener("user-logged-in", onLoggedIn);
+
+    runCheck();
 
     return () => {
       window.removeEventListener("account-suspended", onSuspended);
       window.removeEventListener("trial-expired", onTrialExpired);
+      window.removeEventListener("user-logged-in", onLoggedIn);
     };
   }, []);
 

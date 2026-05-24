@@ -53,6 +53,10 @@ function Login() {
       // correct region is shown immediately without a flash of NGN defaults
       await reloadOrg();
 
+      // Signal SuspendGate to re-run the billing check with the new token.
+      // Without this, the gate stays open from the no-token check on mount.
+      window.dispatchEvent(new CustomEvent("user-logged-in"));
+
       if (role === "STAFF" || role === "STAFF_EXPENSE") {
         navigate("/staff-home");
       } else if (role === "ADMIN") {
