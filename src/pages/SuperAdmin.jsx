@@ -299,6 +299,7 @@ function SuperAdmin() {
   const [pricingRows, setPricingRows] = useState([]);
   const [pricingEdits, setPricingEdits] = useState({});
   const [suspicious, setSuspicious] = useState([]);
+  const [fraudScanModal, setFraudScanModal] = useState(null); // null | "confirm" | "loading" | {result}
   const [followupOrgs, setFollowupOrgs] = useState([]);
   const [boardToken, setBoardToken]     = useState(null);
   const [crmSearch, setCrmSearch]       = useState("");
@@ -442,9 +443,126 @@ function SuperAdmin() {
   const followUp = dashboard?.followUpList ?? [];
   const highCount = followUp.filter(f => f.priority === "HIGH").length;
 
+  // ── Fraud Scan Modal ─────────────────────────────────────────────────────────
+  const runFraudScan = async () => {
+    setFraudScanModal("loading");
+    try {
+      const res = await api.post("/api/superadmin/fraud-scan");
+      const fresh = await api.get("/api/superadmin/suspicious-registrations");
+      setSuspicious(fresh.data ?? []);
+      setFraudScanModal(res.data);
+    } catch {
+      setFraudScanModal(null);
+    }
+  };
+
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
+      {/* Fraud Scan Modal */}
+      {fraudScanModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-700 overflow-hidden">
+            {fraudScanModal === "confirm" && (
+              <>
+                <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700 flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-900/40">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-semibold text-slate-900 dark:text-white">Run Fraud Scan</h2>
+                    <p className="text-xs text-slate-400 mt-0.5">This will scan all existing accounts</p>
+                  </div>
+                </div>
+                <div className="px-6 py-5 space-y-3">
+                  <p className="text-sm text-slate-600 dark:text-slate-300">The scan will check every organisation for:</p>
+                  <ul className="space-y-2">
+                    {[
+                      ["Duplicate phone numbers", "Same phone used across multiple accounts"],
+                      ["Email local-part match", "e.g. name@gmail.com vs name@yahoo.com"],
+                      ["Similar org names", "Names ≥75% identical (Levenshtein similarity)"],
+                    ].map(([title, desc]) => (
+                      <li key={title} className="flex items-start gap-2.5">
+                        <span className="mt-0.5 w-4 h-4 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0 text-[10px] font-bold">!</span>
+                        <div>
+                          <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{title}</p>
+                          <p className="text-xs text-slate-400">{desc}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-lg">
+                    Newly matched accounts will be automatically suspended and an alert sent to support@lumitechsystems.com.
+                  </p>
+                </div>
+                <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-700 flex justify-end gap-2">
+                  <button onClick={() => setFraudScanModal(null)} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition">Cancel</button>
+                  <button onClick={runFraudScan} className="px-4 py-2 text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition">Run Scan</button>
+                </div>
+              </>
+            )}
+
+            {fraudScanModal === "loading" && (
+              <div className="px-6 py-12 text-center">
+                <div className="w-10 h-10 border-4 border-rose-200 border-t-rose-600 rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Scanning all accounts…</p>
+                <p className="text-xs text-slate-400 mt-1">This may take a few seconds</p>
+              </div>
+            )}
+
+            {fraudScanModal && typeof fraudScanModal === "object" && (
+              <>
+                <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700 flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/40">
+                    <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-semibold text-slate-900 dark:text-white">Scan Complete</h2>
+                    <p className="text-xs text-slate-400 mt-0.5">Results are shown below</p>
+                  </div>
+                </div>
+                <div className="px-6 py-5 space-y-4">
+                  <div className="grid grid-cols-3 gap-3">
+                    {[
+                      { label: "Scanned", value: fraudScanModal.orgsScanned, color: "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300" },
+                      { label: "Newly Flagged", value: fraudScanModal.orgsFlagged, color: fraudScanModal.orgsFlagged > 0 ? "bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300" : "bg-slate-50 dark:bg-slate-700/40 text-slate-500" },
+                      { label: "Already Flagged", value: fraudScanModal.alreadyFlagged ?? 0, color: "bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300" },
+                    ].map(s => (
+                      <div key={s.label} className={`rounded-xl p-3 text-center ${s.color}`}>
+                        <p className="text-2xl font-bold">{s.value}</p>
+                        <p className="text-[11px] font-medium mt-0.5">{s.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {fraudScanModal.orgsFlagged > 0 ? (
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Newly suspended</p>
+                      <ul className="space-y-1">
+                        {fraudScanModal.flaggedOrgNames?.map((name, i) => (
+                          <li key={i} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 flex-shrink-0" />
+                            {name}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-500 dark:text-slate-400 text-center">
+                      {(fraudScanModal.alreadyFlagged ?? 0) > 0
+                        ? `No new accounts flagged — ${fraudScanModal.alreadyFlagged} already flagged from a previous scan.`
+                        : "No suspicious accounts detected."}
+                    </p>
+                  )}
+                </div>
+                <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-700 flex justify-end">
+                  <button onClick={() => setFraudScanModal(null)} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition">Done</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -1178,14 +1296,7 @@ function SuperAdmin() {
               </span>
             )}
             <button
-              onClick={async () => {
-                if (!window.confirm("Run fraud scan on all existing accounts? Matches will be auto-suspended and support will be alerted.")) return;
-                const res = await api.post("/api/superadmin/fraud-scan");
-                const d = res.data;
-                alert(`Scan complete.\nOrgs scanned: ${d.orgsScanned}\nFlagged & suspended: ${d.orgsFlagged}${d.flaggedOrgNames?.length ? "\n\nFlagged:\n" + d.flaggedOrgNames.join("\n") : ""}`);
-                const fresh = await api.get("/api/superadmin/suspicious-registrations");
-                setSuspicious(fresh.data ?? []);
-              }}
+              onClick={() => setFraudScanModal("confirm")}
               className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-700 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/30 transition"
             >
               <AlertTriangle className="w-3 h-3" /> Scan for Fraud
@@ -1255,7 +1366,6 @@ function SuperAdmin() {
                         {s.suspended && (
                           <button
                             onClick={async () => {
-                              if (!window.confirm(`Unsuspend "${s.orgName}" and clear fraud flags?`)) return;
                               await api.post(`/api/superadmin/organisations/${s.orgId}/unsuspend`);
                               setSuspicious(prev => prev.map(x => x.orgId === s.orgId ? { ...x, suspended: false, fraudFlagged: false, abuseFlags: null } : x));
                             }}
