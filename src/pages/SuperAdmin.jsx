@@ -1171,9 +1171,9 @@ function SuperAdmin() {
           <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-amber-500" />
             <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Suspicious Registrations</h2>
-            <span className="text-xs text-slate-400 ml-1">— accounts sharing a phone number (possible trial abuse)</span>
+            <span className="text-xs text-slate-400 ml-1">— duplicate phone, same email local-part, similar org name, or same IP</span>
             {suspicious.length > 0 && (
-              <span className="ml-auto px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">
+              <span className="ml-auto px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300">
                 {suspicious.length}
               </span>
             )}
@@ -1189,23 +1189,32 @@ function SuperAdmin() {
                 <thead className="bg-slate-50 dark:bg-slate-800/50">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Organisation</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Phone</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Phone / IP</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Country</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Plan</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Registered</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Flag</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Fraud Signals</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                   {suspicious.map((s, i) => (
-                    <tr key={i} className="hover:bg-amber-50/40 dark:hover:bg-amber-900/10 transition-colors">
+                    <tr key={i} className={`transition-colors ${s.fraudFlagged ? "bg-rose-50/30 dark:bg-rose-900/10 hover:bg-rose-50/60" : "hover:bg-amber-50/40 dark:hover:bg-amber-900/10"}`}>
                       <td className="px-4 py-3">
-                        <p className="font-medium text-slate-900 dark:text-white">{s.orgName}</p>
+                        <div className="flex items-center gap-1.5">
+                          {s.fraudFlagged && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-600 text-white uppercase tracking-wide">AUTO-FLAGGED</span>
+                          )}
+                        </div>
+                        <p className="font-medium text-slate-900 dark:text-white mt-0.5">{s.orgName}</p>
                         {s.orgEmail && <p className="text-xs text-slate-400">{s.orgEmail}</p>}
                       </td>
-                      <td className="px-4 py-3 font-mono text-slate-700 dark:text-slate-300">{s.phone ?? "—"}</td>
-                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
+                      <td className="px-4 py-3">
+                        <p className="font-mono text-slate-700 dark:text-slate-300 text-xs">{s.phone ?? "—"}</p>
+                        {s.registrationIp && <p className="font-mono text-[10px] text-slate-400 mt-0.5">IP: {s.registrationIp}</p>}
+                      </td>
+                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400 text-xs">
                         {COUNTRY_FLAG[s.country] ?? ""} {COUNTRY_NAME[s.country] ?? s.country ?? "—"}
                       </td>
                       <td className="px-4 py-3">
@@ -1221,9 +1230,27 @@ function SuperAdmin() {
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-400">{fmtDate(s.createdAt)}</td>
                       <td className="px-4 py-3">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 uppercase tracking-wide">
-                          {s.reason?.replace("_", " ")}
-                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {(s.abuseFlags ?? s.reason ?? "").split("|").map((flag, fi) => flag && (
+                            <span key={fi} className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 uppercase tracking-wide whitespace-nowrap">
+                              {flag.replace(/_/g, " ")}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {s.suspended && (
+                          <button
+                            onClick={async () => {
+                              if (!window.confirm(`Unsuspend "${s.orgName}" and clear fraud flags?`)) return;
+                              await api.post(`/api/superadmin/organisations/${s.orgId}/unsuspend`);
+                              setSuspicious(prev => prev.map(x => x.orgId === s.orgId ? { ...x, suspended: false, fraudFlagged: false, abuseFlags: null } : x));
+                            }}
+                            className="px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition whitespace-nowrap"
+                          >
+                            Clear &amp; Unsuspend
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
