@@ -775,10 +775,24 @@ function highlight(text, q) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function Docs() {
-  const [search, setSearch]           = useState("");
-  const [expanded, setExpanded]       = useState({});
+  const [search, setSearch]               = useState("");
+  const [expanded, setExpanded]           = useState({});
   const [mobileTocOpen, setMobileTocOpen] = useState(false);
+  const [printAll, setPrintAll]           = useState(false);
   const navigate = useNavigate();
+
+  // Expand all sections for printing, then reset when print dialog closes
+  const handlePrint = () => {
+    setPrintAll(true);
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => window.print())
+    );
+  };
+  useEffect(() => {
+    const reset = () => setPrintAll(false);
+    window.addEventListener("afterprint", reset);
+    return () => window.removeEventListener("afterprint", reset);
+  }, []);
 
   const q = search.toLowerCase().trim();
 
@@ -797,8 +811,8 @@ export default function Docs() {
 
   const totalResults = filtered.reduce((n, s) => n + s.items.length, 0);
 
-  // When searching, auto-expand everything
-  const isOpen = (id) => q ? true : !!expanded[id];
+  // Expand when searching, printing, or manually toggled
+  const isOpen = (id) => q || printAll ? true : !!expanded[id];
   const toggle = (id) => {
     if (q) return; // search keeps everything open
     setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
@@ -816,8 +830,34 @@ export default function Docs() {
     // overflow-x-hidden prevents any accidental horizontal scroll on narrow screens
     <div className="min-h-screen bg-white dark:bg-slate-900 text-slate-900 dark:text-white overflow-x-hidden">
 
+      {/* ── Print styles ── injected into <head> via a style tag */}
+      <style>{`
+        @media print {
+          .docs-no-print { display: none !important; }
+          .docs-print-title { display: block !important; }
+          .docs-main { padding: 0 !important; max-width: 100% !important; }
+          body { background: white !important; color: black !important; }
+          .docs-section { break-before: auto; }
+          .docs-section + .docs-section { break-before: page; }
+          .docs-item { break-inside: avoid; }
+          * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+        .docs-print-title { display: none; }
+      `}</style>
+
+      {/* Print-only title block — hidden on screen, visible when printing */}
+      <div className="docs-print-title px-8 pt-8 pb-4 border-b border-slate-200">
+        <p className="text-2xl font-bold tracking-tight">
+          Lumi<span style={{ color: "#2563eb" }}>Ledger</span> — Help & Documentation
+        </p>
+        <p className="text-sm text-slate-500 mt-1">
+          Printed {new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+          {" · "}lumitechsystems.com/docs
+        </p>
+      </div>
+
       {/* ── Top bar ── */}
-      <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-b border-slate-200 dark:border-slate-800">
+      <header className="docs-no-print sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 h-14 flex items-center gap-2 sm:gap-3">
 
           {/* Logo */}
@@ -852,6 +892,18 @@ export default function Docs() {
             )}
           </div>
 
+          {/* Download PDF */}
+          <button
+            onClick={handlePrint}
+            title="Download as PDF"
+            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition hidden sm:inline-flex"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            PDF
+          </button>
+
           {/* Back — desktop only */}
           <button
             onClick={() => navigate(-1)}
@@ -875,9 +927,10 @@ export default function Docs() {
 
       <div className="max-w-7xl mx-auto flex">
 
-        {/* ── Sidebar TOC ── */}
+        {/* ── Sidebar TOC — hidden when printing ── */}
         <aside
           className={`
+            docs-no-print
             fixed lg:sticky top-14 h-[calc(100vh-56px)] shrink-0 z-30
             w-[min(17rem,85vw)] lg:w-64
             bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800
@@ -943,7 +996,7 @@ export default function Docs() {
         )}
 
         {/* ── Main content ── */}
-        <main className="flex-1 min-w-0 px-4 sm:px-8 lg:px-12 py-6 sm:py-8 pb-24">
+        <main className="docs-main flex-1 min-w-0 px-4 sm:px-8 lg:px-12 py-6 sm:py-8 pb-24">
 
           {/* Hero — only when not searching */}
           {!q && (
@@ -1000,7 +1053,7 @@ export default function Docs() {
             <section
               key={section.id}
               id={section.id}
-              className="mb-12 sm:mb-14 scroll-mt-[72px]"
+              className="docs-section mb-12 sm:mb-14 scroll-mt-[72px]"
             >
               {/* Section heading */}
               <div className="flex items-center gap-3 mb-4 sm:mb-5 pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -1016,7 +1069,7 @@ export default function Docs() {
                     <div
                       key={item.id}
                       id={item.id}
-                      className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden scroll-mt-[72px]"
+                      className="docs-item border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden scroll-mt-[72px]"
                     >
                       {/* Item header — min 56px for comfortable touch */}
                       <button
@@ -1034,7 +1087,7 @@ export default function Docs() {
                           )}
                         </div>
                         <svg
-                          className={`w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+                          className={`docs-no-print w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
                           fill="none" stroke="currentColor" viewBox="0 0 24 24"
                         >
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />

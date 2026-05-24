@@ -7,6 +7,7 @@ import {
   ChevronDown, AlertTriangle, X, Trash2, UserCircle,
   CreditCard, Save, TrendingUp, Activity, Bell,
   PhoneCall, Mail, Search, RefreshCw, Download, Copy, Link2, MessageSquare, RotateCcw,
+  BookOpen, ExternalLink,
 } from "lucide-react";
 import Toast from "../components/Toast";
 import ConfirmModal from "../components/ConfirmModal";
@@ -621,6 +622,38 @@ function SuperAdmin() {
             <StatCard label="New This Week"  value={dashboard?.newOrgsThisWeek}     icon={TrendingUp}  color="bg-gradient-to-br from-sky-500 to-cyan-500" />
             <StatCard label="New This Month" value={dashboard?.newOrgsThisMonth}    icon={Bell}        color="bg-gradient-to-br from-pink-500 to-rose-500" />
             <StatCard label="Active Orgs (30d)" value={dashboard?.activeOrgsThisMonth} icon={Activity} color="bg-gradient-to-br from-teal-500 to-emerald-600" sub="created ≥1 invoice" />
+          </div>
+
+          {/* Documentation portal card */}
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                <BookOpen className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-semibold text-slate-900 dark:text-white text-sm">Help & Documentation Portal</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                  {window.location.origin}/docs — share with users so they can self-serve
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 sm:ml-auto shrink-0 flex-wrap">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(window.location.origin + "/docs");
+                  showToast("Docs link copied to clipboard");
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-600 transition"
+              >
+                <Copy size={12} /> Copy Link
+              </button>
+              <button
+                onClick={() => window.open("/docs", "_blank", "noopener,noreferrer")}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition"
+              >
+                <ExternalLink size={12} /> Open Docs
+              </button>
+            </div>
           </div>
 
           {/* Activity charts — registration + invoice trends */}
