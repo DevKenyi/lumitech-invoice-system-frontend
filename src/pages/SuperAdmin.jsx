@@ -6,7 +6,7 @@ import {
   ShieldCheck, Building2, Users, FileText, CheckCircle, XCircle,
   ChevronDown, AlertTriangle, X, Trash2, UserCircle,
   CreditCard, Save, TrendingUp, Activity, Bell,
-  PhoneCall, Mail, Search, RefreshCw,
+  PhoneCall, Mail, Search, RefreshCw, Download, Copy, Link2, MessageSquare,
 } from "lucide-react";
 import Toast from "../components/Toast";
 import ConfirmModal from "../components/ConfirmModal";
@@ -262,10 +262,28 @@ function OrgRow({ org, isOwnOrg, onSuspend, onUnsuspend, onDelete, onPlanChange 
 const TABS = [
   { id: "overview",      label: "Overview",       icon: Activity },
   { id: "followup",      label: "Follow-up",      icon: Bell },
+  { id: "crm",           label: "CRM",            icon: MessageSquare },
   { id: "organisations", label: "Organisations",  icon: Building2 },
   { id: "suspicious",    label: "Suspicious",     icon: AlertTriangle },
   { id: "pricing",       label: "Pricing",        icon: CreditCard },
 ];
+
+const FOLLOWUP_STATUS_LABEL = {
+  CALLED:           "Called",
+  INTERESTED:       "Interested",
+  NOT_INTERESTED:   "Not Interested",
+  NO_ANSWER:        "No Answer",
+  CONVERTED:        "Converted",
+  FOLLOW_UP_LATER:  "Follow Up Later",
+};
+const FOLLOWUP_STATUS_COLOR = {
+  CALLED:           "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300",
+  INTERESTED:       "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300",
+  NOT_INTERESTED:   "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400",
+  NO_ANSWER:        "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
+  CONVERTED:        "bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300",
+  FOLLOW_UP_LATER:  "bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300",
+};
 
 // ── Main ───────────────────────────────────────────────────────────────────────
 function SuperAdmin() {
@@ -280,6 +298,8 @@ function SuperAdmin() {
   const [pricingRows, setPricingRows] = useState([]);
   const [pricingEdits, setPricingEdits] = useState({});
   const [suspicious, setSuspicious] = useState([]);
+  const [followupOrgs, setFollowupOrgs] = useState([]);
+  const [crmSearch, setCrmSearch] = useState("");
   const [loading, setLoading]   = useState(true);
   const [savingPricing, setSavingPricing] = useState(false);
   const [suspendTarget, setSuspendTarget] = useState(null);
@@ -300,8 +320,9 @@ function SuperAdmin() {
       api.get("/api/superadmin/organisations"),
       api.get("/api/superadmin/billing/pricing").catch(() => ({ data: [] })),
       api.get("/api/superadmin/suspicious-registrations").catch(() => ({ data: [] })),
+      api.get("/api/superadmin/followup/list").catch(() => ({ data: [] })),
     ])
-      .then(([dashRes, orgsRes, pricingRes, suspiciousRes]) => {
+      .then(([dashRes, orgsRes, pricingRes, suspiciousRes, followupRes]) => {
         setDashboard(dashRes.data);
         setOrgs(orgsRes.data.content ?? orgsRes.data ?? []);
         const rows = pricingRes.data ?? [];
@@ -310,6 +331,7 @@ function SuperAdmin() {
         rows.forEach(r => { edits[`${r.country}-${r.plan}`] = String(r.amount); });
         setPricingEdits(edits);
         setSuspicious(suspiciousRes.data ?? []);
+        setFollowupOrgs(followupRes.data ?? []);
       })
       .catch(() => showToast("Failed to load platform data", "error"))
       .finally(() => setLoading(false));
@@ -811,6 +833,138 @@ function SuperAdmin() {
                 </table>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── CRM / FOLLOWUP TAB ──────────────────────────────────────────────── */}
+      {tab === "crm" && (
+        <div className="space-y-4">
+          {/* Toolbar */}
+          <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 flex flex-wrap items-center gap-3">
+            <div className="relative flex-1 min-w-48">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search by name, email or phone…"
+                value={crmSearch}
+                onChange={e => setCrmSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700/50 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition"
+              />
+            </div>
+            <a
+              href="#"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl transition shadow-sm"
+              onClick={e => {
+                e.preventDefault();
+                import("../services/api").then(({ default: a }) => {
+                  a.get("/api/superadmin/followup/export.csv", { responseType: "blob" }).then(res => {
+                    const url = URL.createObjectURL(res.data);
+                    const link = document.createElement("a");
+                    link.href = url;
+                    link.download = `followup-export-${new Date().toISOString().slice(0,10)}.csv`;
+                    link.click();
+                    URL.revokeObjectURL(url);
+                  });
+                });
+              }}
+            >
+              <Download className="w-4 h-4" /> Export CSV
+            </a>
+            <span className="text-xs text-slate-400">{followupOrgs.length} organisations</span>
+          </div>
+
+          {/* Table */}
+          <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 dark:bg-slate-800/50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Organisation</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Phone</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Plan</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Invoices</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Notes</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Last Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Followup Link</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                  {followupOrgs
+                    .filter(o => {
+                      const q = crmSearch.toLowerCase();
+                      return !q || o.orgName?.toLowerCase().includes(q) || o.orgEmail?.toLowerCase().includes(q) || o.ownerPhone?.includes(q);
+                    })
+                    .map(o => (
+                    <tr key={o.orgId} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+                            {o.orgName?.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-medium text-slate-900 dark:text-white">{o.orgName}</p>
+                            {o.orgEmail && <p className="text-xs text-slate-400">{o.orgEmail}</p>}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300 font-mono text-xs">{o.ownerPhone ?? "—"}</td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-0.5 rounded text-xs font-semibold ${PLAN_STYLE[o.plan] ?? ""}`}>
+                          {PLAN_LABEL[o.plan] ?? o.plan}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{o.invoiceCount}</td>
+                      <td className="px-4 py-3">
+                        {o.noteCount > 0
+                          ? <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-full text-xs font-semibold">
+                              <MessageSquare className="w-3 h-3" /> {o.noteCount}
+                            </span>
+                          : <span className="text-slate-300 dark:text-slate-600 text-xs">—</span>
+                        }
+                      </td>
+                      <td className="px-4 py-3">
+                        {o.latestStatus
+                          ? <span className={`px-2 py-0.5 rounded text-xs font-semibold ${FOLLOWUP_STATUS_COLOR[o.latestStatus] ?? ""}`}>
+                              {FOLLOWUP_STATUS_LABEL[o.latestStatus] ?? o.latestStatus}
+                            </span>
+                          : <span className="text-slate-300 dark:text-slate-600 text-xs">No followup yet</span>
+                        }
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <a
+                            href={o.followupLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-medium transition"
+                          >
+                            <Link2 className="w-3 h-3" /> Open
+                          </a>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(o.followupLink);
+                              showToast("Link copied!");
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-medium transition"
+                          >
+                            <Copy className="w-3 h-3" /> Copy
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {followupOrgs.filter(o => {
+                const q = crmSearch.toLowerCase();
+                return !q || o.orgName?.toLowerCase().includes(q) || o.orgEmail?.toLowerCase().includes(q) || o.ownerPhone?.includes(q);
+              }).length === 0 && (
+                <div className="py-12 text-center">
+                  <p className="text-sm text-slate-400">No organisations found.</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
