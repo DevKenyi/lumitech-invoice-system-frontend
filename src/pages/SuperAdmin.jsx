@@ -842,7 +842,29 @@ function SuperAdmin() {
       )}
 
       {/* ── CRM / FOLLOWUP TAB ──────────────────────────────────────────────── */}
-      {tab === "crm" && (
+      {tab === "crm" && (() => {
+        const excludedCount = followupOrgs.filter(o => o.followupExcluded).length;
+        const crmFiltered = followupOrgs.filter(o => {
+          const q = crmSearch.toLowerCase();
+          const matchSearch = !q || o.orgName?.toLowerCase().includes(q) || o.orgEmail?.toLowerCase().includes(q) || o.ownerPhone?.includes(q);
+          const matchHide = showExcluded ? o.followupExcluded : !o.followupExcluded;
+          return matchSearch && matchHide;
+        });
+        const activeFiltered = followupOrgs.filter(o => {
+          const q = crmSearch.toLowerCase();
+          return (!o.followupExcluded) && (!q || o.orgName?.toLowerCase().includes(q) || o.orgEmail?.toLowerCase().includes(q) || o.ownerPhone?.includes(q));
+        });
+        const rows = showExcluded ? crmFiltered : activeFiltered;
+
+        const toggleExclude = async (o) => {
+          try {
+            const res = await api.post(`/api/superadmin/followup/organisations/${o.orgId}/toggle-exclude`);
+            setFollowupOrgs(prev => prev.map(x => x.orgId === o.orgId ? { ...x, followupExcluded: res.data.followupExcluded } : x));
+            showToast(res.data.followupExcluded ? `${o.orgName} excluded from followup` : `${o.orgName} added back to followup`);
+          } catch { showToast("Failed to update.", "error"); }
+        };
+
+        return (
         <div className="space-y-4">
           {/* Toolbar */}
           <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 flex flex-wrap items-center gap-3">
@@ -857,52 +879,42 @@ function SuperAdmin() {
               />
             </div>
             {boardToken && (
-              <a
-                href={`/followup-board/${boardToken}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition shadow-sm"
-              >
+              <a href={`/followup-board/${boardToken}`} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition shadow-sm">
                 <Link2 className="w-4 h-4" /> Open Board
               </a>
             )}
             {boardToken && (
-              <button
-                onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/followup-board/${boardToken}`); showToast("Board link copied!"); }}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-sm font-semibold rounded-xl transition"
-              >
+              <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/followup-board/${boardToken}`); showToast("Board link copied!"); }}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-sm font-semibold rounded-xl transition">
                 <Copy className="w-4 h-4" /> Copy Board Link
               </button>
             )}
-            <a
-              href="#"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl transition shadow-sm"
-              onClick={e => {
-                e.preventDefault();
-                import("../services/api").then(({ default: a }) => {
-                  a.get("/api/superadmin/followup/export.csv", { responseType: "blob" }).then(res => {
-                    const url = URL.createObjectURL(res.data);
-                    const link = document.createElement("a");
-                    link.href = url;
-                    link.download = `followup-export-${new Date().toISOString().slice(0,10)}.csv`;
-                    link.click();
-                    URL.revokeObjectURL(url);
-                  });
-                });
-              }}
-            >
+            <a href="#" className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl transition shadow-sm"
+              onClick={e => { e.preventDefault(); import("../services/api").then(({ default: a }) => { a.get("/api/superadmin/followup/export.csv", { responseType: "blob" }).then(res => { const url = URL.createObjectURL(res.data); const link = document.createElement("a"); link.href = url; link.download = `followup-export-${new Date().toISOString().slice(0,10)}.csv`; link.click(); URL.revokeObjectURL(url); }); }); }}>
               <Download className="w-4 h-4" /> Export CSV
             </a>
-            <button
-              onClick={() => setShowExcluded(s => !s)}
-              className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl border transition ${showExcluded ? "bg-slate-200 dark:bg-slate-600 text-slate-800 dark:text-white border-slate-300 dark:border-slate-500" : "bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-600 hover:border-slate-300"}`}
-            >
-              {showExcluded ? "Hide excluded" : "Show excluded"}
-            </button>
-            <span className="text-xs text-slate-400">
-              {followupOrgs.filter(o => !o.followupExcluded).length} active
-              {followupOrgs.filter(o => o.followupExcluded).length > 0 && ` · ${followupOrgs.filter(o => o.followupExcluded).length} excluded`}
-            </span>
+          </div>
+
+          {/* View toggle strip */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-800 shadow-sm">
+              <button
+                onClick={() => setShowExcluded(false)}
+                className={`px-4 py-2 text-sm font-semibold transition ${!showExcluded ? "bg-blue-600 text-white" : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700"}`}
+              >
+                Active ({followupOrgs.filter(o => !o.followupExcluded).length})
+              </button>
+              <button
+                onClick={() => setShowExcluded(true)}
+                className={`px-4 py-2 text-sm font-semibold transition border-l border-slate-200 dark:border-slate-700 ${showExcluded ? "bg-slate-600 text-white" : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700"}`}
+              >
+                Excluded ({excludedCount})
+              </button>
+            </div>
+            {showExcluded && excludedCount > 0 && (
+              <p className="text-xs text-slate-400">Tick the checkbox on any row to move it back to Active.</p>
+            )}
           </div>
 
           {/* Table */}
@@ -911,7 +923,9 @@ function SuperAdmin() {
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 dark:bg-slate-800/50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-10" title="Include in followup">✓</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-12">
+                      {showExcluded ? "Re-add" : "Active"}
+                    </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Organisation</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Phone</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Plan</th>
@@ -922,49 +936,35 @@ function SuperAdmin() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                  {followupOrgs
-                    .filter(o => {
-                      const q = crmSearch.toLowerCase();
-                      const matchSearch = !q || o.orgName?.toLowerCase().includes(q) || o.orgEmail?.toLowerCase().includes(q) || o.ownerPhone?.includes(q);
-                      const matchExclude = showExcluded ? true : !o.followupExcluded;
-                      return matchSearch && matchExclude;
-                    })
-                    .map(o => (
-                    <tr key={o.orgId} className={`hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${o.followupExcluded ? "opacity-40" : ""}`}>
+                  {rows.map(o => (
+                    <tr key={o.orgId} className={`transition-colors ${showExcluded ? "bg-slate-50/60 dark:bg-slate-800/40 hover:bg-slate-100/60 dark:hover:bg-slate-700/30" : "hover:bg-slate-50 dark:hover:bg-slate-700/50"}`}>
                       <td className="px-4 py-3">
                         <input
                           type="checkbox"
                           checked={!o.followupExcluded}
-                          title={o.followupExcluded ? "Excluded — click to include" : "Included — click to exclude"}
-                          onChange={async () => {
-                            try {
-                              const res = await api.post(`/api/superadmin/followup/organisations/${o.orgId}/toggle-exclude`);
-                              setFollowupOrgs(prev => prev.map(x => x.orgId === o.orgId
-                                ? { ...x, followupExcluded: res.data.followupExcluded }
-                                : x));
-                            } catch { showToast("Failed to update.", "error"); }
-                          }}
+                          title={o.followupExcluded ? "Click to move back to Active" : "Click to exclude from followup"}
+                          onChange={() => toggleExclude(o)}
                           className="w-4 h-4 rounded accent-blue-600 cursor-pointer"
                         />
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0 ${showExcluded ? "bg-slate-400" : "bg-gradient-to-br from-blue-500 to-indigo-600"}`}>
                             {o.orgName?.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <p className="font-medium text-slate-900 dark:text-white">{o.orgName}</p>
+                            <p className={`font-medium ${showExcluded ? "text-slate-400 dark:text-slate-500" : "text-slate-900 dark:text-white"}`}>{o.orgName}</p>
                             {o.orgEmail && <p className="text-xs text-slate-400">{o.orgEmail}</p>}
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300 font-mono text-xs">{o.ownerPhone ?? "—"}</td>
+                      <td className={`px-4 py-3 font-mono text-xs ${showExcluded ? "text-slate-400" : "text-slate-600 dark:text-slate-300"}`}>{o.ownerPhone ?? "—"}</td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded text-xs font-semibold ${PLAN_STYLE[o.plan] ?? ""}`}>
+                        <span className={`px-2 py-0.5 rounded text-xs font-semibold ${showExcluded ? "bg-slate-100 dark:bg-slate-700 text-slate-400" : (PLAN_STYLE[o.plan] ?? "")}`}>
                           {PLAN_LABEL[o.plan] ?? o.plan}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{o.invoiceCount}</td>
+                      <td className={`px-4 py-3 ${showExcluded ? "text-slate-400" : "text-slate-700 dark:text-slate-300"}`}>{o.invoiceCount}</td>
                       <td className="px-4 py-3">
                         {o.noteCount > 0
                           ? <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-full text-xs font-semibold">
@@ -978,65 +978,54 @@ function SuperAdmin() {
                           ? <span className={`px-2 py-0.5 rounded text-xs font-semibold ${FOLLOWUP_STATUS_COLOR[o.latestStatus] ?? ""}`}>
                               {FOLLOWUP_STATUS_LABEL[o.latestStatus] ?? o.latestStatus}
                             </span>
-                          : <span className="text-slate-300 dark:text-slate-600 text-xs">No followup yet</span>
+                          : <span className="text-slate-300 dark:text-slate-600 text-xs">—</span>
                         }
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <a
-                            href={o.followupLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-medium transition"
-                          >
-                            <Link2 className="w-3 h-3" /> Open
-                          </a>
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(o.followupLink);
-                              showToast("Link copied!");
-                            }}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-medium transition"
-                          >
-                            <Copy className="w-3 h-3" /> Copy
-                          </button>
-                          <button
-                            onClick={async () => {
-                              if (!confirm(`Regenerate link for ${o.orgName}? The old link will stop working.`)) return;
-                              try {
-                                const res = await api.post(`/api/superadmin/followup/organisations/${o.orgId}/regenerate-token`);
-                                const newToken = res.data.followupToken;
-                                const newLink = `${window.location.origin}/followup/${newToken}`;
-                                setFollowupOrgs(prev => prev.map(x => x.orgId === o.orgId
-                                  ? { ...x, followupToken: newToken, followupLink: newLink }
-                                  : x));
-                                showToast("New link generated!");
-                              } catch { showToast("Failed to regenerate link.", "error"); }
-                            }}
-                            title="Regenerate link — invalidates old URL"
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-700 dark:text-amber-300 rounded-lg text-xs font-medium transition"
-                          >
-                            <RotateCcw className="w-3 h-3" /> Regen
-                          </button>
-                        </div>
+                        {!showExcluded && (
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <a href={o.followupLink} target="_blank" rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-medium transition">
+                              <Link2 className="w-3 h-3" /> Open
+                            </a>
+                            <button onClick={() => { navigator.clipboard.writeText(o.followupLink); showToast("Link copied!"); }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-medium transition">
+                              <Copy className="w-3 h-3" /> Copy
+                            </button>
+                            <button
+                              onClick={async () => {
+                                if (!confirm(`Regenerate link for ${o.orgName}? The old link will stop working.`)) return;
+                                try {
+                                  const res = await api.post(`/api/superadmin/followup/organisations/${o.orgId}/regenerate-token`);
+                                  const newToken = res.data.followupToken;
+                                  const newLink = `${window.location.origin}/followup/${newToken}`;
+                                  setFollowupOrgs(prev => prev.map(x => x.orgId === o.orgId ? { ...x, followupToken: newToken, followupLink: newLink } : x));
+                                  showToast("New link generated!");
+                                } catch { showToast("Failed to regenerate link.", "error"); }
+                              }}
+                              title="Regenerate link — invalidates old URL"
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-700 dark:text-amber-300 rounded-lg text-xs font-medium transition">
+                              <RotateCcw className="w-3 h-3" /> Regen
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              {followupOrgs.filter(o => {
-                const q = crmSearch.toLowerCase();
-                return (!q || o.orgName?.toLowerCase().includes(q) || o.orgEmail?.toLowerCase().includes(q) || o.ownerPhone?.includes(q))
-                  && (showExcluded ? true : !o.followupExcluded);
-              }).length === 0 && (
+              {rows.length === 0 && (
                 <div className="py-12 text-center">
-                  <p className="text-sm text-slate-400">No organisations found.</p>
+                  <p className="text-sm text-slate-400">
+                    {showExcluded ? "No excluded organisations." : "No active organisations found."}
+                  </p>
                 </div>
               )}
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* ── SUSPICIOUS TAB ───────────────────────────────────────────────────── */}
       {tab === "suspicious" && (
