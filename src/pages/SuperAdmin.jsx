@@ -6,7 +6,7 @@ import {
   ShieldCheck, Building2, Users, FileText, CheckCircle, XCircle,
   ChevronDown, AlertTriangle, X, Trash2, UserCircle,
   CreditCard, Save, TrendingUp, Activity, Bell,
-  PhoneCall, Mail, Search, RefreshCw, Download, Copy, Link2, MessageSquare,
+  PhoneCall, Mail, Search, RefreshCw, Download, Copy, Link2, MessageSquare, RotateCcw,
 } from "lucide-react";
 import Toast from "../components/Toast";
 import ConfirmModal from "../components/ConfirmModal";
@@ -953,7 +953,7 @@ function SuperAdmin() {
                         }
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <a
                             href={o.followupLink}
                             target="_blank"
@@ -970,6 +970,24 @@ function SuperAdmin() {
                             className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-medium transition"
                           >
                             <Copy className="w-3 h-3" /> Copy
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (!confirm(`Regenerate link for ${o.orgName}? The old link will stop working.`)) return;
+                              try {
+                                const res = await api.post(`/api/superadmin/followup/organisations/${o.orgId}/regenerate-token`);
+                                const newToken = res.data.followupToken;
+                                const newLink = `${window.location.origin}/followup/${newToken}`;
+                                setFollowupOrgs(prev => prev.map(x => x.orgId === o.orgId
+                                  ? { ...x, followupToken: newToken, followupLink: newLink }
+                                  : x));
+                                showToast("New link generated!");
+                              } catch { showToast("Failed to regenerate link.", "error"); }
+                            }}
+                            title="Regenerate link — invalidates old URL"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-700 dark:text-amber-300 rounded-lg text-xs font-medium transition"
+                          >
+                            <RotateCcw className="w-3 h-3" /> Regen
                           </button>
                         </div>
                       </td>
