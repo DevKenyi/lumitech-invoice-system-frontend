@@ -301,6 +301,7 @@ function SuperAdmin() {
   const [followupOrgs, setFollowupOrgs] = useState([]);
   const [boardToken, setBoardToken]     = useState(null);
   const [crmSearch, setCrmSearch]       = useState("");
+  const [showExcluded, setShowExcluded] = useState(false);
   const [loading, setLoading]   = useState(true);
   const [savingPricing, setSavingPricing] = useState(false);
   const [suspendTarget, setSuspendTarget] = useState(null);
@@ -892,7 +893,16 @@ function SuperAdmin() {
             >
               <Download className="w-4 h-4" /> Export CSV
             </a>
-            <span className="text-xs text-slate-400">{followupOrgs.length} organisations</span>
+            <button
+              onClick={() => setShowExcluded(s => !s)}
+              className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl border transition ${showExcluded ? "bg-slate-200 dark:bg-slate-600 text-slate-800 dark:text-white border-slate-300 dark:border-slate-500" : "bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-600 hover:border-slate-300"}`}
+            >
+              {showExcluded ? "Hide excluded" : "Show excluded"}
+            </button>
+            <span className="text-xs text-slate-400">
+              {followupOrgs.filter(o => !o.followupExcluded).length} active
+              {followupOrgs.filter(o => o.followupExcluded).length > 0 && ` · ${followupOrgs.filter(o => o.followupExcluded).length} excluded`}
+            </span>
           </div>
 
           {/* Table */}
@@ -901,6 +911,7 @@ function SuperAdmin() {
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 dark:bg-slate-800/50">
                   <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-10" title="Include in followup">✓</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Organisation</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Phone</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Plan</th>
@@ -914,10 +925,28 @@ function SuperAdmin() {
                   {followupOrgs
                     .filter(o => {
                       const q = crmSearch.toLowerCase();
-                      return !q || o.orgName?.toLowerCase().includes(q) || o.orgEmail?.toLowerCase().includes(q) || o.ownerPhone?.includes(q);
+                      const matchSearch = !q || o.orgName?.toLowerCase().includes(q) || o.orgEmail?.toLowerCase().includes(q) || o.ownerPhone?.includes(q);
+                      const matchExclude = showExcluded ? true : !o.followupExcluded;
+                      return matchSearch && matchExclude;
                     })
                     .map(o => (
-                    <tr key={o.orgId} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                    <tr key={o.orgId} className={`hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${o.followupExcluded ? "opacity-40" : ""}`}>
+                      <td className="px-4 py-3">
+                        <input
+                          type="checkbox"
+                          checked={!o.followupExcluded}
+                          title={o.followupExcluded ? "Excluded — click to include" : "Included — click to exclude"}
+                          onChange={async () => {
+                            try {
+                              const res = await api.post(`/api/superadmin/followup/organisations/${o.orgId}/toggle-exclude`);
+                              setFollowupOrgs(prev => prev.map(x => x.orgId === o.orgId
+                                ? { ...x, followupExcluded: res.data.followupExcluded }
+                                : x));
+                            } catch { showToast("Failed to update.", "error"); }
+                          }}
+                          className="w-4 h-4 rounded accent-blue-600 cursor-pointer"
+                        />
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
@@ -997,7 +1026,8 @@ function SuperAdmin() {
               </table>
               {followupOrgs.filter(o => {
                 const q = crmSearch.toLowerCase();
-                return !q || o.orgName?.toLowerCase().includes(q) || o.orgEmail?.toLowerCase().includes(q) || o.ownerPhone?.includes(q);
+                return (!q || o.orgName?.toLowerCase().includes(q) || o.orgEmail?.toLowerCase().includes(q) || o.ownerPhone?.includes(q))
+                  && (showExcluded ? true : !o.followupExcluded);
               }).length === 0 && (
                 <div className="py-12 text-center">
                   <p className="text-sm text-slate-400">No organisations found.</p>
