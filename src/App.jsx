@@ -64,19 +64,50 @@ import ProformaInvoices from "./pages/ProformaInvoices";
 // Shown instead of the full app when the account is suspended or trial has ended.
 // Lives inside OrgProvider so <Billing /> can use OrgContext.
 function SuspendGate({ children }) {
+  const [checked, setChecked] = useState(false);
   const [isSuspended, setIsSuspended] = useState(false);
   const [isTrialExpired, setIsTrialExpired] = useState(false);
+  const [billingStatus, setBillingStatus] = useState(null);
 
   useEffect(() => {
     const onSuspended = () => setIsSuspended(true);
     const onTrialExpired = () => setIsTrialExpired(true);
     window.addEventListener("account-suspended", onSuspended);
     window.addEventListener("trial-expired", onTrialExpired);
+
+    // Initial check — runs before rendering children so there's no flash of the
+    // full app for expired/suspended accounts. /api/billing/status is whitelisted
+    // in JwtAuthenticationFilter even when suspended.
+    const token = localStorage.getItem("token");
+    if (token) {
+      import("./services/api").then(({ default: api }) => {
+        api.get("/api/billing/status")
+          .then(res => {
+            const { suspended, trialExpired, hasActiveSubscription } = res.data;
+            setBillingStatus(res.data);
+            if (suspended || (trialExpired && !hasActiveSubscription)) {
+              if (trialExpired && !hasActiveSubscription) {
+                setIsTrialExpired(true);
+              } else {
+                setIsSuspended(true);
+              }
+            }
+          })
+          .catch(() => {/* interceptor fires the right event on 403 */})
+          .finally(() => setChecked(true));
+      });
+    } else {
+      setChecked(true);
+    }
+
     return () => {
       window.removeEventListener("account-suspended", onSuspended);
       window.removeEventListener("trial-expired", onTrialExpired);
     };
   }, []);
+
+  // Hold rendering until initial billing check completes — prevents flash of the app
+  if (!checked && !isSuspended && !isTrialExpired) return null;
 
   if (isSuspended || isTrialExpired) {
     return (
@@ -96,7 +127,7 @@ function SuspendGate({ children }) {
           </div>
 
           {/* Context message */}
-          <div className={`rounded-2xl border px-5 py-4 mb-8 flex items-start gap-3 ${
+          <div className={`rounded-2xl border px-5 py-4 mb-6 flex items-start gap-3 ${
             isSuspended
               ? "bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800"
               : "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800"
@@ -115,6 +146,24 @@ function SuspendGate({ children }) {
               </p>
             </div>
           </div>
+
+          {/* Data continuity — show what's waiting for them */}
+          {(billingStatus?.invoiceCount > 0 || billingStatus?.clientCount > 0) && (
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              {billingStatus?.invoiceCount > 0 && (
+                <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 text-center">
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{billingStatus.invoiceCount}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">invoice{billingStatus.invoiceCount !== 1 ? "s" : ""} saved</p>
+                </div>
+              )}
+              {billingStatus?.clientCount > 0 && (
+                <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 text-center">
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{billingStatus.clientCount}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">client{billingStatus.clientCount !== 1 ? "s" : ""} saved</p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Billing page — no sidebar, no nav */}
           <Billing />

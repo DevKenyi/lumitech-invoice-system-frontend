@@ -263,6 +263,7 @@ const TABS = [
   { id: "overview",      label: "Overview",       icon: Activity },
   { id: "followup",      label: "Follow-up",      icon: Bell },
   { id: "organisations", label: "Organisations",  icon: Building2 },
+  { id: "suspicious",    label: "Suspicious",     icon: AlertTriangle },
   { id: "pricing",       label: "Pricing",        icon: CreditCard },
 ];
 
@@ -278,6 +279,7 @@ function SuperAdmin() {
   const [orgs, setOrgs]         = useState([]);
   const [pricingRows, setPricingRows] = useState([]);
   const [pricingEdits, setPricingEdits] = useState({});
+  const [suspicious, setSuspicious] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [savingPricing, setSavingPricing] = useState(false);
   const [suspendTarget, setSuspendTarget] = useState(null);
@@ -297,8 +299,9 @@ function SuperAdmin() {
       api.get("/api/superadmin/dashboard"),
       api.get("/api/superadmin/organisations"),
       api.get("/api/superadmin/billing/pricing").catch(() => ({ data: [] })),
+      api.get("/api/superadmin/suspicious-registrations").catch(() => ({ data: [] })),
     ])
-      .then(([dashRes, orgsRes, pricingRes]) => {
+      .then(([dashRes, orgsRes, pricingRes, suspiciousRes]) => {
         setDashboard(dashRes.data);
         setOrgs(orgsRes.data.content ?? orgsRes.data ?? []);
         const rows = pricingRes.data ?? [];
@@ -306,6 +309,7 @@ function SuperAdmin() {
         const edits = {};
         rows.forEach(r => { edits[`${r.country}-${r.plan}`] = String(r.amount); });
         setPricingEdits(edits);
+        setSuspicious(suspiciousRes.data ?? []);
       })
       .catch(() => showToast("Failed to load platform data", "error"))
       .finally(() => setLoading(false));
@@ -808,6 +812,75 @@ function SuperAdmin() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ── SUSPICIOUS TAB ───────────────────────────────────────────────────── */}
+      {tab === "suspicious" && (
+        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-500" />
+            <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Suspicious Registrations</h2>
+            <span className="text-xs text-slate-400 ml-1">— accounts sharing a phone number (possible trial abuse)</span>
+            {suspicious.length > 0 && (
+              <span className="ml-auto px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">
+                {suspicious.length}
+              </span>
+            )}
+          </div>
+          {suspicious.length === 0 ? (
+            <div className="px-6 py-12 text-center">
+              <CheckCircle className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
+              <p className="text-sm text-slate-400">No suspicious registrations detected.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 dark:bg-slate-800/50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Organisation</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Phone</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Country</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Plan</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Registered</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Flag</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                  {suspicious.map((s, i) => (
+                    <tr key={i} className="hover:bg-amber-50/40 dark:hover:bg-amber-900/10 transition-colors">
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-slate-900 dark:text-white">{s.orgName}</p>
+                        {s.orgEmail && <p className="text-xs text-slate-400">{s.orgEmail}</p>}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-slate-700 dark:text-slate-300">{s.phone ?? "—"}</td>
+                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
+                        {COUNTRY_FLAG[s.country] ?? ""} {COUNTRY_NAME[s.country] ?? s.country ?? "—"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-0.5 rounded text-xs font-semibold ${PLAN_STYLE[s.plan] ?? ""}`}>
+                          {PLAN_LABEL[s.plan] ?? s.plan}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {s.suspended
+                          ? <span className="px-2 py-0.5 rounded text-xs font-semibold bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300">Suspended</span>
+                          : <span className="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">Active</span>
+                        }
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-400">{fmtDate(s.createdAt)}</td>
+                      <td className="px-4 py-3">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 uppercase tracking-wide">
+                          {s.reason?.replace("_", " ")}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 

@@ -32,8 +32,13 @@ api.interceptors.response.use(
       );
     }
 
-    if (status === 403 && (body?.suspended === true || message.toLowerCase().includes("suspended"))) {
-      window.dispatchEvent(new CustomEvent("account-suspended"));
+    if (status === 403 && body?.suspended === true) {
+      const reason = (body?.error || "").toLowerCase();
+      if (reason.includes("trial")) {
+        window.dispatchEvent(new CustomEvent("trial-expired"));
+      } else {
+        window.dispatchEvent(new CustomEvent("account-suspended"));
+      }
     }
 
     // Only treat 401 as "token expired/invalid" — redirect to login
