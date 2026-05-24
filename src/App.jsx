@@ -61,6 +61,7 @@ import AccountLedger from "./pages/AccountLedger";
 import CashFlowForecast from "./pages/CashFlowForecast";
 import ProformaInvoices from "./pages/ProformaInvoices";
 import FollowupPage from "./pages/FollowupPage";
+import FollowupBoard from "./pages/FollowupBoard";
 
 // Shown instead of the full app when the account is suspended or trial has ended.
 // Lives inside OrgProvider so <Billing /> can use OrgContext.
@@ -585,6 +586,7 @@ function App() {
           <Route path="/portal/:token" element={<ClientPortal />} />
           <Route path="/po-response/:token" element={<POResponse />} />
           <Route path="/followup/:token" element={<FollowupPage />} />
+          <Route path="/followup-board/:boardToken" element={<FollowupBoard />} />
 
           {/* FALLBACK */}
           <Route path="*" element={<Navigate to="/login" />} />

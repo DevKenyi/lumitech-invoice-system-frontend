@@ -299,7 +299,8 @@ function SuperAdmin() {
   const [pricingEdits, setPricingEdits] = useState({});
   const [suspicious, setSuspicious] = useState([]);
   const [followupOrgs, setFollowupOrgs] = useState([]);
-  const [crmSearch, setCrmSearch] = useState("");
+  const [boardToken, setBoardToken]     = useState(null);
+  const [crmSearch, setCrmSearch]       = useState("");
   const [loading, setLoading]   = useState(true);
   const [savingPricing, setSavingPricing] = useState(false);
   const [suspendTarget, setSuspendTarget] = useState(null);
@@ -321,8 +322,9 @@ function SuperAdmin() {
       api.get("/api/superadmin/billing/pricing").catch(() => ({ data: [] })),
       api.get("/api/superadmin/suspicious-registrations").catch(() => ({ data: [] })),
       api.get("/api/superadmin/followup/list").catch(() => ({ data: [] })),
+      api.get("/api/superadmin/followup/board-token").catch(() => ({ data: {} })),
     ])
-      .then(([dashRes, orgsRes, pricingRes, suspiciousRes, followupRes]) => {
+      .then(([dashRes, orgsRes, pricingRes, suspiciousRes, followupRes, boardRes]) => {
         setDashboard(dashRes.data);
         setOrgs(orgsRes.data.content ?? orgsRes.data ?? []);
         const rows = pricingRes.data ?? [];
@@ -332,6 +334,7 @@ function SuperAdmin() {
         setPricingEdits(edits);
         setSuspicious(suspiciousRes.data ?? []);
         setFollowupOrgs(followupRes.data ?? []);
+        setBoardToken(boardRes.data?.boardToken ?? null);
       })
       .catch(() => showToast("Failed to load platform data", "error"))
       .finally(() => setLoading(false));
@@ -852,6 +855,24 @@ function SuperAdmin() {
                 className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700/50 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition"
               />
             </div>
+            {boardToken && (
+              <a
+                href={`/followup-board/${boardToken}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition shadow-sm"
+              >
+                <Link2 className="w-4 h-4" /> Open Board
+              </a>
+            )}
+            {boardToken && (
+              <button
+                onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/followup-board/${boardToken}`); showToast("Board link copied!"); }}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-sm font-semibold rounded-xl transition"
+              >
+                <Copy className="w-4 h-4" /> Copy Board Link
+              </button>
+            )}
             <a
               href="#"
               className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl transition shadow-sm"
