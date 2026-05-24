@@ -174,7 +174,7 @@ function Navbar({ onClose }) {
   useEffect(() => {
     if (!user) return;
     api.get("/api/billing/status")
-      .then(res => setPlan(res.data.plan ?? null))
+      .then(res => setPlan(res.data.currentPlan ?? null))
       .catch(() => {});
   }, []);
 
@@ -233,9 +233,13 @@ function Navbar({ onClose }) {
     { path: "/invoices/reports/aging",           label: "Aging Report",      icon: ClipboardList, info: "Overdue invoices and how long unpaid" },
     { path: "/accounting/reports/profit-loss",   label: "Profit & Loss",     icon: TrendingUp,    info: "Income, expenses and net profit" },
     { path: "/accounting/reports/balance-sheet", label: "Balance Sheet",     icon: LayoutList,    info: "Snapshot of assets, liabilities and equity" },
-    { path: "/accounting/reports/trial-balance", label: "Trial Balance",     icon: Scale,         info: "Check debits and credits are balanced" },
     { path: "/accounting/reports/cash-flow",     label: "Cash Flow",         icon: TrendingDown,  info: "Operating, investing and financing flows" },
-    { path: "/accounting/reports/cash-flow-forecast", label: "Cash Forecast",icon: History,       info: "Project future cash from invoices and bills" },
+    // GROWTH+ only reports
+    ...(canAccessGrowthFeatures ? [
+      { path: "/accounting/reports/trial-balance",      label: "Trial Balance",  icon: Scale,    info: "Check debits and credits are balanced" },
+      { path: "/accounting/reports/cash-flow-forecast", label: "Cash Forecast",  icon: History,  info: "Project future cash from invoices and bills" },
+    ] : []),
+    // Accountant Pro + free trial only
     ...(isAccountantPro || !plan || plan === "FREE" ? [{ path: "/invoices/reports/tax", label: "Tax Report", icon: Calculator, info: "VAT and WHT breakdown for tax filing" }] : []),
   ];
   const reportsActive = reportItems.some(i => cur.startsWith(i.path));
@@ -250,10 +254,12 @@ function Navbar({ onClose }) {
 
   // ── Section: Settings ─────────────────────────────────────────────────────
   const settingsItems = [
-    { path: "/team",          label: "Team",         icon: UsersRound,      info: "Invite and manage team members" },
-    { path: "/settings/org",  label: "Org Settings", icon: SlidersHorizontal, info: "Organisation details, logo and payment settings" },
-    { path: "/settings/billing", label: "Billing",   icon: CreditCard,      info: "View and manage your subscription" },
-    ...(isAccountantPro || !plan || plan === "FREE" ? [{ path: "/expenses", label: "Expenses", icon: Receipt, info: "Manage staff expense claims" }] : []),
+    // Team (multi-user) is GROWTH+ only
+    ...(canAccessGrowthFeatures ? [{ path: "/team", label: "Team", icon: UsersRound, info: "Invite and manage team members" }] : []),
+    { path: "/settings/org",     label: "Org Settings", icon: SlidersHorizontal, info: "Organisation details, logo and payment settings" },
+    { path: "/settings/billing", label: "Billing",      icon: CreditCard,        info: "View and manage your subscription" },
+    // Expenses & Audit Trail — Accountant Pro + free trial only
+    ...(isAccountantPro || !plan || plan === "FREE" ? [{ path: "/expenses", label: "Expenses",    icon: Receipt,    info: "Manage staff expense claims" }] : []),
     ...(isAccountantPro || !plan || plan === "FREE" ? [{ path: "/audit",    label: "Audit Trail", icon: ShieldCheck, info: "Full log of every action in your account" }] : []),
     ...(isPlatformAdmin ? [{ path: "/admin", label: "Platform Admin", icon: ShieldCheck, info: "System-wide administration" }] : []),
   ];

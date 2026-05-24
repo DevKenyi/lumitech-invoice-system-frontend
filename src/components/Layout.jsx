@@ -1,10 +1,61 @@
 // Layout.jsx
-import { useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useLocation, Link } from "react-router-dom";
 import Navbar from "./Navbar";
 import TrialBanner from "./TrialBanner";
 import NotificationBell from "./NotificationBell";
-import { Menu } from "lucide-react";
+import { Menu, Lock } from "lucide-react";
+import api from "../services/api";
+
+// Routes that require GROWTH (Business) plan or above
+const GROWTH_ROUTES = new Set([
+  "/bills", "/suppliers", "/purchase-orders", "/debit-notes", "/credit-notes",
+  "/accounting/accounts", "/accounting/entries", "/accounting/opening-balances",
+  "/accounting/reconciliation", "/accounting/ledger", "/fixed-assets",
+  "/accounting/budget", "/payroll", "/accounting/import",
+  "/accounting/reports/trial-balance", "/accounting/reports/cash-flow-forecast",
+  "/team", "/pos", "/inventory", "/sales/report",
+]);
+
+// Routes that require ACCOUNTANT_PRO plan
+const ACCOUNTANT_PRO_ROUTES = new Set(["/expenses", "/expenses/manage", "/audit"]);
+
+const GROWTH_PLANS = new Set(["GROWTH", "PRO", "ACCOUNTANT_PRO"]);
+
+function isRouteLocked(path, plan) {
+  if (!plan || plan === "FREE") return false; // free trial — all access
+  if (ACCOUNTANT_PRO_ROUTES.has(path)) return plan !== "ACCOUNTANT_PRO";
+  if (GROWTH_ROUTES.has(path)) return !GROWTH_PLANS.has(plan);
+  return false;
+}
+
+function lockedUpgradePlan(path) {
+  if (ACCOUNTANT_PRO_ROUTES.has(path)) return { label: "Accountant Pro", plan: "ACCOUNTANT_PRO" };
+  return { label: "Business", plan: "GROWTH" };
+}
+
+function UpgradeOverlay({ path }) {
+  const { label } = lockedUpgradePlan(path);
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+      <div className="inline-flex p-5 bg-indigo-50 dark:bg-indigo-900/30 rounded-full mb-5">
+        <Lock className="w-10 h-10 text-indigo-500" />
+      </div>
+      <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+        {label} plan required
+      </h2>
+      <p className="text-slate-500 dark:text-slate-400 mb-6 max-w-sm">
+        This feature is available on the {label} plan. Upgrade to unlock it and keep all your existing data.
+      </p>
+      <Link
+        to="/settings/billing"
+        className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-semibold rounded-xl shadow-lg shadow-indigo-500/30 hover:scale-[1.03] transition-all"
+      >
+        Upgrade to {label}
+      </Link>
+    </div>
+  );
+}
 
 const PAGE_TITLES = {
   "/dashboard":                          "Dashboard",
@@ -50,8 +101,15 @@ const PAGE_TITLES = {
 
 function Layout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [plan, setPlan] = useState(null);
   const location = useLocation();
   const pageTitle = PAGE_TITLES[location.pathname] ?? "LumiLedger";
+
+  useEffect(() => {
+    api.get("/api/billing/status")
+      .then(res => setPlan(res.data.currentPlan ?? null))
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
@@ -97,7 +155,9 @@ function Layout({ children }) {
 
         <TrialBanner />
         <main className="flex-1 p-4 md:p-6">
-          {children}
+          {isRouteLocked(location.pathname, plan)
+            ? <UpgradeOverlay path={location.pathname} />
+            : children}
         </main>
       </div>
     </div>
