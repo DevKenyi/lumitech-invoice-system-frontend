@@ -1168,15 +1168,28 @@ function SuperAdmin() {
       {/* ── SUSPICIOUS TAB ───────────────────────────────────────────────────── */}
       {tab === "suspicious" && (
         <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center gap-2">
+          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center gap-2 flex-wrap">
             <AlertTriangle className="w-4 h-4 text-amber-500" />
             <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Suspicious Registrations</h2>
             <span className="text-xs text-slate-400 ml-1">— duplicate phone, same email local-part, similar org name, or same IP</span>
             {suspicious.length > 0 && (
-              <span className="ml-auto px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300">
+              <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300">
                 {suspicious.length}
               </span>
             )}
+            <button
+              onClick={async () => {
+                if (!window.confirm("Run fraud scan on all existing accounts? Matches will be auto-suspended and support will be alerted.")) return;
+                const res = await api.post("/api/superadmin/fraud-scan");
+                const d = res.data;
+                alert(`Scan complete.\nOrgs scanned: ${d.orgsScanned}\nFlagged & suspended: ${d.orgsFlagged}${d.flaggedOrgNames?.length ? "\n\nFlagged:\n" + d.flaggedOrgNames.join("\n") : ""}`);
+                const fresh = await api.get("/api/superadmin/suspicious-registrations");
+                setSuspicious(fresh.data ?? []);
+              }}
+              className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-700 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/30 transition"
+            >
+              <AlertTriangle className="w-3 h-3" /> Scan for Fraud
+            </button>
           </div>
           {suspicious.length === 0 ? (
             <div className="px-6 py-12 text-center">
