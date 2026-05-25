@@ -4,6 +4,7 @@ import { useLocation, Link } from "react-router-dom";
 import Navbar from "./Navbar";
 import TrialBanner from "./TrialBanner";
 import NotificationBell from "./NotificationBell";
+import WhatsAppChat from "./WhatsAppChat";
 import { Menu, Lock } from "lucide-react";
 import api from "../services/api";
 
@@ -160,6 +161,8 @@ function Layout({ children }) {
             : children}
         </main>
       </div>
+
+      <WhatsAppChat context="dashboard" />
     </div>
   );
 }

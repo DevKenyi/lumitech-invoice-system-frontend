@@ -11,6 +11,7 @@ import PricingSection      from "../components/landing/PricingSection";
 import PosSection          from "../components/landing/PosSection";
 import CtaSection          from "../components/landing/CtaSection";
 import LandingFooter       from "../components/landing/LandingFooter";
+import WhatsAppChat        from "../components/WhatsAppChat";
 
 export default function Landing() {
   return (
@@ -28,6 +29,7 @@ export default function Landing() {
       <PricingSection />
       <CtaSection />
       <LandingFooter />
+      <WhatsAppChat context="landing" />
     </div>
   );
 }
