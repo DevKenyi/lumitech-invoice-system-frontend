@@ -77,7 +77,7 @@ function Login() {
       } else if (status === 401 || status === 400) {
         setError("Incorrect username or password. Please try again.");
       } else if (status === 404) {
-        setError("No account found with that username. Please register to get started.");
+        setError("No account found with that username or email. Please register to get started.");
       } else if (status >= 500) {
         setError("Our server is currently unavailable. Please try again in a moment.");
       } else {
@@ -147,15 +147,16 @@ function Login() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Username Field */}
+            {/* Username or email field */}
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
                 <User className="w-4 h-4 text-slate-400" />
-                Username
+                Username or email
               </label>
               <input
                 type="text"
-                placeholder="Enter your username"
+                placeholder="Enter your username or email"
+                autoComplete="username"
                 value={form.username}
                 onChange={(e) => setForm({ ...form, username: e.target.value })}
                 className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl bg-white/50 dark:bg-slate-700/50 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
