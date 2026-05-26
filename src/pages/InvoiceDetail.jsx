@@ -284,58 +284,59 @@ function InvoiceDetail() {
   return (
     <div className="space-y-6">
       {/* Header with back button and actions */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="flex items-center justify-between gap-3">
         <button
           onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-blue-600 transition-colors"
+          className="inline-flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-blue-600 transition-colors shrink-0"
         >
           <ArrowLeft size={20} />
           <span className="text-sm font-medium">Back</span>
         </button>
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Horizontally scrollable on mobile so nothing clips */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-hide min-w-0">
           <button
             onClick={downloadPdf}
             disabled={isDownloading}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:border-slate-300 transition shadow-sm disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition shadow-sm disabled:opacity-50 whitespace-nowrap text-sm shrink-0"
           >
-            <Download size={16} />
-            {isDownloading ? "Downloading..." : "Download Invoice"}
+            <Download size={15} />
+            {isDownloading ? "Downloading…" : "Download"}
           </button>
           {invoice.client?.email && invoice.status !== "PAID" && (
             <button
               onClick={handleSendInvoice}
               disabled={isSendingInvoice}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-blue-300 dark:border-blue-600 rounded-xl text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-slate-800 border border-blue-300 dark:border-blue-600 rounded-xl text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition shadow-sm disabled:opacity-50 whitespace-nowrap text-sm shrink-0"
             >
-              <Mail size={16} />
-              {isSendingInvoice ? "Sending..." : "Send Invoice"}
+              <Mail size={15} />
+              {isSendingInvoice ? "Sending…" : "Send"}
             </button>
           )}
           {invoice.status !== "PAID" && (
             <button
               onClick={handleSendReminder}
               disabled={isSendingReminder}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:border-slate-300 transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition shadow-sm disabled:opacity-50 whitespace-nowrap text-sm shrink-0"
             >
-              <Mail size={16} />
-              {isSendingReminder ? "Sending..." : "Send Reminder"}
+              <Mail size={15} />
+              {isSendingReminder ? "Sending…" : "Remind"}
             </button>
           )}
           {canMarkPaid && invoice.status !== "PAID" && (
             <button
               onClick={() => { setMarkPaidAmount(balanceDue); setMarkPaidError(""); setShowMarkPaidModal(true); }}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-br from-emerald-600 to-teal-600 text-white rounded-xl shadow-lg shadow-emerald-600/30 hover:shadow-xl hover:scale-[1.02] transition-all"
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-gradient-to-br from-emerald-600 to-teal-600 text-white rounded-xl shadow-md hover:scale-[1.02] transition-all whitespace-nowrap text-sm shrink-0"
             >
-              <CheckCircle size={16} />
-              Mark as Paid
+              <CheckCircle size={15} />
+              Mark Paid
             </button>
           )}
           {isAdmin && (
             <button
               onClick={openEditModal}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:border-slate-300 transition shadow-sm"
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition shadow-sm whitespace-nowrap text-sm shrink-0"
             >
-              <Edit2 size={16} />
+              <Edit2 size={15} />
               Edit
             </button>
           )}
@@ -343,10 +344,10 @@ function InvoiceDetail() {
             <button
               onClick={() => setShowDeleteModal(true)}
               disabled={isDeleting}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-rose-600 text-white rounded-xl hover:bg-rose-700 transition shadow-sm disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-rose-600 text-white rounded-xl hover:bg-rose-700 transition shadow-sm disabled:opacity-50 whitespace-nowrap text-sm shrink-0"
             >
-              <Trash2 size={16} />
-              {isDeleting ? "Deleting..." : "Delete"}
+              <Trash2 size={15} />
+              {isDeleting ? "Deleting…" : "Delete"}
             </button>
           )}
         </div>
@@ -355,35 +356,36 @@ function InvoiceDetail() {
       {/* Main Invoice Card */}
       <div className="bg-white/80 backdrop-blur-sm dark:bg-slate-800/80 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
         {/* Invoice Header */}
-        <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow-lg shadow-blue-600/20">
-                <FileText className="w-5 h-5 text-white" />
+        <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="p-2 sm:p-2.5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow-lg shadow-blue-600/20 shrink-0">
+                <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               </div>
-              <div>
-                <h1 className="text-xl font-semibold text-slate-900 dark:text-white">
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-white truncate">
                   Invoice <span className="text-blue-600">#{invoice.invoiceNumber}</span>
                 </h1>
-                <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  <span className="flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5" />
-                    Issued: {formatDate(invoice.issueDate)}
+                {/* 2-col grid on mobile → single row on sm+ */}
+                <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
+                  <span className="flex items-center gap-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400 min-w-0">
+                    <Calendar className="w-3 h-3 shrink-0" />
+                    <span className="truncate"><span className="font-medium">Issued</span> {formatDate(invoice.issueDate)}</span>
                   </span>
-                  <span className="flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5" />
-                    Due: {formatDate(invoice.dueDate)}
+                  <span className="flex items-center gap-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400 min-w-0">
+                    <Calendar className="w-3 h-3 shrink-0" />
+                    <span className="truncate"><span className="font-medium">Due</span> {formatDate(invoice.dueDate)}</span>
                   </span>
                   {invoice.projectName && (
-                    <span className="flex items-center gap-1 text-indigo-600 font-medium">
-                      <FileText className="w-3.5 h-3.5" />
-                      {invoice.projectName}
+                    <span className="col-span-2 flex items-center gap-1 text-xs sm:text-sm text-indigo-600 font-medium min-w-0">
+                      <FileText className="w-3 h-3 shrink-0" />
+                      <span className="truncate">{invoice.projectName}</span>
                     </span>
                   )}
                 </div>
               </div>
             </div>
-            {getStatusBadge(invoice.status)}
+            <div className="shrink-0 mt-0.5">{getStatusBadge(invoice.status)}</div>
           </div>
         </div>
 
