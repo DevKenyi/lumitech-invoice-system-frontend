@@ -134,6 +134,7 @@ function CreateInvoice() {
   };
 
   return (
+    <>
     <div className="max-w-4xl mx-auto space-y-6 pb-10">
 
       {/* Header */}
@@ -629,6 +630,7 @@ function CreateInvoice() {
     </div>
 
     {showTipModal && <InvoiceSuccessModal onClose={() => setShowTipModal(false)} />}
+    </>
   );
 }
 
