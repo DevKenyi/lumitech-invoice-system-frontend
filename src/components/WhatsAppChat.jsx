@@ -1,5 +1,5 @@
 // ── Replace this with your WhatsApp Business number (include country code, no spaces) ──
-const WHATSAPP_NUMBER = "08130656221";
+const WHATSAPP_NUMBER = "2348130656221";
 
 const MESSAGES = {
   landing:   "Hi! I'm interested in LumiLedger and have a question.",
