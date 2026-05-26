@@ -307,6 +307,8 @@ function SuperAdmin() {
   const [showExcluded, setShowExcluded] = useState(false);
   const [engagement, setEngagement]     = useState([]);
   const [engSearch, setEngSearch]       = useState("");
+  const [sendingOutreach, setSendingOutreach] = useState(new Set());
+  const [bulkOutreachLoading, setBulkOutreachLoading] = useState(false);
   const [loading, setLoading]   = useState(true);
   const [savingPricing, setSavingPricing] = useState(false);
   const [suspendTarget, setSuspendTarget] = useState(null);
@@ -998,56 +1000,114 @@ function SuperAdmin() {
       )}
 
       {/* ── ENGAGEMENT TAB ──────────────────────────────────────────────────── */}
-      {tab === "engagement" && (
-        <div className="space-y-4">
-          {/* Explainer */}
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl px-5 py-4 text-sm text-blue-700 dark:text-blue-300">
-            <strong>Engagement score</strong> — 4 milestones tracked per org. Each tick = they did the thing. Score 4/4 = fully activated user.
-            <span className="ml-2 text-blue-500 dark:text-blue-400">Logins track from today onwards (historical logins not captured).</span>
-          </div>
+      {tab === "engagement" && (() => {
+        const engFiltered = engagement.filter(o => {
+          const q = engSearch.toLowerCase();
+          return !q || o.orgName?.toLowerCase().includes(q) || o.orgEmail?.toLowerCase().includes(q);
+        });
+        const contactedCount = engagement.filter(o => o.outreachSentAt).length;
+        const qualifyingCount = engagement.filter(o =>
+          o.createdFirstInvoice && !o.suspended && !o.fraudFlagged && !o.outreachSentAt
+        ).length;
 
-          {/* Toolbar */}
-          <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 flex flex-wrap items-center gap-3">
-            <div className="relative flex-1 min-w-48">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search org name or email…"
-                value={engSearch}
-                onChange={e => setEngSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700/50 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition"
-              />
+        const handleSendOutreach = async (orgId) => {
+          setSendingOutreach(prev => new Set([...prev, orgId]));
+          try {
+            const res = await api.post(`/api/superadmin/outreach/${orgId}`);
+            setEngagement(prev => prev.map(o => o.orgId === orgId
+              ? { ...o, outreachSentAt: new Date().toISOString(), outreachChannels: res.data.channels?.join(",") }
+              : o
+            ));
+            showToast(`Outreach sent to ${res.data.orgName} via ${res.data.channels?.join(" + ")}`);
+          } catch (err) {
+            showToast(err.response?.data?.message ?? "Failed to send outreach");
+          } finally {
+            setSendingOutreach(prev => { const s = new Set(prev); s.delete(orgId); return s; });
+          }
+        };
+
+        const handleBulkOutreach = async () => {
+          setBulkOutreachLoading(true);
+          try {
+            const res = await api.post("/api/superadmin/outreach/all");
+            const results = res.data ?? [];
+            const now = new Date().toISOString();
+            setEngagement(prev => prev.map(o => {
+              const hit = results.find(r => r.orgId === o.orgId);
+              return hit ? { ...o, outreachSentAt: now, outreachChannels: hit.channels?.join(",") } : o;
+            }));
+            showToast(`Outreach sent to ${results.length} organisation${results.length === 1 ? "" : "s"}`);
+          } catch {
+            showToast("Bulk outreach failed — check server logs");
+          } finally {
+            setBulkOutreachLoading(false);
+          }
+        };
+
+        return (
+          <div className="space-y-4">
+            {/* Explainer */}
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl px-5 py-4 text-sm text-blue-700 dark:text-blue-300">
+              <strong>Engagement score</strong> — 4 milestones tracked per org. Each tick = they did the thing. Score 4/4 = fully activated user.
+              <span className="ml-2 text-blue-500 dark:text-blue-400">Logins track from today onwards (historical logins not captured).</span>
             </div>
-            <span className="text-xs text-slate-400">{engagement.length} organisations</span>
-          </div>
 
-          {/* Table */}
-          <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50 dark:bg-slate-800/50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Organisation</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Score</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">1st Invoice</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Returned</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-wider">Added Client</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">Reports</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Plan</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Signed up</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                  {engagement
-                    .filter(o => {
-                      const q = engSearch.toLowerCase();
-                      return !q || o.orgName?.toLowerCase().includes(q) || o.orgEmail?.toLowerCase().includes(q);
-                    })
-                    .map(o => {
+            {/* Toolbar */}
+            <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 flex flex-wrap items-center gap-3">
+              <div className="relative flex-1 min-w-48">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search org name or email…"
+                  value={engSearch}
+                  onChange={e => setEngSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700/50 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition"
+                />
+              </div>
+              <span className="text-xs text-slate-400">{engagement.length} orgs</span>
+              {contactedCount > 0 && (
+                <span className="text-xs px-2 py-1 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 rounded-full font-semibold">
+                  {contactedCount} contacted
+                </span>
+              )}
+              {qualifyingCount > 0 && (
+                <button
+                  onClick={handleBulkOutreach}
+                  disabled={bulkOutreachLoading}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl transition disabled:opacity-50"
+                >
+                  {bulkOutreachLoading
+                    ? <><div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Sending...</>
+                    : <><Mail size={13} /> Send to All Qualifying ({qualifyingCount})</>
+                  }
+                </button>
+              )}
+            </div>
+
+            {/* Table */}
+            <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 dark:bg-slate-800/50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Organisation</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Score</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">1st Invoice</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Returned</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-wider">Added Client</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">Reports</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Plan</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Outreach</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                    {engFiltered.map(o => {
                       const scoreColor = o.score === 4 ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300"
                         : o.score >= 2 ? "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
                         : o.score === 1 ? "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
                         : "bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400";
+                      const canSend = o.createdFirstInvoice && !o.suspended && !o.fraudFlagged && !o.outreachSentAt;
+                      const isSending = sendingOutreach.has(o.orgId);
                       return (
                         <tr key={o.orgId} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                           <td className="px-4 py-3">
@@ -1113,22 +1173,44 @@ function SuperAdmin() {
                               {PLAN_LABEL[o.plan] ?? o.plan}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-xs text-slate-400">{fmtDate(o.registeredAt)}</td>
+                          <td className="px-4 py-3 text-center">
+                            {o.outreachSentAt ? (
+                              <div className="flex flex-col items-center gap-0.5">
+                                <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">Sent</span>
+                                <span className="text-[10px] text-slate-400">{fmtDateShort(o.outreachSentAt)}</span>
+                                {o.outreachChannels && (
+                                  <span className="text-[9px] text-slate-400 uppercase tracking-wide">{o.outreachChannels.replace(",", " + ")}</span>
+                                )}
+                              </div>
+                            ) : canSend ? (
+                              <button
+                                onClick={() => handleSendOutreach(o.orgId)}
+                                disabled={isSending}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-semibold rounded-lg transition disabled:opacity-50"
+                              >
+                                {isSending
+                                  ? <div className="w-2.5 h-2.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                  : <Mail size={10} />
+                                }
+                                {isSending ? "..." : "Send"}
+                              </button>
+                            ) : (
+                              <span className="text-[10px] text-slate-300 dark:text-slate-600">—</span>
+                            )}
+                          </td>
                         </tr>
                       );
                     })}
-                </tbody>
-              </table>
-              {engagement.filter(o => {
-                const q = engSearch.toLowerCase();
-                return !q || o.orgName?.toLowerCase().includes(q) || o.orgEmail?.toLowerCase().includes(q);
-              }).length === 0 && (
-                <div className="py-12 text-center text-sm text-slate-400">No organisations found.</div>
-              )}
+                  </tbody>
+                </table>
+                {engFiltered.length === 0 && (
+                  <div className="py-12 text-center text-sm text-slate-400">No organisations found.</div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── CRM / FOLLOWUP TAB ──────────────────────────────────────────────── */}
       {tab === "crm" && (() => {
