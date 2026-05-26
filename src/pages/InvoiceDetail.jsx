@@ -357,35 +357,36 @@ function InvoiceDetail() {
       <div className="bg-white/80 backdrop-blur-sm dark:bg-slate-800/80 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
         {/* Invoice Header */}
         <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="p-2 sm:p-2.5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow-lg shadow-blue-600/20 shrink-0">
-                <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+          {/* Title row: invoice number + status badge */}
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="p-2 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow-md shadow-blue-600/20 shrink-0">
+                <FileText className="w-4 h-4 text-white" />
               </div>
-              <div className="min-w-0">
-                <h1 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-white truncate">
-                  Invoice <span className="text-blue-600">#{invoice.invoiceNumber}</span>
-                </h1>
-                {/* 2-col grid on mobile → single row on sm+ */}
-                <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
-                  <span className="flex items-center gap-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400 min-w-0">
-                    <Calendar className="w-3 h-3 shrink-0" />
-                    <span className="truncate"><span className="font-medium">Issued</span> {formatDate(invoice.issueDate)}</span>
-                  </span>
-                  <span className="flex items-center gap-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400 min-w-0">
-                    <Calendar className="w-3 h-3 shrink-0" />
-                    <span className="truncate"><span className="font-medium">Due</span> {formatDate(invoice.dueDate)}</span>
-                  </span>
-                  {invoice.projectName && (
-                    <span className="col-span-2 flex items-center gap-1 text-xs sm:text-sm text-indigo-600 font-medium min-w-0">
-                      <FileText className="w-3 h-3 shrink-0" />
-                      <span className="truncate">{invoice.projectName}</span>
-                    </span>
-                  )}
-                </div>
-              </div>
+              <h1 className="text-base sm:text-xl font-semibold text-slate-900 dark:text-white truncate">
+                Invoice <span className="text-blue-600">#{invoice.invoiceNumber}</span>
+              </h1>
             </div>
-            <div className="shrink-0 mt-0.5">{getStatusBadge(invoice.status)}</div>
+            <div className="shrink-0">{getStatusBadge(invoice.status)}</div>
+          </div>
+          {/* Date chips — stacked on mobile, row on sm+ */}
+          <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:gap-2">
+            <span className="inline-flex items-center gap-1.5 self-start px-2.5 py-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-xs text-slate-600 dark:text-slate-300">
+              <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+              <span className="font-medium text-slate-500 dark:text-slate-400">Issued</span>
+              <span>{formatDate(invoice.issueDate)}</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 self-start px-2.5 py-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-xs text-slate-600 dark:text-slate-300">
+              <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+              <span className="font-medium text-slate-500 dark:text-slate-400">Due</span>
+              <span>{formatDate(invoice.dueDate)}</span>
+            </span>
+            {invoice.projectName && (
+              <span className="inline-flex items-center gap-1.5 self-start px-2.5 py-1 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-lg text-xs text-indigo-600 dark:text-indigo-400 font-medium">
+                <FileText className="w-3 h-3 shrink-0" />
+                <span>{invoice.projectName}</span>
+              </span>
+            )}
           </div>
         </div>
 
