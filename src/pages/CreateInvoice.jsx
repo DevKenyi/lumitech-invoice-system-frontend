@@ -7,6 +7,7 @@ import {
   Mail, X, FolderOpen, FileText, Receipt, Info, Search,
 } from "lucide-react";
 import NumericInput from "../components/NumericInput";
+import InvoiceSuccessModal from "../components/InvoiceSuccessModal";
 import { CURRENCIES } from "../utils/currencies";
 import { useOrg, CURRENCY_SYMBOL, CURRENCY_LOCALE } from "../context/OrgContext";
 
@@ -41,6 +42,7 @@ function CreateInvoice() {
   const [error, setError] = useState("");
   const [ccInput, setCcInput] = useState("");
   const [showCelebration, setShowCelebration] = useState(false);
+  const [showTipModal, setShowTipModal] = useState(false);
   const navigate = useNavigate();
 
   const today = new Date().toISOString().split("T")[0];
@@ -122,7 +124,7 @@ function CreateInvoice() {
       if (data?.firstInvoice) {
         setShowCelebration(true);
       } else {
-        navigate("/invoices");
+        setShowTipModal(true);
       }
     } catch {
       setError("Failed to create invoice. Please try again.");
@@ -625,6 +627,8 @@ function CreateInvoice() {
         </div>
       )}
     </div>
+
+    {showTipModal && <InvoiceSuccessModal onClose={() => setShowTipModal(false)} />}
   );
 }
 

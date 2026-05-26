@@ -7,7 +7,7 @@ import {
   ChevronDown, AlertTriangle, X, Trash2, UserCircle,
   CreditCard, Save, TrendingUp, Activity, Bell,
   PhoneCall, Mail, Search, RefreshCw, Download, Copy, Link2, MessageSquare, RotateCcw,
-  BookOpen, ExternalLink,
+  BookOpen, ExternalLink, Lightbulb, Plus, Edit2,
 } from "lucide-react";
 import Toast from "../components/Toast";
 import ConfirmModal from "../components/ConfirmModal";
@@ -268,6 +268,7 @@ const TABS = [
   { id: "organisations", label: "Organisations",  icon: Building2 },
   { id: "suspicious",    label: "Suspicious",     icon: AlertTriangle },
   { id: "pricing",       label: "Pricing",        icon: CreditCard },
+  { id: "tips",          label: "Tips",           icon: Lightbulb },
 ];
 
 const FOLLOWUP_STATUS_LABEL = {
@@ -307,6 +308,13 @@ function SuperAdmin() {
   const [showExcluded, setShowExcluded] = useState(false);
   const [engagement, setEngagement]     = useState([]);
   const [engSearch, setEngSearch]       = useState("");
+
+  const [tips, setTips] = useState([]);
+  const [tipsLoaded, setTipsLoaded] = useState(false);
+  const [newTipText, setNewTipText] = useState("");
+  const [addingTip, setAddingTip] = useState(false);
+  const [editingTipId, setEditingTipId] = useState(null);
+  const [editingTipText, setEditingTipText] = useState("");
 
   const BUSINESS_TYPES = [
     { value: "Retail",        label: "🛍️ Retail / Shop" },
@@ -375,6 +383,14 @@ function SuperAdmin() {
   };
 
   useEffect(() => { fetchAll(); }, []);
+
+  useEffect(() => {
+    if (tab === "tips" && !tipsLoaded) {
+      api.get("/api/superadmin/tips")
+        .then(res => { setTips(res.data); setTipsLoaded(true); })
+        .catch(() => {});
+    }
+  }, [tab, tipsLoaded]);
 
   if (!isPlatformAdmin) return <Navigate to="/dashboard" replace />;
 
@@ -1607,6 +1623,166 @@ function SuperAdmin() {
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── TIPS TAB ─────────────────────────────────────────────────────────── */}
+      {tab === "tips" && (
+        <div className="space-y-4">
+          {/* Header */}
+          <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                  <Lightbulb className="w-5 h-5 text-amber-500" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Invoice Tips</h2>
+                  <p className="text-xs text-slate-400">Shown randomly after every invoice is created. Add as many as you like.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setAddingTip(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition shadow-sm"
+              >
+                <Plus className="w-4 h-4" /> Add Tip
+              </button>
+            </div>
+
+            {/* Add new tip row */}
+            {addingTip && (
+              <div className="mt-4 flex items-start gap-3">
+                <textarea
+                  autoFocus
+                  rows={2}
+                  value={newTipText}
+                  onChange={e => setNewTipText(e.target.value)}
+                  placeholder="e.g. Did you know you can set automatic payment reminders for overdue invoices?"
+                  className="flex-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 resize-none transition"
+                />
+                <div className="flex flex-col gap-2">
+                  <button
+                    disabled={!newTipText.trim()}
+                    onClick={async () => {
+                      try {
+                        const res = await api.post("/api/superadmin/tips", { message: newTipText.trim() });
+                        setTips(prev => [res.data, ...prev]);
+                        setNewTipText("");
+                        setAddingTip(false);
+                        showToast("Tip added!");
+                      } catch { showToast("Failed to add tip.", "error"); }
+                    }}
+                    className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => { setAddingTip(false); setNewTipText(""); }}
+                    className="px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 text-xs font-semibold rounded-lg transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Tips table */}
+          <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 dark:bg-slate-800/50">
+                <tr>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Message</th>
+                  <th className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-24">Active</th>
+                  <th className="px-5 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-24">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                {tips.map(t => (
+                  <tr key={t.id} className={`transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50 ${!t.active ? "opacity-50" : ""}`}>
+                    <td className="px-5 py-3">
+                      {editingTipId === t.id ? (
+                        <div className="flex items-start gap-2">
+                          <textarea
+                            autoFocus
+                            rows={2}
+                            value={editingTipText}
+                            onChange={e => setEditingTipText(e.target.value)}
+                            className="flex-1 px-3 py-2 text-sm border border-blue-400 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 resize-none transition"
+                          />
+                          <div className="flex flex-col gap-1.5">
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const res = await api.put(`/api/superadmin/tips/${t.id}`, { message: editingTipText });
+                                  setTips(prev => prev.map(x => x.id === t.id ? res.data : x));
+                                  setEditingTipId(null);
+                                  showToast("Tip updated!");
+                                } catch { showToast("Failed to update.", "error"); }
+                              }}
+                              className="px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg"
+                            >Save</button>
+                            <button
+                              onClick={() => setEditingTipId(null)}
+                              className="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold rounded-lg"
+                            >Cancel</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-slate-700 dark:text-slate-300 leading-relaxed">{t.message}</p>
+                      )}
+                    </td>
+                    <td className="px-5 py-3 text-center">
+                      <button
+                        onClick={async () => {
+                          try {
+                            const res = await api.put(`/api/superadmin/tips/${t.id}`, { active: !t.active });
+                            setTips(prev => prev.map(x => x.id === t.id ? res.data : x));
+                          } catch { showToast("Failed to update.", "error"); }
+                        }}
+                        className={`w-8 h-8 rounded-full flex items-center justify-center mx-auto transition ${t.active ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200" : "bg-slate-100 dark:bg-slate-700 text-slate-400 hover:bg-slate-200"}`}
+                        title={t.active ? "Click to deactivate" : "Click to activate"}
+                      >
+                        {t.active ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                      </button>
+                    </td>
+                    <td className="px-5 py-3">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => { setEditingTipId(t.id); setEditingTipText(t.message); }}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition"
+                          title="Edit"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (!confirm("Delete this tip?")) return;
+                            try {
+                              await api.delete(`/api/superadmin/tips/${t.id}`);
+                              setTips(prev => prev.filter(x => x.id !== t.id));
+                              showToast("Tip deleted.");
+                            } catch { showToast("Failed to delete.", "error"); }
+                          }}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {tips.length === 0 && tipsLoaded && (
+                  <tr>
+                    <td colSpan={3} className="px-5 py-12 text-center text-sm text-slate-400">
+                      No tips yet. Click "Add Tip" to create the first one.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
