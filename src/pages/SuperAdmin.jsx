@@ -307,6 +307,30 @@ function SuperAdmin() {
   const [showExcluded, setShowExcluded] = useState(false);
   const [engagement, setEngagement]     = useState([]);
   const [engSearch, setEngSearch]       = useState("");
+
+  const BUSINESS_TYPES = [
+    { value: "Retail",        label: "🛍️ Retail / Shop" },
+    { value: "Services",      label: "🔧 Services / Consulting" },
+    { value: "Food",          label: "🍽️ Food & Dining" },
+    { value: "Healthcare",    label: "💊 Healthcare / Clinic" },
+    { value: "Technology",    label: "💻 Tech / Agency" },
+    { value: "Construction",  label: "🏗️ Construction" },
+    { value: "Education",     label: "📚 Education / Training" },
+    { value: "Creative",      label: "🎨 Creative / Freelancer" },
+    { value: "Import/Export", label: "🚢 Import & Export" },
+    { value: "Other",         label: "📦 Other" },
+  ];
+
+  const saveBusinessType = async (orgId, businessType, source) => {
+    try {
+      await api.patch(`/api/superadmin/followup/organisations/${orgId}/business-type`, { businessType: businessType || null });
+      if (source === "crm") {
+        setFollowupOrgs(prev => prev.map(o => o.orgId === orgId ? { ...o, businessType } : o));
+      } else {
+        setEngagement(prev => prev.map(o => o.orgId === orgId ? { ...o, businessType } : o));
+      }
+    } catch { showToast("Failed to save business type.", "error"); }
+  };
   const [sendingOutreach, setSendingOutreach] = useState(new Set());
   const [bulkOutreachLoading, setBulkOutreachLoading] = useState(false);
   const [loading, setLoading]   = useState(true);
@@ -1091,6 +1115,7 @@ function SuperAdmin() {
                   <thead className="bg-slate-50 dark:bg-slate-800/50">
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Organisation</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Business Type</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Score</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">1st Invoice</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Returned</th>
@@ -1119,13 +1144,20 @@ function SuperAdmin() {
                                 <p className="font-medium text-slate-900 dark:text-white">{o.orgName}</p>
                                 {o.orgEmail && <p className="text-xs text-slate-400">{o.orgEmail}</p>}
                                 {o.ownerPhone && <p className="text-xs text-slate-400">{o.ownerPhone}</p>}
-                                {o.businessType && (
-                                  <span className="inline-block mt-0.5 text-[10px] px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 rounded font-medium">
-                                    {o.businessType}
-                                  </span>
-                                )}
                               </div>
                             </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <select
+                              value={o.businessType ?? ""}
+                              onChange={e => saveBusinessType(o.orgId, e.target.value, "engagement")}
+                              className="text-xs border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1.5 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition w-full min-w-[130px]"
+                            >
+                              <option value="">— not set —</option>
+                              {BUSINESS_TYPES.map(bt => (
+                                <option key={bt.value} value={bt.value}>{bt.label}</option>
+                              ))}
+                            </select>
                           </td>
                           <td className="px-4 py-3 text-center">
                             <span className={`inline-flex items-center justify-center w-10 h-7 rounded-full text-xs font-extrabold ${scoreColor}`}>
@@ -1303,6 +1335,7 @@ function SuperAdmin() {
                       {showExcluded ? "Re-add" : "Active"}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Organisation</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Business Type</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Phone</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Plan</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Invoices</th>
@@ -1333,6 +1366,19 @@ function SuperAdmin() {
                             {o.orgEmail && <p className="text-xs text-slate-400">{o.orgEmail}</p>}
                           </div>
                         </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <select
+                          value={o.businessType ?? ""}
+                          disabled={showExcluded}
+                          onChange={e => saveBusinessType(o.orgId, e.target.value, "crm")}
+                          className="text-xs border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1.5 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition w-full min-w-[130px] disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <option value="">— not set —</option>
+                          {BUSINESS_TYPES.map(bt => (
+                            <option key={bt.value} value={bt.value}>{bt.label}</option>
+                          ))}
+                        </select>
                       </td>
                       <td className={`px-4 py-3 font-mono text-xs ${showExcluded ? "text-slate-400" : "text-slate-600 dark:text-slate-300"}`}>{o.ownerPhone ?? "—"}</td>
                       <td className="px-4 py-3">

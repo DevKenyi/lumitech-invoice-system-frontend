@@ -8,12 +8,12 @@ const STEPS = [
   {
     key: "orgProfileComplete",
     label: "Complete your org profile",
-    description: "Add your company name, email, and address.",
+    description: "Add your company name, email, address, and bank details.",
     to: "/settings/org",
     cta: "Go to Settings",
   },
   {
-    key: "firstClientAdded",
+    key: "firstClientCreated",
     label: "Add your first client",
     description: "Create a client you can invoice.",
     to: "/clients/create",
@@ -28,7 +28,7 @@ const STEPS = [
   },
 ];
 
-const FALLBACK = { onboardingCompleted: false, percentComplete: 0, steps: {} };
+const FALLBACK = { onboardingCompleted: false, percentComplete: 0 };
 
 function OnboardingBanner() {
   const location = useLocation();
@@ -62,9 +62,8 @@ function OnboardingBanner() {
 
   if (dismissed || !status || status.onboardingCompleted) return null;
 
-  const steps = status.steps ?? {};
-  const doneCount = STEPS.filter(s => !!steps[s.key]).length;
-  const activeStep = STEPS.find(s => !steps[s.key]);
+  const doneCount = STEPS.filter(s => !!status[s.key]).length;
+  const activeStep = STEPS.find(s => !status[s.key]);
   if (!activeStep) return null;
 
   const activeIndex = STEPS.indexOf(activeStep);
@@ -87,7 +86,7 @@ function OnboardingBanner() {
         <div className="hidden sm:flex items-center gap-1 shrink-0">
           {STEPS.map((s, i) => (
             <div key={i} className={`rounded-full transition-all ${
-              !!steps[s.key] ? "w-2 h-2 bg-emerald-500" :
+              !!status[s.key] ? "w-2 h-2 bg-emerald-500" :
               i === activeIndex ? "w-3 h-2 bg-blue-500" : "w-2 h-2 bg-slate-200 dark:bg-slate-600"
             }`} />
           ))}
@@ -136,7 +135,7 @@ function OnboardingBanner() {
       {expanded && (
         <div className="sm:hidden border-t border-slate-100 dark:border-slate-700 px-4 py-3 space-y-3">
           {STEPS.map((step, i) => {
-            const done = !!steps[step.key];
+            const done = !!status[step.key];
             const isActive = i === activeIndex;
             return (
               <div

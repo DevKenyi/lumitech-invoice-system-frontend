@@ -6,13 +6,13 @@ import api from "../services/api";
 import {
   TrendingUp, CheckCircle, AlertCircle, Clock, DollarSign,
   BarChart3, X, Wallet, Plus, BookOpenCheck, LayoutList, Scale,
-  Users, FileText, Send,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from "recharts";
 import { getUserType, capitalLabel, USER_TYPES } from "../utils/userType";
 import TourOverlay from "../components/TourOverlay";
+import OnboardingBanner from "../components/OnboardingBanner";
 import NumericInput from "../components/NumericInput";
 import { useOrg } from "../context/OrgContext";
 
@@ -130,6 +130,7 @@ const Dashboard = () => {
   return (
     <div className="space-y-6 sm:space-y-8">
       <TourOverlay />
+      {!isAccountant && <OnboardingBanner />}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -149,38 +150,6 @@ const Dashboard = () => {
         </button>
       </div>
 
-      {/* Onboarding checklist — shown when account has no activity yet */}
-      {dashboard.outstandingInvoices.length === 0 && dashboard.recentPayments.length === 0 && (
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-100 dark:border-blue-800/40 rounded-2xl p-6">
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">Get started in 3 steps</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Complete these to send your first invoice and get paid.</p>
-            </div>
-            <span className="text-2xl">🚀</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {[
-              { step: 1, icon: Users, label: "Add a customer", desc: "Who are you invoicing?", to: "/clients/create", color: "from-violet-500 to-indigo-500" },
-              { step: 2, icon: FileText, label: "Create an invoice", desc: "Fill in the items and amount.", to: "/create", color: "from-blue-500 to-cyan-500" },
-              { step: 3, icon: Send, label: "Send & get paid", desc: "Your customer receives it instantly.", to: "/create", color: "from-emerald-500 to-teal-500" },
-            ].map(({ step, icon: Icon, label, desc, to, color }) => (
-              <Link key={step} to={to}
-                className="group flex items-start gap-3 bg-white/70 dark:bg-slate-800/60 rounded-xl p-4 border border-white dark:border-slate-700/50 hover:shadow-md hover:scale-[1.01] transition-all"
-              >
-                <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center shadow-sm flex-shrink-0`}>
-                  <Icon className="w-4 h-4 text-white" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-0.5">Step {step}</p>
-                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{label}</p>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{desc}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Outstanding hero card */}
       {dashboard.summary.outstanding > 0 && (
