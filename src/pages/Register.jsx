@@ -48,6 +48,7 @@ export default function Register() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [selectedUserType, setSelectedUserType] = useState("");
+  const [businessType, setBusinessType] = useState("");
   const [form, setForm] = useState({ orgName: "", email: "", phone: "", username: "", password: "", country: "NG" });
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -61,7 +62,11 @@ export default function Register() {
     if (form.password !== confirmPassword) { setError("Passwords do not match."); return; }
     setIsLoading(true);
     try {
-      await api.post("/api/auth/register", { ...form, userType: selectedUserType.toUpperCase() });
+      await api.post("/api/auth/register", {
+        ...form,
+        userType: selectedUserType.toUpperCase(),
+        businessType: businessType || null,
+      });
       setUserType(selectedUserType);
       setRegisteredAs(selectedUserType);
       if (window.fbq) window.fbq('track', 'CompleteRegistration', { content_name: selectedUserType });
@@ -228,10 +233,54 @@ export default function Register() {
                   </select>
                   <p className="text-xs text-slate-400">Sets your default currency and VAT rate automatically.</p>
                 </div>
+
+                {/* Business type — only for Business Owners */}
+                {selectedUserType === "business_owner" && (
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                      <Briefcase size={14} className="text-slate-400" /> What type of business do you run?
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { value: "Retail",        emoji: "🛍️", label: "Retail / Shop" },
+                        { value: "Services",      emoji: "🔧", label: "Services / Consulting" },
+                        { value: "Food",          emoji: "🍽️", label: "Food & Dining" },
+                        { value: "Healthcare",    emoji: "💊", label: "Healthcare / Clinic" },
+                        { value: "Technology",    emoji: "💻", label: "Tech / Agency" },
+                        { value: "Construction",  emoji: "🏗️", label: "Construction" },
+                        { value: "Education",     emoji: "📚", label: "Education / Training" },
+                        { value: "Creative",      emoji: "🎨", label: "Creative / Freelancer" },
+                        { value: "Import/Export", emoji: "🚢", label: "Import & Export" },
+                        { value: "Other",         emoji: "📦", label: "Other" },
+                      ].map(({ value, emoji, label }) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => setBusinessType(value)}
+                          className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 text-left text-xs font-medium transition-all duration-150 ${
+                            businessType === value
+                              ? "border-blue-500 bg-blue-50 text-blue-700"
+                              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                          }`}
+                        >
+                          <span className="text-base leading-none">{emoji}</span>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
               <button
-                onClick={() => { if (form.orgName.trim() && form.email.trim() && form.phone.trim()) setStep(2); }}
-                disabled={!form.orgName.trim() || !form.email.trim() || !form.phone.trim()}
+                onClick={() => {
+                  const baseValid = form.orgName.trim() && form.email.trim() && form.phone.trim();
+                  const typeValid = selectedUserType !== "business_owner" || !!businessType;
+                  if (baseValid && typeValid) setStep(2);
+                }}
+                disabled={
+                  !form.orgName.trim() || !form.email.trim() || !form.phone.trim() ||
+                  (selectedUserType === "business_owner" && !businessType)
+                }
                 className="mt-6 w-full inline-flex items-center justify-center gap-2 py-3.5 bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-semibold rounded-2xl shadow-lg shadow-blue-600/25 hover:scale-[1.02] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 Continue <ArrowRight size={16} />
