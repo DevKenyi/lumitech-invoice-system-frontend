@@ -299,7 +299,7 @@ function InvoiceDetail() {
             className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:border-slate-300 transition shadow-sm disabled:opacity-50"
           >
             <Download size={16} />
-            {isDownloading ? "Downloading..." : "PDF"}
+            {isDownloading ? "Downloading..." : "Download Invoice"}
           </button>
           {invoice.client?.email && invoice.status !== "PAID" && (
             <button
