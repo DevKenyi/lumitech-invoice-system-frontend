@@ -4,7 +4,7 @@ import api, { getUserFromToken } from "../services/api";
 import {
   Building2, Mail, Phone, MapPin, Globe, Save, FileText, Sun, Moon, Monitor,
   Upload, Trash2, CreditCard, Landmark, Eye, EyeOff, SlidersHorizontal,
-  Lock, CheckCircle2, Pencil, DollarSign,
+  Lock, CheckCircle2, Pencil, DollarSign, Palette,
 } from "lucide-react";
 import Toast from "../components/Toast";
 import { useTheme } from "../context/ThemeContext";
@@ -36,6 +36,9 @@ const COUNTRIES = [
   { code: "ZM", flag: "🇿🇲", name: "Zambia",       currency: "ZMW", vat: "16%",   authority: "ZRA"  },
 ];
 
+const PDF_HEADER_DEFAULT = "#0F172A";
+const PDF_ACCENT_DEFAULT = "#2563EB";
+
 const EMPTY_FORM = {
   name: "", email: "", phone: "", address: "", website: "", taxId: "",
   bankName: "", bankAccountNumber: "", bankAccountName: "",
@@ -47,6 +50,8 @@ const EMPTY_FORM = {
   acceptFlutterwave: false,
   acceptBankTransfer: true, acceptCash: false,
   baseCurrency: "NGN", country: "NG", defaultVatRate: 7.5, taxAuthorityLabel: "NRS",
+  pdfHeaderColor: PDF_HEADER_DEFAULT,
+  pdfAccentColor: PDF_ACCENT_DEFAULT,
 };
 
 function OrgSettings() {
@@ -560,6 +565,115 @@ function OrgSettings() {
               <Save size={16} />
               {saving ? "Saving..." : "Save Changes"}
             </button>
+          </div>
+        </div>
+
+        {/* Invoice PDF Colours Card */}
+        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+            <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+              <Palette className="w-4 h-4 text-blue-500" />
+              Invoice PDF Colours
+            </h2>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+              Customise the brand colours on your PDF invoices.
+            </p>
+          </div>
+          <div className="p-6 space-y-5">
+
+            {[
+              {
+                key: "pdfHeaderColor",
+                label: "Header colour",
+                desc: "Invoice header banner, line-item table header, and Total row",
+                def: PDF_HEADER_DEFAULT,
+              },
+              {
+                key: "pdfAccentColor",
+                label: "Accent colour",
+                desc: "Top stripe and online-payment highlight",
+                def: PDF_ACCENT_DEFAULT,
+              },
+            ].map(({ key, label, desc, def }) => (
+              <div key={key}>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">{label}</label>
+                <div className="flex items-center gap-3">
+                  <label className="relative cursor-pointer">
+                    <input
+                      type="color"
+                      value={form[key] || def}
+                      onChange={e => set(key, e.target.value)}
+                      className="sr-only"
+                    />
+                    <span
+                      className="block w-10 h-10 rounded-xl border-2 border-slate-200 dark:border-slate-600 shadow-sm"
+                      style={{ backgroundColor: form[key] || def }}
+                    />
+                  </label>
+                  <div className="flex-1">
+                    <p className="text-sm font-mono text-slate-800 dark:text-white">{(form[key] || def).toUpperCase()}</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">{desc}</p>
+                  </div>
+                  {form[key] && form[key] !== def && (
+                    <button
+                      type="button"
+                      onClick={() => set(key, def)}
+                      className="text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 underline shrink-0"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {/* Live PDF preview */}
+            <div>
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Preview</p>
+              <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 select-none">
+                {/* Accent stripe */}
+                <div className="h-1" style={{ backgroundColor: form.pdfAccentColor || PDF_ACCENT_DEFAULT }} />
+                {/* Header band */}
+                <div
+                  className="flex items-center justify-between px-5 py-3"
+                  style={{ backgroundColor: form.pdfHeaderColor || PDF_HEADER_DEFAULT }}
+                >
+                  <div className="space-y-1">
+                    <div className="h-2 w-16 rounded bg-white/30" />
+                    <div className="h-1.5 w-24 rounded bg-white/20" />
+                  </div>
+                  <span className="text-white font-extrabold text-base tracking-widest opacity-80">INVOICE</span>
+                </div>
+                {/* Line-item table header */}
+                <div
+                  className="flex items-center px-5 py-1.5 gap-6"
+                  style={{ backgroundColor: form.pdfHeaderColor || PDF_HEADER_DEFAULT }}
+                >
+                  {["DESCRIPTION", "QTY", "UNIT PRICE", "TOTAL"].map(h => (
+                    <span key={h} className="text-white/50 text-[9px] font-bold tracking-wider">{h}</span>
+                  ))}
+                </div>
+                {/* Mock rows */}
+                <div className="bg-white dark:bg-slate-800 divide-y divide-slate-100 dark:divide-slate-700">
+                  {["Web Design Services", "Monthly Retainer"].map((row, i) => (
+                    <div key={i} className="flex items-center px-5 py-2 gap-6" style={{ backgroundColor: i % 2 ? "#F8FAFC" : "white" }}>
+                      <span className="text-slate-600 text-xs flex-1">{row}</span>
+                      <span className="text-slate-400 text-xs w-6">1</span>
+                      <span className="text-slate-400 text-xs w-20 text-right">NGN 50,000</span>
+                      <span className="text-slate-600 text-xs w-20 text-right font-medium">NGN 50,000</span>
+                    </div>
+                  ))}
+                  {/* TOTAL row */}
+                  <div
+                    className="flex items-center justify-between px-5 py-2"
+                    style={{ backgroundColor: form.pdfHeaderColor || PDF_HEADER_DEFAULT }}
+                  >
+                    <span className="text-white/80 text-xs font-bold">TOTAL</span>
+                    <span className="text-white text-xs font-bold">NGN 100,000.00</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </form>
