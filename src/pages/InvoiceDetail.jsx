@@ -19,7 +19,6 @@ import {
   DollarSign,
   CreditCard,
   Wallet,
-  RefreshCw,
   AlertCircle,
   Plus,
 } from "lucide-react";
@@ -294,14 +293,6 @@ function InvoiceDetail() {
           <span className="text-sm font-medium">Back</span>
         </button>
         <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={fetchInvoice}
-            title="Refresh status"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:border-slate-300 transition shadow-sm"
-          >
-            <RefreshCw size={16} />
-            Refresh
-          </button>
           <button
             onClick={downloadPdf}
             disabled={isDownloading}
