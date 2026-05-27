@@ -182,7 +182,7 @@ function ClientPortal() {
     }
   };
 
-  const portalCurrency = data?.invoices?.[0]?.currency || "NGN";
+  const portalCurrency = data?.orgCurrency || data?.invoices?.[0]?.currency || "NGN";
   const fmt = (amount, currency = portalCurrency) =>
     new Intl.NumberFormat("en", { style: "currency", currency, minimumFractionDigits: 0 }).format(amount || 0);
 
@@ -420,7 +420,7 @@ function ClientPortal() {
                       <div>
                         <p className="text-xs text-slate-500">Balance due</p>
                         <p className={`text-base font-bold ${inv.balanceDue > 0 ? "text-rose-600" : "text-emerald-600"}`}>
-                          {fmt(inv.balanceDue)}
+                          {fmt(inv.balanceDue, inv.currency || portalCurrency)}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -479,10 +479,10 @@ function ClientPortal() {
                         <td className="px-5 py-4 whitespace-nowrap text-slate-600">{fmtDate(inv.issueDate)}</td>
                         <td className="px-5 py-4 whitespace-nowrap text-slate-600">{fmtDate(inv.dueDate)}</td>
                         <td className="px-5 py-4 whitespace-nowrap">{getStatusBadge(inv.status)}</td>
-                        <td className="px-5 py-4 whitespace-nowrap font-semibold text-slate-900">{fmt(inv.total)}</td>
+                        <td className="px-5 py-4 whitespace-nowrap font-semibold text-slate-900">{fmt(inv.total, inv.currency || portalCurrency)}</td>
                         <td className="px-5 py-4 whitespace-nowrap">
                           <span className={`font-semibold ${inv.balanceDue > 0 ? "text-rose-600" : "text-emerald-600"}`}>
-                            {fmt(inv.balanceDue)}
+                            {fmt(inv.balanceDue, inv.currency || portalCurrency)}
                           </span>
                         </td>
                         <td className="px-5 py-4 whitespace-nowrap text-right">
@@ -534,7 +534,7 @@ function ClientPortal() {
                 </h2>
                 <p className="text-sm text-slate-500 mt-0.5">
                   Amount due:{" "}
-                  <span className="font-bold text-rose-600">{fmt(payingInvoice.balanceDue)}</span>
+                  <span className="font-bold text-rose-600">{fmt(payingInvoice.balanceDue, payingInvoice.currency || portalCurrency)}</span>
                 </p>
               </div>
               <button
@@ -639,7 +639,7 @@ function ClientPortal() {
                     )}
                     <div className="flex justify-between items-center pt-1 border-t border-slate-200">
                       <span className="text-slate-500 text-xs font-medium">Amount</span>
-                      <span className="font-bold text-rose-600 text-base">{fmt(payingInvoice.balanceDue)}</span>
+                      <span className="font-bold text-rose-600 text-base">{fmt(payingInvoice.balanceDue, payingInvoice.currency || portalCurrency)}</span>
                     </div>
                   </div>
 
@@ -659,7 +659,7 @@ function ClientPortal() {
                     <p className="text-sm font-bold text-slate-900">Cash Payment</p>
                     <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
                       Contact your service provider to arrange a cash payment of{" "}
-                      <strong>{fmt(payingInvoice.balanceDue)}</strong>.
+                      <strong>{fmt(payingInvoice.balanceDue, payingInvoice.currency || portalCurrency)}</strong>.
                     </p>
                   </div>
                 </div>
