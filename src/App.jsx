@@ -63,6 +63,7 @@ import ProformaInvoices from "./pages/ProformaInvoices";
 import FollowupPage from "./pages/FollowupPage";
 import FollowupBoard from "./pages/FollowupBoard";
 import Docs from "./pages/Docs";
+import BankConnections from "./pages/BankConnections";
 
 // Shown instead of the full app when the account is suspended or trial has ended.
 // Lives inside OrgProvider so <Billing /> can use OrgContext.
@@ -467,6 +468,18 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <Billing />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* BANK CONNECTIONS */}
+          <Route
+            path="/settings/bank-connections"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <BankConnections />
                 </Layout>
               </ProtectedRoute>
             }

@@ -256,8 +256,9 @@ function Navbar({ onClose }) {
   const settingsItems = [
     // Team (multi-user) is GROWTH+ only
     ...(canAccessGrowthFeatures ? [{ path: "/team", label: "Team", icon: UsersRound, info: "Invite and manage team members" }] : []),
-    { path: "/settings/org",     label: "Org Settings", icon: SlidersHorizontal, info: "Organisation details, logo and payment settings" },
-    { path: "/settings/billing", label: "Billing",      icon: CreditCard,        info: "View and manage your subscription" },
+    { path: "/settings/org",              label: "Org Settings",     icon: SlidersHorizontal, info: "Organisation details, logo and payment settings" },
+    { path: "/settings/billing",          label: "Billing",          icon: CreditCard,        info: "View and manage your subscription" },
+    { path: "/settings/bank-connections", label: "Bank Connections", icon: Building2,          info: "Connect your bank account for automatic transaction import" },
     // Expenses & Audit Trail — Accountant Pro + free trial only
     ...(isAccountantPro || !plan || plan === "FREE" ? [{ path: "/expenses", label: "Expenses",    icon: Receipt,    info: "Manage staff expense claims" }] : []),
     ...(isAccountantPro || !plan || plan === "FREE" ? [{ path: "/audit",    label: "Audit Trail", icon: ShieldCheck, info: "Full log of every action in your account" }] : []),
