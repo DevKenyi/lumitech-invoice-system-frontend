@@ -572,19 +572,21 @@ function ClientDetail() {
             </div>
 
             {/* Date filters */}
-            <div className="flex items-center gap-3 px-5 py-3 border-b border-slate-100 dark:border-slate-700 shrink-0">
-              <div className="flex items-center gap-2 text-sm">
-                <label className="text-slate-500 dark:text-slate-400 whitespace-nowrap">From</label>
-                <input type="date" value={stmtFrom} onChange={e => setStmtFrom(e.target.value)}
-                  className="px-2 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition" />
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <label className="text-slate-500 dark:text-slate-400 whitespace-nowrap">To</label>
-                <input type="date" value={stmtTo} onChange={e => setStmtTo(e.target.value)}
-                  className="px-2 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition" />
+            <div className="flex flex-col gap-2 px-5 py-3 border-b border-slate-100 dark:border-slate-700 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 text-sm">
+                  <label className="text-slate-500 dark:text-slate-400 whitespace-nowrap">From</label>
+                  <input type="date" value={stmtFrom} onChange={e => setStmtFrom(e.target.value)}
+                    className="px-2 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition" />
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <label className="text-slate-500 dark:text-slate-400 whitespace-nowrap">To</label>
+                  <input type="date" value={stmtTo} onChange={e => setStmtTo(e.target.value)}
+                    className="px-2 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition" />
+                </div>
               </div>
               <button onClick={loadStatement}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                className="self-start flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
                 <RefreshCw size={13} className={stmtLoading ? "animate-spin" : ""} /> Refresh
               </button>
             </div>
