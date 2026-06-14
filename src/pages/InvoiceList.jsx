@@ -37,7 +37,7 @@ import { useOrg } from "../context/OrgContext";
 function InvoiceList() {
   const { fmt } = useOrg();
   const [invoices, setInvoices] = useState([]);
-  const [stats, setStats] = useState({ total: 0, paid: 0, pending: 0, overdue: 0 });
+  const [stats, setStats] = useState({ revenue: 0, paid: 0, pending: 0, overdue: 0, revenueTrend: null });
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -66,12 +66,33 @@ function InvoiceList() {
       setInvoices(items);
       setTotalElements(res.data.totalElements);
 
-      const total = items.reduce((sum, inv) => sum + inv.total, 0);
-      const paid = items.filter(inv => inv.status === "PAID").length;
+      const now = new Date();
+      const thisMonth = now.getMonth();
+      const thisYear = now.getFullYear();
+      const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
+      const lastMonthYear = thisMonth === 0 ? thisYear - 1 : thisYear;
+
+      const paidItems = items.filter(inv => inv.status === "PAID");
+      const revenue = paidItems.reduce((sum, inv) => sum + inv.total, 0);
+      const paid = paidItems.length;
       const pending = items.filter(inv => inv.status === "PENDING").length;
       const overdue = items.filter(inv => inv.status === "OVERDUE").length;
 
-      setStats({ total, paid, pending, overdue });
+      const revenueThisMonth = paidItems
+        .filter(inv => { const d = new Date(inv.issueDate); return d.getMonth() === thisMonth && d.getFullYear() === thisYear; })
+        .reduce((sum, inv) => sum + inv.total, 0);
+      const revenueLastMonth = paidItems
+        .filter(inv => { const d = new Date(inv.issueDate); return d.getMonth() === lastMonth && d.getFullYear() === lastMonthYear; })
+        .reduce((sum, inv) => sum + inv.total, 0);
+
+      let revenueTrend = null;
+      if (revenueLastMonth > 0) {
+        revenueTrend = Math.round(((revenueThisMonth - revenueLastMonth) / revenueLastMonth) * 100);
+      } else if (revenueThisMonth > 0) {
+        revenueTrend = 100;
+      }
+
+      setStats({ revenue, paid, pending, overdue, revenueTrend });
     } catch (err) {
       console.error(err);
     } finally {
@@ -143,9 +164,10 @@ function InvoiceList() {
         <div className="min-w-0 flex-1">
           <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">{title}</p>
           <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mt-1.5 sm:mt-2 break-words leading-tight">{value}</p>
-          {trend && (
-            <p className="text-xs text-emerald-600 mt-2 flex items-center gap-1">
-              <TrendingUp className="w-3 h-3" /> +{trend}% from last month
+          {trend !== null && trend !== undefined && (
+            <p className={`text-xs mt-2 flex items-center gap-1 ${trend >= 0 ? "text-emerald-600" : "text-rose-500"}`}>
+              <TrendingUp className="w-3 h-3" />
+              {trend >= 0 ? "+" : ""}{trend}% vs last month
             </p>
           )}
         </div>
@@ -244,10 +266,10 @@ function InvoiceList() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard
             title="Total Revenue"
-            value={fmt(stats.total)}
+            value={fmt(stats.revenue)}
             icon={DollarSign}
             color="bg-gradient-to-br from-blue-600 to-indigo-600"
-            trend="12"
+            trend={stats.revenueTrend}
           />
           <StatCard
             title="Paid Invoices"
