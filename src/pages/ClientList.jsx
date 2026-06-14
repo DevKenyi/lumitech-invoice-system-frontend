@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import api, { getUserFromToken } from "../services/api";
 import {
   Users, Plus, Trash2, Mail, Phone, MapPin, MoreVertical,
-  AlertCircle, CheckCircle, Download, Bell, BellOff, X, Settings2,
+  AlertCircle, CheckCircle, Download, Bell, BellOff, X, Settings2, Upload, FileText,
 } from "lucide-react";
 import { useOrg } from "../context/OrgContext";
 
@@ -28,6 +28,10 @@ function ClientList() {
   const [selectedClient, setSelectedClient] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
   const [reminderClient, setReminderClient] = useState(null);
   const [reminderForm, setReminderForm] = useState({ remindersEnabled: true, reminderDaysBefore: 3, reminderFrequencyDays: 0 });
   const [savingReminder, setSavingReminder] = useState(false);
@@ -57,6 +61,34 @@ function ClientList() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleImport = async () => {
+    if (!importFile) return;
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const form = new FormData();
+      form.append("file", importFile);
+      const res = await api.post("/api/clients/import", form, { headers: { "Content-Type": "multipart/form-data" } });
+      setImportResult(res.data);
+      setImportFile(null);
+      fetchClients(0);
+      setPage(0);
+    } catch (err) {
+      setImportResult({ error: err.response?.data?.message || "Import failed. Please check your file and try again." });
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const downloadSampleCsv = () => {
+    const csv = "name,email,phone,address\nAcme Ltd,acme@example.com,+234 800 000 0001,\"12 Lagos Street, Lagos\"\nBeta Corp,beta@example.com,+234 800 000 0002,\"5 Accra Road, Accra\"";
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "sample-clients.csv"; a.click();
+    URL.revokeObjectURL(url);
   };
 
   const openReminderSettings = (e, client) => {
@@ -137,6 +169,15 @@ function ClientList() {
             <span className="hidden sm:inline text-sm text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full">
               {clients.length} of {totalElements}
             </span>
+            {isAdmin && (
+              <button
+                onClick={() => { setShowImport(true); setImportResult(null); setImportFile(null); }}
+                className="inline-flex items-center gap-2 px-3 py-1.5 border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition text-sm"
+              >
+                <Upload className="w-4 h-4" />
+                <span className="hidden sm:inline">Import CSV</span>
+              </button>
+            )}
             <button
               onClick={async () => {
                 setExporting(true);
@@ -391,6 +432,85 @@ function ClientList() {
         onCancel={() => setShowDeleteModal(false)}
         loading={isDeleting}
       />
+
+      {/* CSV Import Modal */}
+      {showImport && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-blue-100 dark:bg-blue-900/40 rounded-xl">
+                  <Upload className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <h2 className="text-base font-semibold text-slate-900 dark:text-white">Import Customers from CSV</h2>
+              </div>
+              <button onClick={() => setShowImport(false)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                <X size={18} className="text-slate-400" />
+              </button>
+            </div>
+
+            {!importResult ? (
+              <>
+                <div className="bg-slate-50 dark:bg-slate-700/40 rounded-xl p-4 mb-4 text-sm text-slate-600 dark:text-slate-300">
+                  <p className="font-medium mb-1">Required column: <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded">name</code></p>
+                  <p>Optional: <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded">email</code>, <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded">phone</code>, <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded">address</code></p>
+                </div>
+
+                <button onClick={downloadSampleCsv} className="inline-flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 hover:underline mb-4">
+                  <FileText className="w-4 h-4" /> Download sample CSV
+                </button>
+
+                <label className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl cursor-pointer transition mb-4 ${importFile ? "border-blue-400 bg-blue-50 dark:bg-blue-900/20" : "border-slate-300 dark:border-slate-600 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/10"}`}>
+                  <input type="file" accept=".csv" className="hidden" onChange={e => setImportFile(e.target.files[0])} />
+                  {importFile ? (
+                    <div className="text-center">
+                      <FileText className="w-6 h-6 text-blue-500 mx-auto mb-1" />
+                      <p className="text-sm font-medium text-blue-600 dark:text-blue-400">{importFile.name}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">Click to change</p>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <Upload className="w-6 h-6 text-slate-400 mx-auto mb-1" />
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Click to choose a CSV file</p>
+                    </div>
+                  )}
+                </label>
+
+                <div className="flex items-center gap-3 justify-end">
+                  <button onClick={() => setShowImport(false)} className="px-4 py-2 text-sm text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleImport}
+                    disabled={!importFile || importing}
+                    className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition disabled:opacity-50"
+                  >
+                    {importing ? <><span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Importing…</> : <><Upload className="w-4 h-4" /> Import</>}
+                  </button>
+                </div>
+              </>
+            ) : importResult.error ? (
+              <div className="text-center py-4">
+                <AlertCircle className="w-10 h-10 text-rose-500 mx-auto mb-3" />
+                <p className="text-sm font-medium text-rose-600 dark:text-rose-400 mb-4">{importResult.error}</p>
+                <button onClick={() => setImportResult(null)} className="px-4 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition text-slate-600 dark:text-slate-300">Try again</button>
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                <CheckCircle className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
+                <p className="text-lg font-bold text-slate-900 dark:text-white mb-1">{importResult.imported} customers imported</p>
+                {importResult.skipped > 0 && <p className="text-sm text-amber-600 dark:text-amber-400 mb-2">{importResult.skipped} rows skipped</p>}
+                {importResult.errors?.length > 0 && (
+                  <ul className="text-xs text-slate-500 dark:text-slate-400 text-left bg-slate-50 dark:bg-slate-700/40 rounded-lg p-3 mb-3 max-h-28 overflow-y-auto">
+                    {importResult.errors.map((e, i) => <li key={i}>{e}</li>)}
+                  </ul>
+                )}
+                <button onClick={() => setShowImport(false)} className="px-5 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Done</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
