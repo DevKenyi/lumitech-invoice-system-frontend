@@ -29,6 +29,8 @@ import {
   XCircle,
   ChevronLeft,
   ChevronRight,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import { useOrg } from "../context/OrgContext";
 
@@ -39,6 +41,9 @@ function InvoiceList() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [showBulkDeleteWarning, setShowBulkDeleteWarning] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [totalElements, setTotalElements] = useState(0);
   const [page, setPage] = useState(0);
   const [orgName, setOrgName] = useState("");
@@ -46,6 +51,7 @@ function InvoiceList() {
   const navigate = useNavigate();
   const user = getUserFromToken();
   const role = user?.role || (Array.isArray(user?.roles) ? user.roles[0] : null);
+  const isAdmin = role === "ADMIN" || role === "SUPER_ADMIN" || role === "PLATFORM_ADMIN";
 
   useEffect(() => {
     fetchInvoices();
@@ -76,6 +82,36 @@ function InvoiceList() {
   const handleLogout = () => {
     localStorage.removeItem("token");
     navigate("/login");
+  };
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === visibleInvoices.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(visibleInvoices.map(inv => inv.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    setBulkDeleting(true);
+    try {
+      await api.delete("/api/invoices/bulk", { data: Array.from(selectedIds) });
+      setSelectedIds(new Set());
+      setShowBulkDeleteWarning(false);
+      await fetchInvoices();
+    } catch (err) {
+      alert(err.response?.data?.message || "Bulk delete failed. Please try again.");
+    } finally {
+      setBulkDeleting(false);
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -270,9 +306,20 @@ function InvoiceList() {
         <div className="bg-white/80 backdrop-blur-sm dark:bg-slate-800/80 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Recent Invoices</h2>
-            <span className="text-sm text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full">
-              {totalElements} invoices
-            </span>
+            <div className="flex items-center gap-3">
+              {isAdmin && selectedIds.size > 0 && (
+                <button
+                  onClick={() => setShowBulkDeleteWarning(true)}
+                  className="inline-flex items-center gap-2 px-4 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium rounded-lg transition"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete {selectedIds.size} selected
+                </button>
+              )}
+              <span className="text-sm text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full">
+                {totalElements} invoices
+              </span>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -285,6 +332,16 @@ function InvoiceList() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+                    {isAdmin && (
+                      <th className="pl-6 py-4 w-10">
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                          checked={visibleInvoices.length > 0 && selectedIds.size === visibleInvoices.length}
+                          onChange={toggleSelectAll}
+                        />
+                      </th>
+                    )}
                     <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                       Invoice No
                     </th>
@@ -311,7 +368,7 @@ function InvoiceList() {
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                   {filteredInvoices.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="px-6 py-12 text-center">
+                      <td colSpan={isAdmin ? "7" : "6"} className="px-6 py-12 text-center">
                         {invoices.length === 0 ? (
                           /* True empty — no invoices at all */
                           <div className="flex flex-col items-center gap-4 max-w-sm mx-auto">
@@ -356,9 +413,19 @@ function InvoiceList() {
                     visibleInvoices.map(inv => (
                       <tr
                         key={inv.id}
-                        onClick={() => navigate(`/invoices/${inv.id}`)}
-                        className="group hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
+                        onClick={(e) => { if (e.target.type !== "checkbox") navigate(`/invoices/${inv.id}`); }}
+                        className={`group hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer ${selectedIds.has(inv.id) ? "bg-rose-50/50 dark:bg-rose-900/10" : ""}`}
                       >
+                        {isAdmin && (
+                          <td className="pl-6 py-4 whitespace-nowrap" onClick={e => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              className="w-4 h-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500 cursor-pointer"
+                              checked={selectedIds.has(inv.id)}
+                              onChange={() => toggleSelect(inv.id)}
+                            />
+                          </td>
+                        )}
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="font-mono font-medium text-slate-900 dark:text-white">
                             #{inv.invoiceNumber}
@@ -433,6 +500,55 @@ function InvoiceList() {
           )}
         </div>
       </main>
+
+      {/* Bulk Delete Warning Modal */}
+      {showBulkDeleteWarning && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-rose-200 dark:border-rose-800 w-full max-w-md p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2.5 bg-rose-100 dark:bg-rose-900/40 rounded-xl">
+                <AlertTriangle className="w-6 h-6 text-rose-600 dark:text-rose-400" />
+              </div>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Permanent Deletion Warning</h2>
+            </div>
+
+            <div className="bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-xl p-4 mb-5">
+              <p className="text-sm font-semibold text-rose-700 dark:text-rose-400 mb-1">
+                You are about to permanently delete {selectedIds.size} invoice{selectedIds.size > 1 ? "s" : ""}.
+              </p>
+              <p className="text-sm text-rose-600 dark:text-rose-400">
+                This will also remove all associated payments, journal entries, and financial records.
+                <strong className="block mt-1">This action cannot be undone.</strong>
+              </p>
+            </div>
+
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+              Are you absolutely sure you want to continue? There is no way to recover deleted invoices.
+            </p>
+
+            <div className="flex items-center gap-3 justify-end">
+              <button
+                onClick={() => setShowBulkDeleteWarning(false)}
+                disabled={bulkDeleting}
+                className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                disabled={bulkDeleting}
+                className="flex items-center gap-2 px-5 py-2 text-sm font-semibold bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition disabled:opacity-60"
+              >
+                {bulkDeleting ? (
+                  <><span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Deleting…</>
+                ) : (
+                  <><Trash2 className="w-4 h-4" /> Yes, delete permanently</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
