@@ -58,6 +58,8 @@ function ClientDetail() {
   // Edit state
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", address: "" });
+  const [editCcList, setEditCcList] = useState([]);
+  const [editCcInput, setEditCcInput] = useState("");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   // Send statement state
@@ -94,13 +96,15 @@ function ClientDetail() {
 
   const openEditModal = () => {
     setEditForm({ name: client.name || "", email: client.email || "", phone: client.phone || "", address: client.address || "" });
+    setEditCcList(client.ccEmails || []);
+    setEditCcInput("");
     setShowEditModal(true);
   };
 
   const handleSaveEdit = async () => {
     try {
       setIsSavingEdit(true);
-      const res = await api.put(`/api/clients/${id}`, editForm);
+      const res = await api.put(`/api/clients/${id}`, { ...editForm, ccEmails: editCcList });
       setClient(res.data);
       setShowEditModal(false);
       setToast({ visible: true, message: "Client updated successfully", type: "success" });
@@ -215,7 +219,7 @@ function ClientDetail() {
           </button>
           {client?.email && (
             <button
-              onClick={() => { setCcList([]); setCcInput(""); setShowStatementModal(true); }}
+              onClick={() => { setCcList(client?.ccEmails || []); setCcInput(""); setShowStatementModal(true); }}
               className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-xl shadow-lg shadow-blue-600/30 hover:shadow-xl hover:scale-[1.02] transition-all text-sm font-medium"
             >
               <Send size={16} />
@@ -464,6 +468,49 @@ function ClientDetail() {
                   </div>
                 </div>
               ))}
+            </div>
+
+            {/* CC Emails */}
+            <div className="mt-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">CC Emails <span className="text-slate-400 font-normal">(optional)</span></label>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mb-2">These addresses are automatically CC'd on every invoice and statement sent to this client.</p>
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  value={editCcInput}
+                  onChange={e => setEditCcInput(e.target.value)}
+                  onKeyDown={e => {
+                    if ((e.key === "Enter" || e.key === ",") && editCcInput.trim()) {
+                      e.preventDefault();
+                      const email = editCcInput.trim();
+                      if (!editCcList.includes(email)) setEditCcList([...editCcList, email]);
+                      setEditCcInput("");
+                    }
+                  }}
+                  placeholder="cc@example.com"
+                  className="flex-1 px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white/50 dark:bg-slate-700/50 dark:text-white dark:placeholder:text-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const email = editCcInput.trim();
+                    if (email && !editCcList.includes(email)) setEditCcList([...editCcList, email]);
+                    setEditCcInput("");
+                  }}
+                  disabled={!editCcInput.trim()}
+                  className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-40"
+                >Add</button>
+              </div>
+              {editCcList.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {editCcList.map(email => (
+                    <span key={email} className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs rounded-full border border-blue-200 dark:border-blue-700">
+                      {email}
+                      <button type="button" onClick={() => setEditCcList(editCcList.filter(e => e !== email))} className="ml-0.5 hover:text-blue-900 dark:hover:text-blue-100">×</button>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end gap-3 mt-6">
