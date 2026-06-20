@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import api from "../services/api";
+import api, { getUserFromToken } from "../services/api";
 import { useOrg } from "../context/OrgContext";
 import Toast from "../components/Toast";
 import {
@@ -190,6 +190,9 @@ function StandGrid({ onStandReturned }) {
 
 export default function OrdersKDS() {
   const { currency } = useOrg();
+  const user = getUserFromToken();
+  const role = user?.role || (Array.isArray(user?.roles) ? user.roles[0] : null);
+  const isStaff = role === "STAFF" || role === "STAFF_EXPENSE";
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -263,7 +266,7 @@ export default function OrdersKDS() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Orders / Kitchen</h1>
         <div className="flex items-center gap-2">
-          <RestaurantSettingsPanel />
+          {!isStaff && <RestaurantSettingsPanel />}
           <button onClick={() => loadOrders(true)} disabled={refreshing}
             className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 hover:text-blue-600 border border-slate-200 dark:border-slate-600 px-3 py-1.5 rounded-lg">
             <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />

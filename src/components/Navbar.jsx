@@ -274,6 +274,7 @@ function Navbar({ onClose }) {
     { path: "/staff-home",      label: "Home",            icon: Home,              info: "Expense dashboard and recent submissions" },
     { path: "/pos",             label: "Make a Sale",     icon: ShoppingCart,      info: "Sell products and process payments" },
     { path: "/pos/food",        label: "Food POS",        icon: UtensilsCrossed,   info: "Take food orders and print receipts" },
+    { path: "/orders",          label: "Orders / KDS",    icon: ClipboardList,     info: "View active orders and manage stands" },
     { path: "/expenses",        label: "Expenses",        icon: Receipt,           info: "Submit and track expense claims" },
     { path: "/expenses/manage", label: "Manage Expenses", icon: FolderOpen,        info: "Review and approve expense reports" },
     { path: "/settings/org",    label: "Preferences",     icon: SlidersHorizontal, info: "Change your display preferences" },
