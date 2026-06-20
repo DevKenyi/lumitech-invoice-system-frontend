@@ -365,11 +365,11 @@ function Billing() {
             </div>
           </div>
 
-          {/* Paystack security trust line */}
+          {/* Flutterwave security trust line */}
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 py-3 px-4 bg-slate-50 border border-slate-200 rounded-2xl">
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <Lock className="w-3.5 h-3.5 text-slate-400" />
-              Secured by <span className="font-semibold text-slate-700">Paystack</span> — trusted payment platform
+              Secured by <span className="font-semibold text-slate-700">Flutterwave</span> — trusted payment platform
             </div>
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <Shield className="w-3.5 h-3.5 text-slate-400" />
