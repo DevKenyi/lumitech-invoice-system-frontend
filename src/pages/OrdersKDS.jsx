@@ -408,23 +408,39 @@ export default function OrdersKDS() {
                 </div>
 
                 {/* Items */}
-                <div className="space-y-1 border-t border-slate-100 dark:border-slate-700 pt-2">
-                  {(order.items || []).map((item, i) => (
-                    <div key={i} className="text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-slate-700 dark:text-slate-200">
-                          <span className="font-medium">{item.qty}×</span> {item.name}
-                        </span>
-                        <span className="text-slate-500 text-xs">{fmt(item.subtotal, currency)}</span>
-                      </div>
-                      {item.modifiers && item.modifiers.length > 0 && (
-                        <p className="text-xs text-slate-400 pl-4">
-                          {item.modifiers.map(m => m.name).join(", ")}
-                        </p>
-                      )}
+                {(() => {
+                  const hasMixed = (order.items || []).some(i => i.toGo);
+                  return (
+                    <div className="space-y-1.5 border-t border-slate-100 dark:border-slate-700 pt-2">
+                      {(order.items || []).map((item, i) => (
+                        <div key={i} className="text-sm">
+                          <div className="flex justify-between items-start gap-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-slate-700 dark:text-slate-200">
+                                <span className="font-medium">{item.qty}×</span> {item.name}
+                              </span>
+                              {hasMixed && (
+                                <span className={`text-xs px-1.5 py-0.5 rounded font-bold ${
+                                  item.toGo
+                                    ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400"
+                                    : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                                }`}>
+                                  {item.toGo ? "PACK" : "SERVE"}
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-slate-500 text-xs shrink-0">{fmt(item.subtotal, currency)}</span>
+                          </div>
+                          {item.modifiers && item.modifiers.length > 0 && (
+                            <p className="text-xs text-slate-400 pl-4">
+                              {item.modifiers.map(m => m.qty > 1 ? `${m.name} ×${m.qty}` : m.name).join(", ")}
+                            </p>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  );
+                })()}
 
                 {/* Total + payment */}
                 <div className="flex justify-between items-center border-t border-slate-100 dark:border-slate-700 pt-2">

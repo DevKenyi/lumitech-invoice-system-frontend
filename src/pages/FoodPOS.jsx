@@ -5,7 +5,7 @@ import Toast from "../components/Toast";
 import {
   ShoppingCart, Plus, Minus, Trash2, X, Loader2,
   UtensilsCrossed, ToggleLeft, ToggleRight, RefreshCw,
-  Printer, Users, ShoppingBag,
+  Printer, Users, ShoppingBag, Package,
 } from "lucide-react";
 
 const PAYMENT_METHODS = ["CASH", "CARD", "TRANSFER", "POS_TERMINAL"];
@@ -17,16 +17,32 @@ function uuid() { return Math.random().toString(36).slice(2) + Date.now(); }
 
 // ── Receipt printer ──────────────────────────────────────────────────────────
 function printReceipts(order, orgName, currency) {
-  const items = (order.items || []).map(i =>
-    `<tr>
-      <td style="padding:2px 4px">${i.qty}× ${i.name}${i.modifiers?.length ? `<br><small style="color:#666">${i.modifiers.map(m => m.name).join(", ")}</small>` : ""}</td>
-      <td style="padding:2px 4px;text-align:right">${fmt(i.subtotal, currency)}</td>
-    </tr>`
-  ).join("");
+  const hasMixed = (order.items || []).some(i => i.toGo);
 
-  const kitchenItems = (order.items || []).map(i =>
-    `<div style="font-size:14px;margin:4px 0"><strong>${i.qty}×</strong> ${i.name}${i.modifiers?.length ? ` (${i.modifiers.map(m => m.name).join(", ")})` : ""}</div>`
-  ).join("");
+  const items = (order.items || []).map(i => {
+    const modLine = i.modifiers?.length
+      ? `<br><small style="color:#666">${i.modifiers.map(m => m.qty > 1 ? `${m.name} ×${m.qty}` : m.name).join(", ")}</small>`
+      : "";
+    const toGoTag = i.toGo
+      ? `<span style="font-size:9px;border:1px solid #000;padding:1px 3px;margin-left:4px;font-weight:bold">TO GO</span>`
+      : "";
+    return `<tr>
+      <td style="padding:2px 4px">${i.qty}× ${i.name}${toGoTag}${modLine}</td>
+      <td style="padding:2px 4px;text-align:right">${fmt(i.subtotal, currency)}</td>
+    </tr>`;
+  }).join("");
+
+  const kitchenItems = (order.items || []).map(i => {
+    const modLine = i.modifiers?.length
+      ? ` (${i.modifiers.map(m => m.qty > 1 ? `${m.name} ×${m.qty}` : m.name).join(", ")})`
+      : "";
+    const badge = hasMixed
+      ? i.toGo
+        ? `<span style="font-size:10px;border:2px solid #000;padding:1px 5px;margin-left:5px;font-weight:bold">PACK</span>`
+        : `<span style="font-size:10px;border:1px solid #999;padding:1px 5px;margin-left:5px">SERVE</span>`
+      : "";
+    return `<div style="font-size:14px;margin:4px 0"><strong>${i.qty}×</strong> ${i.name}${badge}${modLine}</div>`;
+  }).join("");
 
   const win = window.open("", "_blank", "width=380,height=600");
   win.document.write(`
@@ -136,11 +152,10 @@ export default function FoodPOS() {
   }
 
   function addToCart(item, selectedMods) {
-    const modTotal = selectedMods.reduce((s, m) => s + (m.priceDelta || 0), 0);
+    const modTotal = selectedMods.reduce((s, m) => s + (m.priceDelta || 0) * (m.qty || 1), 0);
     const unitPrice = parseFloat(item.price) + modTotal;
     setCart(prev => {
-      // merge identical items (same refId + same mods)
-      const modKey = selectedMods.map(m => m.modifierOptionId).sort().join(",");
+      const modKey = selectedMods.map(m => `${m.modifierOptionId}:${m.qty || 1}`).sort().join(",");
       const existing = prev.find(ci =>
         ci.refId === item.id && ci.modKey === modKey && selectedMods.length === ci.modifiers.length);
       if (existing) {
@@ -149,7 +164,7 @@ export default function FoodPOS() {
       return [...prev, {
         cartId: uuid(), refId: item.id, modKey,
         itemType: "menu_item", name: item.name,
-        unitPrice, qty: 1, modifiers: selectedMods,
+        unitPrice, qty: 1, modifiers: selectedMods, toGo: false,
       }];
     });
   }
@@ -157,6 +172,12 @@ export default function FoodPOS() {
   function changeQty(cartId, delta) {
     setCart(prev => prev.map(ci =>
       ci.cartId === cartId ? { ...ci, qty: Math.max(1, ci.qty + delta) } : ci
+    ));
+  }
+
+  function toggleToGo(cartId) {
+    setCart(prev => prev.map(ci =>
+      ci.cartId === cartId ? { ...ci, toGo: !ci.toGo } : ci
     ));
   }
 
@@ -181,10 +202,12 @@ export default function FoodPOS() {
           name: ci.name,
           qty: ci.qty,
           unitPrice: ci.unitPrice,
+          toGo: ci.toGo || false,
           modifiers: ci.modifiers.map(m => ({
             modifierOptionId: m.modifierOptionId,
             name: m.name,
             priceDelta: m.priceDelta,
+            qty: m.qty || 1,
           })),
         })),
       });
@@ -192,7 +215,6 @@ export default function FoodPOS() {
       setSuccessOrder(order);
       setCart([]);
       setNotes("");
-      // Auto-print receipts
       printReceipts(order, orgName || "Restaurant", currency);
     } catch (e) {
       showToast(e.response?.data?.message || "Failed to place order", "error");
@@ -317,12 +339,18 @@ export default function FoodPOS() {
             </p>
           ) : (
             cart.map(ci => (
-              <div key={ci.cartId} className="bg-slate-50 dark:bg-slate-700 rounded-lg p-2.5">
+              <div key={ci.cartId} className={`rounded-lg p-2.5 border ${
+                ci.toGo
+                  ? "bg-orange-50 dark:bg-orange-900/10 border-orange-200 dark:border-orange-800"
+                  : "bg-slate-50 dark:bg-slate-700 border-transparent"
+              }`}>
                 <div className="flex items-start justify-between gap-1">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{ci.name}</p>
                     {ci.modifiers.length > 0 && (
-                      <p className="text-xs text-slate-400 truncate">{ci.modifiers.map(m => m.name).join(", ")}</p>
+                      <p className="text-xs text-slate-400 truncate">
+                        {ci.modifiers.map(m => m.qty > 1 ? `${m.name} ×${m.qty}` : m.name).join(", ")}
+                      </p>
                     )}
                   </div>
                   <button onClick={() => removeItem(ci.cartId)} className="text-slate-400 hover:text-red-500 shrink-0">
@@ -341,7 +369,22 @@ export default function FoodPOS() {
                       <Plus size={12} />
                     </button>
                   </div>
-                  <span className="text-sm font-bold text-blue-600">{fmt(ci.unitPrice * ci.qty, currency)}</span>
+                  <div className="flex items-center gap-2">
+                    {/* TO GO toggle — only shown for dine-in orders */}
+                    {orderType === "DINE_IN" && (
+                      <button onClick={() => toggleToGo(ci.cartId)}
+                        title={ci.toGo ? "Mark as Dine In" : "Mark as To Go"}
+                        className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border transition-colors ${
+                          ci.toGo
+                            ? "bg-orange-500 text-white border-orange-500"
+                            : "border-slate-300 dark:border-slate-500 text-slate-400 hover:border-orange-400 hover:text-orange-500"
+                        }`}>
+                        <Package size={10} />
+                        {ci.toGo ? "To Go" : "Serve"}
+                      </button>
+                    )}
+                    <span className="text-sm font-bold text-blue-600">{fmt(ci.unitPrice * ci.qty, currency)}</span>
+                  </div>
                 </div>
               </div>
             ))
@@ -413,7 +456,7 @@ export default function FoodPOS() {
             <p className="text-2xl font-bold text-blue-600 mb-1">{fmt(successOrder.total, currency)}</p>
             <p className="text-xs text-slate-400 mb-4">{(successOrder.paymentMethod || "").replace("_", " ")} · {successOrder.orderType === "DINE_IN" ? "Dine In" : "Takeaway"}</p>
             <div className="flex gap-2">
-              <button onClick={() => printReceipts(successOrder, "Restaurant", currency)}
+              <button onClick={() => printReceipts(successOrder, orgName || "Restaurant", currency)}
                 className="flex-1 py-2 rounded-xl border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-sm flex items-center justify-center gap-1">
                 <Printer size={14} /> Reprint
               </button>
@@ -433,8 +476,25 @@ export default function FoodPOS() {
 function ModifierSelectionModal({ item, currency, onConfirm, onClose }) {
   const [selections, setSelections] = useState({});
 
+  function selectOption(modId, opt) {
+    setSelections(prev => {
+      const existing = prev[modId];
+      // If same option clicked again, keep it selected (don't deselect required)
+      if (existing?.id === opt.id) return prev;
+      return { ...prev, [modId]: { ...opt, qty: 1 } };
+    });
+  }
+
+  function changeModQty(modId, delta) {
+    setSelections(prev => {
+      const opt = prev[modId];
+      if (!opt) return prev;
+      return { ...prev, [modId]: { ...opt, qty: Math.max(1, (opt.qty || 1) + delta) } };
+    });
+  }
+
   const requiredMet = item.modifiers.every(mod => !mod.required || selections[mod.id]);
-  const modTotal = Object.values(selections).reduce((s, o) => s + (o.priceDelta || 0), 0);
+  const modTotal = Object.values(selections).reduce((s, o) => s + (o.priceDelta || 0) * (o.qty || 1), 0);
   const finalPrice = parseFloat(item.price) + modTotal;
 
   function confirm() {
@@ -442,6 +502,7 @@ function ModifierSelectionModal({ item, currency, onConfirm, onClose }) {
       modifierOptionId: opt.id,
       name: opt.name,
       priceDelta: opt.priceDelta || 0,
+      qty: opt.qty || 1,
     }));
     onConfirm(mods);
   }
@@ -464,20 +525,47 @@ function ModifierSelectionModal({ item, currency, onConfirm, onClose }) {
                 {mod.required && <span className="text-xs text-orange-500">(required)</span>}
               </p>
               <div className="space-y-1.5">
-                {(mod.options || []).map(opt => (
-                  <button key={opt.id}
-                    onClick={() => setSelections(prev => ({ ...prev, [mod.id]: opt }))}
-                    className={`w-full flex justify-between items-center px-3 py-2 rounded-lg border text-sm transition-colors ${
-                      selections[mod.id]?.id === opt.id
-                        ? "border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
-                        : "border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
-                    }`}>
-                    <span>{opt.name}</span>
-                    <span className="text-xs text-slate-400">
-                      {opt.priceDelta > 0 ? `+${currency}${Number(opt.priceDelta).toFixed(2)}` : opt.priceDelta < 0 ? `${currency}${Number(opt.priceDelta).toFixed(2)}` : "Free"}
-                    </span>
-                  </button>
-                ))}
+                {(mod.options || []).map(opt => {
+                  const selected = selections[mod.id]?.id === opt.id;
+                  const selQty = selections[mod.id]?.qty || 1;
+                  return (
+                    <div key={opt.id}>
+                      <button
+                        onClick={() => selectOption(mod.id, opt)}
+                        className={`w-full flex justify-between items-center px-3 py-2 rounded-lg border text-sm transition-colors ${
+                          selected
+                            ? "border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
+                            : "border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
+                        }`}>
+                        <span>{opt.name}</span>
+                        <span className="text-xs text-slate-400">
+                          {opt.priceDelta > 0 ? `+${currency}${Number(opt.priceDelta).toFixed(2)}` : opt.priceDelta < 0 ? `${currency}${Number(opt.priceDelta).toFixed(2)}` : "Free"}
+                        </span>
+                      </button>
+
+                      {/* Qty stepper — only shown when this option is selected */}
+                      {selected && (
+                        <div className="flex items-center gap-2 mt-1.5 pl-3">
+                          <span className="text-xs text-slate-500">Qty:</span>
+                          <button onClick={() => changeModQty(mod.id, -1)}
+                            className="w-6 h-6 rounded bg-slate-200 dark:bg-slate-600 flex items-center justify-center hover:bg-slate-300 text-slate-600 dark:text-slate-300">
+                            <Minus size={11} />
+                          </button>
+                          <span className="text-sm font-bold text-slate-800 dark:text-slate-100 w-4 text-center">{selQty}</span>
+                          <button onClick={() => changeModQty(mod.id, 1)}
+                            className="w-6 h-6 rounded bg-slate-200 dark:bg-slate-600 flex items-center justify-center hover:bg-slate-300 text-slate-600 dark:text-slate-300">
+                            <Plus size={11} />
+                          </button>
+                          {selQty > 1 && opt.priceDelta > 0 && (
+                            <span className="text-xs text-blue-600 font-semibold ml-1">
+                              +{currency}{(Number(opt.priceDelta) * selQty).toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ))}
