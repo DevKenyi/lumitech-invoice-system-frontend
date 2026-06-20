@@ -3,7 +3,7 @@ import api from "../services/api";
 import { useOrg } from "../context/OrgContext";
 import Toast from "../components/Toast";
 import {
-  RefreshCw, CheckCircle, X, Clock, Loader2, ChevronDown, Store, Wifi,
+  RefreshCw, X, Clock, Loader2, ChevronDown, Store, Wifi,
   Hash, ShoppingBag, RotateCcw, ChevronUp, Settings, Save,
 } from "lucide-react";
 
@@ -22,8 +22,7 @@ function timeAgo(dateStr) {
 }
 
 const STATUS_CONFIG = {
-  received:  { label: "Received",  classes: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400" },
-  completed: { label: "Completed", classes: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" },
+  received:  { label: "Active",    classes: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400" },
   cancelled: { label: "Cancelled", classes: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400" },
 };
 
@@ -200,7 +199,7 @@ export default function OrdersKDS() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
-  const [actionLoading, setActionLoading] = useState(null);
+  const [cancelLoading, setCancelLoading] = useState(null);
 
   const showToast = (msg, type = "success") => setToast({ msg, type });
 
@@ -229,24 +228,14 @@ export default function OrdersKDS() {
     return () => clearInterval(interval);
   }, []);
 
-  async function completeOrder(id) {
-    setActionLoading(id + "-complete");
-    try {
-      const res = await api.patch(`/api/orders/${id}/complete`);
-      setOrders(prev => prev.map(o => o.id === id ? res.data : o));
-      showToast("Order completed");
-    } catch (e) { showToast(e.response?.data?.message || "Failed to complete order", "error"); }
-    finally { setActionLoading(null); }
-  }
-
   async function cancelOrder(id) {
-    setActionLoading(id + "-cancel");
+    setCancelLoading(id);
     try {
       const res = await api.patch(`/api/orders/${id}/cancel`);
       setOrders(prev => prev.map(o => o.id === id ? res.data : o));
       showToast("Order cancelled");
     } catch (e) { showToast(e.response?.data?.message || "Failed to cancel order", "error"); }
-    finally { setActionLoading(null); }
+    finally { setCancelLoading(null); }
   }
 
   const filtered = orders.filter(o => {
@@ -292,8 +281,7 @@ export default function OrdersKDS() {
           <span className="text-xs text-slate-500 mr-1">Status:</span>
           {[
             { val: "all", label: "All" },
-            { val: "received", label: "Received" },
-            { val: "completed", label: "Completed" },
+            { val: "received", label: "Active" },
             { val: "cancelled", label: "Cancelled" },
           ].map(f => (
             <button key={f.val} onClick={() => setStatusFilter(f.val)}
@@ -439,21 +427,13 @@ export default function OrdersKDS() {
                 {isReceived && (
                   <div className="flex gap-2 pt-1">
                     <button
-                      onClick={() => completeOrder(order.id)}
-                      disabled={!!actionLoading}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium disabled:opacity-50">
-                      {actionLoading === order.id + "-complete"
-                        ? <Loader2 size={14} className="animate-spin" />
-                        : <CheckCircle size={14} />}
-                      Complete
-                    </button>
-                    <button
                       onClick={() => cancelOrder(order.id)}
-                      disabled={!!actionLoading}
+                      disabled={!!cancelLoading}
                       className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 text-sm disabled:opacity-50">
-                      {actionLoading === order.id + "-cancel"
+                      {cancelLoading === order.id
                         ? <Loader2 size={14} className="animate-spin" />
                         : <X size={14} />}
+                      Cancel Order
                     </button>
                   </div>
                 )}
