@@ -8,7 +8,7 @@ import {
   Info, SlidersHorizontal, Package, ShoppingCart, BarChart2,
   FileCheck, Repeat, Undo2, FileMinus, ClipboardCheck,
   Warehouse, Target, UserCog, GitBranch, BookMarked, TrendingDown, History,
-  Tag, ShoppingBag,
+  Tag, ShoppingBag, UtensilsCrossed,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import api, { getUserFromToken } from "../services/api";
@@ -246,9 +246,12 @@ function Navbar({ onClose }) {
 
   // ── Section: Retail & POS ─────────────────────────────────────────────────
   const posItems = [
-    { path: "/pos",          label: "Point of Sale",  icon: ShoppingCart, info: "Sell products and process payments" },
-    { path: "/inventory",    label: "Inventory",      icon: Package,      info: "Manage products, stock and prices" },
-    { path: "/sales/report", label: "Sales Reports",  icon: BarChart2,    info: "Revenue, transactions and performance" },
+    { path: "/pos",          label: "Point of Sale",  icon: ShoppingCart,  info: "Sell products and process payments" },
+    { path: "/pos/food",     label: "Food POS",       icon: UtensilsCrossed, info: "Food & beverage ordering terminal" },
+    { path: "/menu",         label: "Menu",           icon: Tag,           info: "Manage food menu categories and items" },
+    { path: "/orders",       label: "Orders / KDS",   icon: ClipboardList, info: "Kitchen display and order management" },
+    { path: "/inventory",    label: "Inventory",      icon: Package,       info: "Manage products, stock and prices" },
+    { path: "/sales/report", label: "Sales Reports",  icon: BarChart2,     info: "Revenue, transactions and performance" },
   ];
   const posActive = posItems.some(i => cur.startsWith(i.path));
 

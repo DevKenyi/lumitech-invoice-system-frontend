@@ -64,6 +64,9 @@ import FollowupPage from "./pages/FollowupPage";
 import FollowupBoard from "./pages/FollowupBoard";
 import Docs from "./pages/Docs";
 import BankConnections from "./pages/BankConnections";
+import MenuManagement from "./pages/MenuManagement";
+import FoodPOS from "./pages/FoodPOS";
+import OrdersKDS from "./pages/OrdersKDS";
 
 // Shown instead of the full app when the account is suspended or trial has ended.
 // Lives inside OrgProvider so <Billing /> can use OrgContext.
@@ -647,6 +650,9 @@ function App() {
           {/* INVENTORY & POS */}
           <Route path="/inventory" element={<ProtectedRoute><Layout><Inventory /></Layout></ProtectedRoute>} />
           <Route path="/pos" element={<ProtectedRoute><Layout><POS /></Layout></ProtectedRoute>} />
+          <Route path="/pos/food" element={<ProtectedRoute><Layout><FoodPOS /></Layout></ProtectedRoute>} />
+          <Route path="/menu" element={<ProtectedRoute><Layout><MenuManagement /></Layout></ProtectedRoute>} />
+          <Route path="/orders" element={<ProtectedRoute><Layout><OrdersKDS /></Layout></ProtectedRoute>} />
           <Route path="/sales/report" element={<ProtectedRoute><Layout><SalesReport /></Layout></ProtectedRoute>} />
 
           {/* QUOTES */}
