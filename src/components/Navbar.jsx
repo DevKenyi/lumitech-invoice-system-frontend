@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import api, { getUserFromToken } from "../services/api";
-import { useOrg } from "../context/OrgContext";
 import { getUserType, setUserType, getRegisteredAs, USER_TYPES, paymentLabel } from "../utils/userType";
 import posthog from 'posthog-js';
 import NotificationBell from "./NotificationBell";
@@ -152,9 +151,23 @@ function Navbar({ onClose }) {
   const [plan, setPlan] = useState(getUserFromToken()?.plan ?? null);
   const [userType, setUserTypeState] = useState(getUserType());
 
-  const { staffFeatures } = useOrg();
   const user = getUserFromToken();
   const role = user?.role || (Array.isArray(user?.roles) ? user.roles[0] : null);
+  const isStaffRole = role === "STAFF" || role === "STAFF_EXPENSE";
+
+  // For staff, fetch staffFeatures fresh on mount and cache in localStorage
+  const [staffFeatures, setStaffFeatures] = useState(() =>
+    localStorage.getItem("staffFeatures") ?? null
+  );
+  useEffect(() => {
+    if (!isStaffRole) return;
+    api.get("/api/org").then(res => {
+      const sf = res.data.staffFeatures ?? null;
+      setStaffFeatures(sf);
+      if (sf !== null) localStorage.setItem("staffFeatures", sf);
+      else localStorage.removeItem("staffFeatures");
+    }).catch(() => {});
+  }, [isStaffRole]);
 
   const isActive = (path) => location.pathname === path;
   const isMobile = !!onClose;

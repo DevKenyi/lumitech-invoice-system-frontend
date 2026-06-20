@@ -55,6 +55,87 @@ const EMPTY_FORM = {
   staffFeatures: null,
 };
 
+const ALL_STAFF_FEATURES = [
+  { key: "pos",             label: "Make a Sale",    desc: "Retail POS terminal" },
+  { key: "food_pos",        label: "Food POS",       desc: "Food & beverage ordering terminal" },
+  { key: "orders_kds",      label: "Orders / KDS",   desc: "View active orders and manage stands" },
+  { key: "expenses",        label: "Expenses",       desc: "Submit and track expense claims" },
+  { key: "manage_expenses", label: "Manage Expenses",desc: "Review and approve expense reports" },
+];
+
+function StaffFeaturesCard() {
+  const [enabled, setEnabled] = useState(null); // null = loading
+  const [saving, setSaving] = useState(null);   // key of toggle being saved
+
+  useEffect(() => {
+    api.get("/api/org").then(res => {
+      const raw = res.data.staffFeatures;
+      setEnabled(raw ? new Set(raw.split(",").map(s => s.trim()).filter(Boolean)) : new Set(ALL_STAFF_FEATURES.map(f => f.key)));
+    }).catch(() => setEnabled(new Set(ALL_STAFF_FEATURES.map(f => f.key))));
+  }, []);
+
+  async function toggle(key) {
+    if (!enabled || saving) return;
+    const next = new Set(enabled);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    setEnabled(next);
+    setSaving(key);
+    try {
+      const staffFeatures = next.size === ALL_STAFF_FEATURES.length ? null : [...next].join(",");
+      await api.put("/api/org", { staffFeatures: staffFeatures ?? "" });
+      if (staffFeatures) localStorage.setItem("staffFeatures", staffFeatures);
+      else localStorage.removeItem("staffFeatures");
+    } catch {
+      // revert
+      setEnabled(enabled);
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  return (
+    <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+      <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+        <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+          <Users className="w-4 h-4 text-blue-500" />
+          Staff Features
+        </h2>
+        <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+          Choose which pages team members can access. Changes take effect when staff next loads the app.
+        </p>
+      </div>
+      <div className="p-6 space-y-3">
+        {ALL_STAFF_FEATURES.map(({ key, label, desc }) => {
+          const isOn = enabled?.has(key) ?? true;
+          return (
+            <div key={key} className="flex items-center justify-between gap-4 py-1">
+              <div>
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{label}</p>
+                <p className="text-xs text-slate-400">{desc}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => toggle(key)}
+                disabled={!enabled || saving === key}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 disabled:opacity-60 ${
+                  isOn ? "bg-blue-600" : "bg-slate-200 dark:bg-slate-600"
+                }`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                  isOn ? "translate-x-6" : "translate-x-1"
+                }`} />
+              </button>
+            </div>
+          );
+        })}
+        <p className="text-xs text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-700">
+          Home and Preferences are always visible to team members.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function OrgSettings() {
   const user = getUserFromToken();
   const role = user?.role || (Array.isArray(user?.roles) ? user.roles[0] : null);
@@ -679,61 +760,8 @@ function OrgSettings() {
         </div>
       </form>
 
-      {/* Staff Features Card — admin only */}
-      {!isStaff && (() => {
-        const ALL_STAFF_FEATURES = [
-          { key: "pos",            label: "Make a Sale",    desc: "Retail POS terminal" },
-          { key: "food_pos",       label: "Food POS",       desc: "Food & beverage ordering terminal" },
-          { key: "orders_kds",     label: "Orders / KDS",   desc: "View active orders and manage stands" },
-          { key: "expenses",       label: "Expenses",       desc: "Submit and track expense claims" },
-          { key: "manage_expenses",label: "Manage Expenses",desc: "Review and approve expense reports" },
-        ];
-        const enabledSet = new Set(
-          form.staffFeatures ? form.staffFeatures.split(",").map(s => s.trim()).filter(Boolean) : ALL_STAFF_FEATURES.map(f => f.key)
-        );
-        const toggleFeature = (key) => {
-          const next = new Set(enabledSet);
-          if (next.has(key)) next.delete(key); else next.add(key);
-          set("staffFeatures", next.size === ALL_STAFF_FEATURES.length ? null : [...next].join(","));
-        };
-        return (
-          <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
-              <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                <Users className="w-4 h-4 text-blue-500" />
-                Staff Features
-              </h2>
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-                Choose which pages team members can access.
-              </p>
-            </div>
-            <div className="p-6 space-y-3">
-              {ALL_STAFF_FEATURES.map(({ key, label, desc }) => (
-                <div key={key} className="flex items-center justify-between gap-4 py-1">
-                  <div>
-                    <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{label}</p>
-                    <p className="text-xs text-slate-400">{desc}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => toggleFeature(key)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${
-                      enabledSet.has(key) ? "bg-blue-600" : "bg-slate-200 dark:bg-slate-600"
-                    }`}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                      enabledSet.has(key) ? "translate-x-6" : "translate-x-1"
-                    }`} />
-                  </button>
-                </div>
-              ))}
-              <p className="text-xs text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-700">
-                Home and Preferences are always visible to team members.
-              </p>
-            </div>
-          </div>
-        );
-      })()}
+      {/* Staff Features Card — admin only, self-saving */}
+      {!isStaff && <StaffFeaturesCard />}
 
       {/* Appearance Card */}
       <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
