@@ -86,7 +86,7 @@ const faqs = [
   },
   {
     q: "Can I switch plans later?",
-    a: "Yes. You can upgrade at any time from the Billing page inside your account. Downgrading is handled by cancelling your current subscription through Paystack.",
+    a: "Yes. You can upgrade at any time from the Billing page inside your account. Downgrading is handled by cancelling your current subscription through Flutterwave.",
   },
   {
     q: "Will my data be deleted if my trial expires?",
