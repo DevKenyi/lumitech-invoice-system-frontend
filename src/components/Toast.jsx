@@ -13,7 +13,7 @@ const ICON_COLOR = {
   info:    "text-blue-500",
 };
 
-export default function Toast({ visible, message, type = "info", onClose }) {
+export default function Toast({ visible = true, message, type = "info", onClose }) {
   useEffect(() => {
     if (!visible) return;
     const t = setTimeout(() => onClose?.(), 4000);
