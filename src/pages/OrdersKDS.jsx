@@ -276,7 +276,7 @@ export default function OrdersKDS() {
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Orders / Kitchen</h1>
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Order Fulfillment</h1>
         <div className="flex items-center gap-2">
           {!isStaff && <RestaurantSettingsPanel />}
           <button onClick={() => loadOrders(true)} disabled={refreshing}

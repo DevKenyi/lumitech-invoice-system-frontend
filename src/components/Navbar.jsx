@@ -264,7 +264,7 @@ function Navbar({ onClose }) {
     { path: "/pos",          label: "Point of Sale",  icon: ShoppingCart,  info: "Sell products and process payments" },
     { path: "/pos/food",     label: "Food POS",       icon: UtensilsCrossed, info: "Food & beverage ordering terminal" },
     { path: "/menu",         label: "Menu",           icon: Tag,           info: "Manage food menu categories and items" },
-    { path: "/orders",       label: "Orders / KDS",   icon: ClipboardList, info: "Kitchen display and order management" },
+    { path: "/orders",       label: "Order Fulfillment", icon: ClipboardList, info: "View and fulfil incoming orders" },
     { path: "/inventory",    label: "Inventory",      icon: Package,       info: "Manage products, stock and prices" },
     { path: "/sales/report", label: "Sales Reports",  icon: BarChart2,     info: "Revenue, transactions and performance" },
   ];
@@ -295,7 +295,7 @@ function Navbar({ onClose }) {
     { path: "/staff-home",      label: "Home",            icon: Home,              info: "Expense dashboard and recent submissions" },
     ...(staffFeatureAllowed("pos")             ? [{ path: "/pos",             label: "Make a Sale",     icon: ShoppingCart,      info: "Sell products and process payments" }] : []),
     ...(staffFeatureAllowed("food_pos")        ? [{ path: "/pos/food",        label: "Food POS",        icon: UtensilsCrossed,   info: "Take food orders and print receipts" }] : []),
-    ...(staffFeatureAllowed("orders_kds")      ? [{ path: "/orders",          label: "Orders / KDS",    icon: ClipboardList,     info: "View active orders and manage stands" }] : []),
+    ...(staffFeatureAllowed("orders_kds")      ? [{ path: "/orders",          label: "Order Fulfillment", icon: ClipboardList,   info: "View and fulfil incoming orders" }] : []),
     ...(staffFeatureAllowed("expenses")        ? [{ path: "/expenses",        label: "Expenses",        icon: Receipt,           info: "Submit and track expense claims" }] : []),
     ...(staffFeatureAllowed("manage_expenses") ? [{ path: "/expenses/manage", label: "Manage Expenses", icon: FolderOpen,        info: "Review and approve expense reports" }] : []),
     { path: "/settings/org",    label: "Preferences",     icon: SlidersHorizontal, info: "Change your display preferences" },

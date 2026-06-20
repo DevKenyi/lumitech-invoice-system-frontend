@@ -142,7 +142,7 @@ function MovaraCard() {
 const ALL_STAFF_FEATURES = [
   { key: "pos",             label: "Make a Sale",    desc: "Retail POS terminal" },
   { key: "food_pos",        label: "Food POS",       desc: "Food & beverage ordering terminal" },
-  { key: "orders_kds",      label: "Orders / KDS",   desc: "View active orders and manage stands" },
+  { key: "orders_kds",      label: "Order Fulfillment", desc: "View and fulfil incoming orders" },
   { key: "expenses",        label: "Expenses",       desc: "Submit and track expense claims" },
   { key: "manage_expenses", label: "Manage Expenses",desc: "Review and approve expense reports" },
 ];

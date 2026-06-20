@@ -118,7 +118,7 @@ export default function StaffHome() {
           {showOrdersKDS && (
             <Link to="/orders"
               className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white text-sm font-semibold rounded-xl transition">
-              <ClipboardList size={15} /> Orders / KDS
+              <ClipboardList size={15} /> Order Fulfillment
             </Link>
           )}
           {showExpenses && enabled.has("expenses") && (
@@ -153,7 +153,7 @@ export default function StaffHome() {
                 <ClipboardList size={22} className="text-orange-500" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-slate-800 dark:text-white">Orders / KDS</p>
+                <p className="font-semibold text-slate-800 dark:text-white">Order Fulfillment</p>
                 {activeOrders !== null ? (
                   <p className="text-xs text-slate-400 mt-0.5">
                     <span className="font-semibold text-orange-500">{activeOrders}</span> active order{activeOrders !== 1 ? "s" : ""}
