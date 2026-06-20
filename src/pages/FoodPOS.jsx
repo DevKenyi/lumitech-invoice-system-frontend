@@ -1,33 +1,100 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import api from "../services/api";
 import { useOrg } from "../context/OrgContext";
 import Toast from "../components/Toast";
 import {
-  ShoppingCart, Plus, Minus, Trash2, CheckCircle,
-  X, Loader2, UtensilsCrossed, ToggleLeft, ToggleRight, RefreshCw,
+  ShoppingCart, Plus, Minus, Trash2, X, Loader2,
+  UtensilsCrossed, ToggleLeft, ToggleRight, RefreshCw,
+  Printer, Users, ShoppingBag,
 } from "lucide-react";
 
-const PAYMENT_METHODS = ["CASH", "TRANSFER", "CARD", "POS_TERMINAL"];
+const PAYMENT_METHODS = ["CASH", "CARD", "TRANSFER", "POS_TERMINAL"];
 
 const fmt = (val, currency) =>
   currency + new Intl.NumberFormat("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val ?? 0);
 
-function uuid() {
-  return Math.random().toString(36).slice(2) + Date.now();
+function uuid() { return Math.random().toString(36).slice(2) + Date.now(); }
+
+// ── Receipt printer ──────────────────────────────────────────────────────────
+function printReceipts(order, orgName, currency) {
+  const items = (order.items || []).map(i =>
+    `<tr>
+      <td style="padding:2px 4px">${i.qty}× ${i.name}${i.modifiers?.length ? `<br><small style="color:#666">${i.modifiers.map(m => m.name).join(", ")}</small>` : ""}</td>
+      <td style="padding:2px 4px;text-align:right">${fmt(i.subtotal, currency)}</td>
+    </tr>`
+  ).join("");
+
+  const kitchenItems = (order.items || []).map(i =>
+    `<div style="font-size:14px;margin:4px 0"><strong>${i.qty}×</strong> ${i.name}${i.modifiers?.length ? ` (${i.modifiers.map(m => m.name).join(", ")})` : ""}</div>`
+  ).join("");
+
+  const win = window.open("", "_blank", "width=380,height=600");
+  win.document.write(`
+    <!DOCTYPE html><html><head>
+    <title>Receipts</title>
+    <style>
+      * { margin:0; padding:0; box-sizing:border-box; }
+      body { font-family: monospace; font-size:12px; }
+      .page { width:80mm; padding:8px; page-break-after:always; }
+      .page:last-child { page-break-after:avoid; }
+      h2 { font-size:16px; text-align:center; margin-bottom:4px; }
+      .center { text-align:center; }
+      .big { font-size:32px; font-weight:bold; text-align:center; margin:8px 0; }
+      .divider { border-top:1px dashed #000; margin:6px 0; }
+      table { width:100%; border-collapse:collapse; }
+      .total { font-size:14px; font-weight:bold; }
+      .badge { display:inline-block; border:2px solid #000; padding:2px 8px; font-size:11px; font-weight:bold; }
+      @media print { body { margin:0; } }
+    </style></head><body>
+
+    <!-- CUSTOMER RECEIPT -->
+    <div class="page">
+      <h2>${orgName}</h2>
+      <div class="center" style="font-size:11px">Order Receipt</div>
+      <div class="divider"></div>
+      <div class="center"><span class="badge">${order.orderType === "DINE_IN" ? "DINE IN" : "TAKEAWAY"}</span></div>
+      ${order.standNumber ? `<div class="big">#${order.standNumber}</div><div class="center" style="font-size:11px;margin-bottom:6px">Place this on your table</div>` : ""}
+      <div class="divider"></div>
+      <div style="font-size:11px;margin-bottom:4px">Order: <strong>${order.orderNumber}</strong></div>
+      <table>${items}</table>
+      <div class="divider"></div>
+      <table>
+        <tr class="total"><td>TOTAL</td><td style="text-align:right">${fmt(order.total, currency)}</td></tr>
+        <tr><td style="font-size:11px">Payment</td><td style="text-align:right;font-size:11px">${(order.paymentMethod || "").replace("_", " ")}</td></tr>
+      </table>
+      <div class="divider"></div>
+      <div class="center" style="font-size:11px">Thank you! Enjoy your meal.</div>
+    </div>
+
+    <!-- KITCHEN TICKET -->
+    <div class="page">
+      <div class="center" style="font-size:11px;font-weight:bold">— KITCHEN TICKET —</div>
+      <div class="big">${order.standNumber ? "#" + order.standNumber : order.orderType === "TAKEAWAY" ? "TKWY" : "—"}</div>
+      <div class="center" style="font-size:11px;margin-bottom:8px">${order.orderNumber} · ${order.orderType === "DINE_IN" ? "Dine In" : "Takeaway"}</div>
+      <div class="divider"></div>
+      ${kitchenItems}
+      ${order.notes ? `<div class="divider"></div><div style="font-size:11px"><strong>Note:</strong> ${order.notes}</div>` : ""}
+    </div>
+
+    </body></html>`);
+  win.document.close();
+  win.focus();
+  setTimeout(() => { win.print(); }, 400);
 }
 
 export default function FoodPOS() {
-  const { currency } = useOrg();
+  const { currency, orgName } = useOrg();
   const [categories, setCategories] = useState([]);
   const [items, setItems] = useState([]);
   const [activeCat, setActiveCat] = useState(null);
   const [cart, setCart] = useState([]);
+  const [orderType, setOrderType] = useState("DINE_IN");
   const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(true);
   const [charging, setCharging] = useState(false);
   const [toast, setToast] = useState(null);
-  const [modifierModal, setModifierModal] = useState(null); // item to select modifiers for
+  const [modifierModal, setModifierModal] = useState(null);
   const [successOrder, setSuccessOrder] = useState(null);
 
   const showToast = (msg, type = "success") => setToast({ msg, type });
@@ -51,7 +118,6 @@ export default function FoodPOS() {
     ? items.filter(i => i.categoryId === activeCat)
     : items;
 
-  // ── Availability toggle ────────────────────────────────────────────────────
   async function toggleAvail(item, e) {
     e.stopPropagation();
     try {
@@ -60,7 +126,6 @@ export default function FoodPOS() {
     } catch { showToast("Failed to update", "error"); }
   }
 
-  // ── Cart ───────────────────────────────────────────────────────────────────
   function clickItem(item) {
     if (!item.available) return;
     if (item.modifiers && item.modifiers.length > 0) {
@@ -73,15 +138,20 @@ export default function FoodPOS() {
   function addToCart(item, selectedMods) {
     const modTotal = selectedMods.reduce((s, m) => s + (m.priceDelta || 0), 0);
     const unitPrice = parseFloat(item.price) + modTotal;
-    setCart(prev => [...prev, {
-      cartId: uuid(),
-      refId: item.id,
-      itemType: "menu_item",
-      name: item.name,
-      unitPrice,
-      qty: 1,
-      modifiers: selectedMods,
-    }]);
+    setCart(prev => {
+      // merge identical items (same refId + same mods)
+      const modKey = selectedMods.map(m => m.modifierOptionId).sort().join(",");
+      const existing = prev.find(ci =>
+        ci.refId === item.id && ci.modKey === modKey && selectedMods.length === ci.modifiers.length);
+      if (existing) {
+        return prev.map(ci => ci.cartId === existing.cartId ? { ...ci, qty: ci.qty + 1 } : ci);
+      }
+      return [...prev, {
+        cartId: uuid(), refId: item.id, modKey,
+        itemType: "menu_item", name: item.name,
+        unitPrice, qty: 1, modifiers: selectedMods,
+      }];
+    });
   }
 
   function changeQty(cartId, delta) {
@@ -96,12 +166,12 @@ export default function FoodPOS() {
 
   const total = cart.reduce((s, ci) => s + ci.unitPrice * ci.qty, 0);
 
-  // ── Charge ─────────────────────────────────────────────────────────────────
-  async function chargeAndSend() {
+  async function charge() {
     if (cart.length === 0) return;
     setCharging(true);
     try {
-      const payload = {
+      const res = await api.post("/api/orders", {
+        orderType,
         channel: "IN_STORE",
         paymentMethod,
         notes,
@@ -117,11 +187,13 @@ export default function FoodPOS() {
             priceDelta: m.priceDelta,
           })),
         })),
-      };
-      const res = await api.post("/api/orders", payload);
-      setSuccessOrder(res.data);
+      });
+      const order = res.data;
+      setSuccessOrder(order);
       setCart([]);
       setNotes("");
+      // Auto-print receipts
+      printReceipts(order, orgName || "Restaurant", currency);
     } catch (e) {
       showToast(e.response?.data?.message || "Failed to place order", "error");
     } finally { setCharging(false); }
@@ -170,27 +242,21 @@ export default function FoodPOS() {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {visibleItems.map(item => (
-                <div key={item.id}
-                  onClick={() => clickItem(item)}
+                <div key={item.id} onClick={() => clickItem(item)}
                   className={`relative bg-white dark:bg-slate-800 rounded-xl border shadow-sm cursor-pointer transition-all select-none overflow-hidden flex flex-col ${
                     item.available
                       ? "border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:shadow-md active:scale-95"
                       : "border-slate-100 dark:border-slate-800 opacity-50 cursor-not-allowed"
                   }`}>
-                  {/* Photo */}
                   {item.imageUrl ? (
-                    <img src={item.imageUrl} alt={item.name}
-                      className="w-full h-28 object-cover" />
+                    <img src={item.imageUrl} alt={item.name} className="w-full h-28 object-cover" />
                   ) : (
                     <div className="w-full h-28 bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
                       <UtensilsCrossed size={24} className="text-slate-300 dark:text-slate-600" />
                     </div>
                   )}
-                  {/* Availability toggle */}
-                  <button
-                    onClick={(e) => toggleAvail(item, e)}
-                    className="absolute top-2 right-2 z-10 bg-white/80 dark:bg-slate-800/80 rounded-full p-0.5 shadow"
-                    title={item.available ? "Mark sold out" : "Mark available"}>
+                  <button onClick={(e) => toggleAvail(item, e)}
+                    className="absolute top-2 right-2 z-10 bg-white/80 dark:bg-slate-800/80 rounded-full p-0.5 shadow">
                     {item.available
                       ? <ToggleRight size={16} className="text-green-500" />
                       : <ToggleLeft size={16} className="text-slate-400" />}
@@ -198,9 +264,7 @@ export default function FoodPOS() {
                   <div className="p-2.5">
                     <p className="font-semibold text-slate-800 dark:text-slate-100 text-sm leading-tight mb-1">{item.name}</p>
                     <p className="text-blue-600 font-bold text-sm">{fmt(item.price, currency)}</p>
-                    {!item.available && (
-                      <span className="text-xs text-red-500 font-medium">Sold Out</span>
-                    )}
+                    {!item.available && <span className="text-xs text-red-500 font-medium">Sold Out</span>}
                   </div>
                 </div>
               ))}
@@ -209,11 +273,35 @@ export default function FoodPOS() {
         </div>
       </div>
 
-      {/* Right: Cart */}
+      {/* Right: Order panel */}
       <div className="w-72 xl:w-80 flex flex-col bg-white dark:bg-slate-800 shrink-0">
-        <div className="flex items-center gap-2 p-3 border-b border-slate-200 dark:border-slate-700">
-          <ShoppingCart size={18} className="text-blue-600" />
-          <span className="font-semibold text-slate-800 dark:text-slate-100">Order</span>
+
+        {/* Order type toggle */}
+        <div className="p-3 border-b border-slate-200 dark:border-slate-700">
+          <div className="flex rounded-xl overflow-hidden border border-slate-200 dark:border-slate-600">
+            <button onClick={() => setOrderType("DINE_IN")}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-sm font-medium transition-colors ${
+                orderType === "DINE_IN"
+                  ? "bg-blue-600 text-white"
+                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+              }`}>
+              <Users size={14} /> Dine In
+            </button>
+            <button onClick={() => setOrderType("TAKEAWAY")}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-sm font-medium transition-colors ${
+                orderType === "TAKEAWAY"
+                  ? "bg-orange-500 text-white"
+                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+              }`}>
+              <ShoppingBag size={14} /> Takeaway
+            </button>
+          </div>
+        </div>
+
+        {/* Cart header */}
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-200 dark:border-slate-700">
+          <ShoppingCart size={16} className="text-blue-600" />
+          <span className="font-semibold text-slate-800 dark:text-slate-100 text-sm">Order</span>
           {cart.length > 0 && (
             <span className="ml-auto bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
               {cart.reduce((s, i) => s + i.qty, 0)}
@@ -221,9 +309,12 @@ export default function FoodPOS() {
           )}
         </div>
 
+        {/* Cart items */}
         <div className="flex-1 overflow-y-auto p-3 space-y-2">
           {cart.length === 0 ? (
-            <p className="text-center text-slate-400 text-sm mt-8">Cart is empty</p>
+            <p className="text-center text-slate-400 text-sm mt-8">
+              {orderType === "DINE_IN" ? "Select items for the order" : "Select items + packaging"}
+            </p>
           ) : (
             cart.map(ci => (
               <div key={ci.cartId} className="bg-slate-50 dark:bg-slate-700 rounded-lg p-2.5">
@@ -231,9 +322,7 @@ export default function FoodPOS() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{ci.name}</p>
                     {ci.modifiers.length > 0 && (
-                      <p className="text-xs text-slate-400 truncate">
-                        {ci.modifiers.map(m => m.name).join(", ")}
-                      </p>
+                      <p className="text-xs text-slate-400 truncate">{ci.modifiers.map(m => m.name).join(", ")}</p>
                     )}
                   </div>
                   <button onClick={() => removeItem(ci.cartId)} className="text-slate-400 hover:text-red-500 shrink-0">
@@ -259,8 +348,8 @@ export default function FoodPOS() {
           )}
         </div>
 
+        {/* Footer */}
         <div className="p-3 border-t border-slate-200 dark:border-slate-700 space-y-3">
-          {/* Total */}
           <div className="flex justify-between items-center">
             <span className="font-semibold text-slate-700 dark:text-slate-200">Total</span>
             <span className="text-xl font-bold text-slate-800 dark:text-slate-100">{fmt(total, currency)}</span>
@@ -268,14 +357,14 @@ export default function FoodPOS() {
 
           {/* Payment method */}
           <div>
-            <p className="text-xs text-slate-500 mb-1.5">Payment Method</p>
+            <p className="text-xs text-slate-500 mb-1.5">Payment</p>
             <div className="flex flex-wrap gap-1">
               {PAYMENT_METHODS.map(m => (
                 <button key={m} onClick={() => setPaymentMethod(m)}
                   className={`px-2 py-1 text-xs rounded-full border transition-colors ${
                     paymentMethod === m
                       ? "bg-blue-600 text-white border-blue-600"
-                      : "border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                      : "border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300"
                   }`}>
                   {m.replace("_", " ")}
                 </button>
@@ -283,30 +372,22 @@ export default function FoodPOS() {
             </div>
           </div>
 
-          {/* Notes */}
-          <textarea
-            value={notes} onChange={e => setNotes(e.target.value)}
-            placeholder="Notes (optional)"
-            rows={2}
-            className="w-full px-2 py-1.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 resize-none"
-          />
+          <textarea value={notes} onChange={e => setNotes(e.target.value)}
+            placeholder="Notes (optional)" rows={2}
+            className="w-full px-2 py-1.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 resize-none" />
 
-          {/* Charge button */}
-          <button
-            onClick={chargeAndSend}
-            disabled={cart.length === 0 || charging}
-            className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors">
-            {charging ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
-            {charging ? "Processing..." : "Charge & Send to Kitchen"}
+          <button onClick={charge} disabled={cart.length === 0 || charging}
+            className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-bold text-sm flex items-center justify-center gap-2">
+            {charging ? <Loader2 size={16} className="animate-spin" /> : <Printer size={16} />}
+            {charging ? "Processing..." : "Charge & Print"}
           </button>
         </div>
       </div>
 
-      {/* Modifier Selection Modal */}
+      {/* Modifier modal */}
       {modifierModal && (
         <ModifierSelectionModal
-          item={modifierModal}
-          currency={currency}
+          item={modifierModal} currency={currency}
           onConfirm={(mods) => { addToCart(modifierModal, mods); setModifierModal(null); }}
           onClose={() => setModifierModal(null)}
         />
@@ -315,18 +396,32 @@ export default function FoodPOS() {
       {/* Success modal */}
       {successOrder && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 w-full max-w-sm text-center">
-            <CheckCircle size={48} className="text-green-500 mx-auto mb-3" />
-            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1">Order Placed!</h3>
-            <p className="text-slate-500 text-sm mb-1">{successOrder.orderNumber}</p>
-            <p className="text-2xl font-bold text-blue-600 mb-4">{fmt(successOrder.total, currency)}</p>
-            <p className="text-sm text-slate-500 mb-4">
-              {successOrder.status === "received" ? "Sent to kitchen" : "Order completed"}
-            </p>
-            <button onClick={() => setSuccessOrder(null)}
-              className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium">
-              New Order
-            </button>
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 w-full max-w-xs text-center">
+            {successOrder.standNumber ? (
+              <>
+                <div className="w-24 h-24 rounded-full bg-blue-600 text-white flex items-center justify-center mx-auto mb-3 text-4xl font-black">
+                  #{successOrder.standNumber}
+                </div>
+                <p className="text-sm text-slate-500 mb-1">Give this stand to the customer</p>
+              </>
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-orange-500 text-white flex items-center justify-center mx-auto mb-3">
+                <ShoppingBag size={32} />
+              </div>
+            )}
+            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1">{successOrder.orderNumber}</h3>
+            <p className="text-2xl font-bold text-blue-600 mb-1">{fmt(successOrder.total, currency)}</p>
+            <p className="text-xs text-slate-400 mb-4">{(successOrder.paymentMethod || "").replace("_", " ")} · {successOrder.orderType === "DINE_IN" ? "Dine In" : "Takeaway"}</p>
+            <div className="flex gap-2">
+              <button onClick={() => printReceipts(successOrder, "Restaurant", currency)}
+                className="flex-1 py-2 rounded-xl border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-sm flex items-center justify-center gap-1">
+                <Printer size={14} /> Reprint
+              </button>
+              <button onClick={() => setSuccessOrder(null)}
+                className="flex-1 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm">
+                New Order
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -338,19 +433,12 @@ export default function FoodPOS() {
 function ModifierSelectionModal({ item, currency, onConfirm, onClose }) {
   const [selections, setSelections] = useState({});
 
-  const selectOption = (modifierId, option) => {
-    setSelections(prev => ({ ...prev, [modifierId]: option }));
-  };
-
-  const requiredMet = item.modifiers.every(mod =>
-    !mod.required || selections[mod.id]
-  );
-
+  const requiredMet = item.modifiers.every(mod => !mod.required || selections[mod.id]);
   const modTotal = Object.values(selections).reduce((s, o) => s + (o.priceDelta || 0), 0);
   const finalPrice = parseFloat(item.price) + modTotal;
 
   function confirm() {
-    const mods = Object.entries(selections).map(([modId, opt]) => ({
+    const mods = Object.entries(selections).map(([, opt]) => ({
       modifierOptionId: opt.id,
       name: opt.name,
       priceDelta: opt.priceDelta || 0,
@@ -368,7 +456,6 @@ function ModifierSelectionModal({ item, currency, onConfirm, onClose }) {
         <p className="text-blue-600 font-semibold mb-4">
           {currency + new Intl.NumberFormat("en", { minimumFractionDigits: 2 }).format(finalPrice)}
         </p>
-
         <div className="space-y-5">
           {item.modifiers.map(mod => (
             <div key={mod.id}>
@@ -379,7 +466,7 @@ function ModifierSelectionModal({ item, currency, onConfirm, onClose }) {
               <div className="space-y-1.5">
                 {(mod.options || []).map(opt => (
                   <button key={opt.id}
-                    onClick={() => selectOption(mod.id, opt)}
+                    onClick={() => setSelections(prev => ({ ...prev, [mod.id]: opt }))}
                     className={`w-full flex justify-between items-center px-3 py-2 rounded-lg border text-sm transition-colors ${
                       selections[mod.id]?.id === opt.id
                         ? "border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
@@ -387,7 +474,7 @@ function ModifierSelectionModal({ item, currency, onConfirm, onClose }) {
                     }`}>
                     <span>{opt.name}</span>
                     <span className="text-xs text-slate-400">
-                      {opt.priceDelta > 0 ? `+${currency}${opt.priceDelta.toFixed(2)}` : opt.priceDelta < 0 ? `${currency}${opt.priceDelta.toFixed(2)}` : "Free"}
+                      {opt.priceDelta > 0 ? `+${currency}${Number(opt.priceDelta).toFixed(2)}` : opt.priceDelta < 0 ? `${currency}${Number(opt.priceDelta).toFixed(2)}` : "Free"}
                     </span>
                   </button>
                 ))}
@@ -395,11 +482,10 @@ function ModifierSelectionModal({ item, currency, onConfirm, onClose }) {
             </div>
           ))}
         </div>
-
         <button onClick={confirm} disabled={!requiredMet}
           className="mt-6 w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-bold text-sm flex items-center justify-center gap-2">
           <Plus size={16} />
-          Add to Order — {currency + new Intl.NumberFormat("en", { minimumFractionDigits: 2 }).format(finalPrice)}
+          Add — {currency + new Intl.NumberFormat("en", { minimumFractionDigits: 2 }).format(finalPrice)}
         </button>
       </div>
     </div>
