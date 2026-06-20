@@ -4,7 +4,7 @@ import { useOrg } from "../context/OrgContext";
 import Toast from "../components/Toast";
 import {
   UtensilsCrossed, Plus, Pencil, Trash2, X, Loader2,
-  ToggleLeft, ToggleRight, Tag, ChevronRight,
+  ToggleLeft, ToggleRight, Tag, ChevronRight, ImagePlus, Camera,
 } from "lucide-react";
 
 const fmt = (val, currency) =>
@@ -229,37 +229,48 @@ export default function MenuManagement() {
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                 {visibleItems.map(item => (
-                  <div key={item.id} className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-3 flex flex-col gap-2">
-                    <div className="flex items-start justify-between">
-                      <p className="font-medium text-slate-800 dark:text-slate-100 text-sm leading-tight">{item.name}</p>
-                      <button onClick={() => toggleAvail(item)} className="ml-1 shrink-0 text-slate-400 hover:text-blue-600">
-                        {item.available
-                          ? <ToggleRight size={18} className="text-green-500" />
-                          : <ToggleLeft size={18} className="text-slate-400" />}
-                      </button>
-                    </div>
-                    <p className="text-base font-bold text-blue-600">{fmt(item.price, currency)}</p>
-                    {item.categoryName && (
-                      <p className="text-xs text-slate-400 flex items-center gap-1">
-                        <Tag size={10} /> {item.categoryName}
-                      </p>
+                  <div key={item.id} className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden">
+                    {/* Photo */}
+                    {item.imageUrl ? (
+                      <img src={item.imageUrl} alt={item.name}
+                        className="w-full h-32 object-cover" />
+                    ) : (
+                      <div className="w-full h-32 bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+                        <UtensilsCrossed size={28} className="text-slate-300 dark:text-slate-600" />
+                      </div>
                     )}
-                    <span className={`text-xs px-2 py-0.5 rounded-full w-fit font-medium ${
-                      item.available
-                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                        : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                    }`}>
-                      {item.available ? "Available" : "Sold Out"}
-                    </span>
-                    <div className="flex gap-1 mt-auto">
-                      <button onClick={() => setItemModal({ mode: "edit", data: item })}
-                        className="flex-1 flex items-center justify-center gap-1 text-xs py-1 rounded border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">
-                        <Pencil size={12} /> Edit
-                      </button>
-                      <button onClick={() => setDeleteTarget({ type: "item", id: item.id, name: item.name })}
-                        className="p-1 rounded border border-slate-200 dark:border-slate-600 text-slate-400 hover:text-red-600 hover:border-red-300">
-                        <Trash2 size={14} />
-                      </button>
+                    <div className="p-3 flex flex-col gap-2 flex-1">
+                      <div className="flex items-start justify-between">
+                        <p className="font-medium text-slate-800 dark:text-slate-100 text-sm leading-tight">{item.name}</p>
+                        <button onClick={() => toggleAvail(item)} className="ml-1 shrink-0 text-slate-400 hover:text-blue-600">
+                          {item.available
+                            ? <ToggleRight size={18} className="text-green-500" />
+                            : <ToggleLeft size={18} className="text-slate-400" />}
+                        </button>
+                      </div>
+                      <p className="text-base font-bold text-blue-600">{fmt(item.price, currency)}</p>
+                      {item.categoryName && (
+                        <p className="text-xs text-slate-400 flex items-center gap-1">
+                          <Tag size={10} /> {item.categoryName}
+                        </p>
+                      )}
+                      <span className={`text-xs px-2 py-0.5 rounded-full w-fit font-medium ${
+                        item.available
+                          ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                          : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                      }`}>
+                        {item.available ? "Available" : "Sold Out"}
+                      </span>
+                      <div className="flex gap-1 mt-auto">
+                        <button onClick={() => setItemModal({ mode: "edit", data: item })}
+                          className="flex-1 flex items-center justify-center gap-1 text-xs py-1 rounded border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">
+                          <Pencil size={12} /> Edit
+                        </button>
+                        <button onClick={() => setDeleteTarget({ type: "item", id: item.id, name: item.name })}
+                          className="p-1 rounded border border-slate-200 dark:border-slate-600 text-slate-400 hover:text-red-600 hover:border-red-300">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -435,6 +446,8 @@ function ItemModal({ mode, data, categories, modifiers, currency, onSave, onClos
     modifierIds: (data.modifiers || []).map(m => m.id),
   });
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useState(null);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -443,6 +456,24 @@ function ItemModal({ mode, data, categories, modifiers, currency, onSave, onClos
       ? form.modifierIds.filter(x => x !== id)
       : [...form.modifierIds, id]
   );
+
+  async function handleImageChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await api.post("/api/menu/items/upload-image", fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      set("imageUrl", res.data.url);
+    } catch (err) {
+      alert(err.response?.data?.message || "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   async function submit(e) {
     e.preventDefault();
@@ -462,6 +493,43 @@ function ItemModal({ mode, data, categories, modifiers, currency, onSave, onClos
           {mode === "add" ? "Add Menu Item" : "Edit Menu Item"}
         </h3>
         <form onSubmit={submit} className="space-y-4">
+
+          {/* Photo upload */}
+          <div>
+            <label className="text-xs font-medium text-slate-500 mb-1 block">Photo</label>
+            <div className="flex items-center gap-3">
+              {form.imageUrl ? (
+                <div className="relative w-20 h-20 shrink-0">
+                  <img src={form.imageUrl} alt="preview"
+                    className="w-20 h-20 rounded-xl object-cover border border-slate-200 dark:border-slate-600" />
+                  <button type="button" onClick={() => set("imageUrl", "")}
+                    className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center shadow">
+                    <X size={10} />
+                  </button>
+                </div>
+              ) : (
+                <div className="w-20 h-20 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 flex items-center justify-center shrink-0 bg-slate-50 dark:bg-slate-700">
+                  {uploading
+                    ? <Loader2 size={20} className="animate-spin text-blue-500" />
+                    : <Camera size={20} className="text-slate-300" />}
+                </div>
+              )}
+              <div className="flex-1">
+                <label className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
+                  uploading
+                    ? "opacity-50 cursor-not-allowed border-slate-200 dark:border-slate-600 text-slate-400"
+                    : "border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                }`}>
+                  <ImagePlus size={15} />
+                  {uploading ? "Uploading…" : form.imageUrl ? "Change photo" : "Upload photo"}
+                  <input type="file" accept="image/jpeg,image/png,image/webp"
+                    className="hidden" disabled={uploading} onChange={handleImageChange} />
+                </label>
+                <p className="text-xs text-slate-400 mt-1">JPEG, PNG or WebP · max 5 MB</p>
+              </div>
+            </div>
+          </div>
+
           <div>
             <label className="text-xs font-medium text-slate-500 mb-1 block">Name *</label>
             <input value={form.name} onChange={e => set("name", e.target.value)}
@@ -509,8 +577,8 @@ function ItemModal({ mode, data, categories, modifiers, currency, onSave, onClos
               className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-sm">
               Cancel
             </button>
-            <button type="submit" disabled={saving}
-              className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium flex items-center gap-2">
+            <button type="submit" disabled={saving || uploading}
+              className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium flex items-center gap-2 disabled:opacity-50">
               {saving && <Loader2 size={14} className="animate-spin" />}
               Save
             </button>

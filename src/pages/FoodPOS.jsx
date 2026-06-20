@@ -172,25 +172,36 @@ export default function FoodPOS() {
               {visibleItems.map(item => (
                 <div key={item.id}
                   onClick={() => clickItem(item)}
-                  className={`relative bg-white dark:bg-slate-800 rounded-xl border shadow-sm p-3 cursor-pointer transition-all select-none ${
+                  className={`relative bg-white dark:bg-slate-800 rounded-xl border shadow-sm cursor-pointer transition-all select-none overflow-hidden flex flex-col ${
                     item.available
                       ? "border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:shadow-md active:scale-95"
                       : "border-slate-100 dark:border-slate-800 opacity-50 cursor-not-allowed"
                   }`}>
+                  {/* Photo */}
+                  {item.imageUrl ? (
+                    <img src={item.imageUrl} alt={item.name}
+                      className="w-full h-28 object-cover" />
+                  ) : (
+                    <div className="w-full h-28 bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+                      <UtensilsCrossed size={24} className="text-slate-300 dark:text-slate-600" />
+                    </div>
+                  )}
                   {/* Availability toggle */}
                   <button
                     onClick={(e) => toggleAvail(item, e)}
-                    className="absolute top-2 right-2 text-slate-300 hover:text-blue-500 z-10"
+                    className="absolute top-2 right-2 z-10 bg-white/80 dark:bg-slate-800/80 rounded-full p-0.5 shadow"
                     title={item.available ? "Mark sold out" : "Mark available"}>
                     {item.available
                       ? <ToggleRight size={16} className="text-green-500" />
-                      : <ToggleLeft size={16} />}
+                      : <ToggleLeft size={16} className="text-slate-400" />}
                   </button>
-                  <p className="font-semibold text-slate-800 dark:text-slate-100 text-sm leading-tight pr-5 mb-1">{item.name}</p>
-                  <p className="text-blue-600 font-bold text-sm">{fmt(item.price, currency)}</p>
-                  {!item.available && (
-                    <span className="absolute bottom-2 right-2 text-xs text-red-500 font-medium">Sold Out</span>
-                  )}
+                  <div className="p-2.5">
+                    <p className="font-semibold text-slate-800 dark:text-slate-100 text-sm leading-tight mb-1">{item.name}</p>
+                    <p className="text-blue-600 font-bold text-sm">{fmt(item.price, currency)}</p>
+                    {!item.available && (
+                      <span className="text-xs text-red-500 font-medium">Sold Out</span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
