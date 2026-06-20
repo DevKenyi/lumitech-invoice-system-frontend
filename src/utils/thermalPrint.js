@@ -293,3 +293,214 @@ function makeFmtShort(sym) {
     return sym + Math.round(n);
   };
 }
+
+// ── Food Order Print — Browser (HTML) ────────────────────────────────────────
+
+export function printFoodOrderBrowser(order, orgName, currency = "") {
+  const hasMixed = (order.items || []).some(i => i.toGo);
+  const fmtAmt = (v) => currency + new Intl.NumberFormat("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v ?? 0);
+
+  const customerItems = (order.items || []).map(i => {
+    const toGoTag = i.toGo ? `<span style="font-size:9px;border:1px solid #000;padding:1px 3px;margin-left:4px;font-weight:bold">TO GO</span>` : "";
+    const modLine = i.modifiers?.length
+      ? `<br><small style="color:#666">${i.modifiers.map(m => m.qty > 1 ? `${m.name} x${m.qty}` : m.name).join(", ")}</small>`
+      : "";
+    return `<tr>
+      <td style="padding:2px 4px">${i.qty}x ${i.name}${toGoTag}${modLine}</td>
+      <td style="padding:2px 4px;text-align:right">${fmtAmt(i.subtotal)}</td>
+    </tr>`;
+  }).join("");
+
+  const kitchenItems = (order.items || []).map(i => {
+    const badge = hasMixed
+      ? i.toGo
+        ? `<span style="font-size:10px;border:2px solid #000;padding:1px 5px;margin-left:5px;font-weight:bold">PACK</span>`
+        : `<span style="font-size:10px;border:1px solid #999;padding:1px 5px;margin-left:5px">SERVE</span>`
+      : "";
+    const modLine = i.modifiers?.length
+      ? ` (${i.modifiers.map(m => m.qty > 1 ? `${m.name} x${m.qty}` : m.name).join(", ")})`
+      : "";
+    return `<div style="font-size:14px;margin:4px 0"><strong>${i.qty}x</strong> ${i.name}${badge}${modLine}</div>`;
+  }).join("");
+
+  const win = window.open("", "_blank", "width=380,height=600");
+  if (!win) { alert("Please allow popups to print receipts."); return; }
+  win.document.write(`<!DOCTYPE html><html><head><title>Food Order</title>
+    <style>
+      * { margin:0; padding:0; box-sizing:border-box; }
+      body { font-family: monospace; font-size:12px; }
+      .page { width:80mm; padding:8px; page-break-after:always; }
+      .page:last-child { page-break-after:avoid; }
+      h2 { font-size:16px; text-align:center; margin-bottom:4px; }
+      .center { text-align:center; }
+      .big { font-size:32px; font-weight:bold; text-align:center; margin:8px 0; }
+      .divider { border-top:1px dashed #000; margin:6px 0; }
+      table { width:100%; border-collapse:collapse; }
+      .total { font-size:14px; font-weight:bold; }
+      .badge { display:inline-block; border:2px solid #000; padding:2px 8px; font-size:11px; font-weight:bold; }
+      @media print { body { margin:0; } }
+    </style></head><body>
+    <div class="page">
+      <h2>${orgName}</h2>
+      <div class="center" style="font-size:11px">Order Receipt</div>
+      <div class="divider"></div>
+      <div class="center"><span class="badge">${order.orderType === "DINE_IN" ? "DINE IN" : "TAKEAWAY"}</span></div>
+      ${order.standNumber ? `<div class="big">#${order.standNumber}</div><div class="center" style="font-size:11px;margin-bottom:6px">Place this on your table</div>` : ""}
+      <div class="divider"></div>
+      <div style="font-size:11px;margin-bottom:4px">Order: <strong>${order.orderNumber}</strong></div>
+      <div style="font-size:11px;margin-bottom:4px">Payment: <strong>${(order.paymentMethod || "").replace("_", " ")}</strong></div>
+      <div class="divider"></div>
+      <table>${customerItems}</table>
+      <div class="divider"></div>
+      <table>
+        <tr class="total"><td>TOTAL</td><td style="text-align:right">${fmtAmt(order.total)}</td></tr>
+      </table>
+      <div class="divider"></div>
+      <div class="center" style="font-size:11px">Thank you! Enjoy your meal.</div>
+    </div>
+    <div class="page">
+      <div class="center" style="font-size:11px;font-weight:bold">— KITCHEN TICKET —</div>
+      <div class="big">${order.standNumber ? "#" + order.standNumber : order.orderType === "TAKEAWAY" ? "TKWY" : "—"}</div>
+      <div class="center" style="font-size:11px;margin-bottom:8px">${order.orderNumber} · ${order.orderType === "DINE_IN" ? "Dine In" : "Takeaway"}</div>
+      <div class="divider"></div>
+      ${kitchenItems}
+      ${order.notes ? `<div class="divider"></div><div style="font-size:11px"><strong>Note:</strong> ${order.notes}</div>` : ""}
+    </div>
+    </body></html>`);
+  win.document.close();
+  win.focus();
+  setTimeout(() => { win.print(); }, 400);
+}
+
+// ── Food Order Print — ESC/POS (USB + Bluetooth) ─────────────────────────────
+
+export async function printFoodOrderUSB(device, order, orgName, currency = "") {
+  const data = buildFoodEscPos(order, orgName, currency);
+  try {
+    await device.open();
+    if (device.configuration === null) await device.selectConfiguration(1);
+    const iface = device.configuration.interfaces.find(
+      (i) => i.alternates[0]?.interfaceClass === 7 || i.alternates.length > 0
+    ) || device.configuration.interfaces[0];
+    await device.claimInterface(iface.interfaceNumber);
+    const endpoint = iface.alternates[0]?.endpoints.find((e) => e.direction === "out");
+    if (!endpoint) throw new Error("No output endpoint found on printer.");
+    await device.transferOut(endpoint.endpointNumber, data);
+    await device.releaseInterface(iface.interfaceNumber);
+  } finally {
+    try { await device.close(); } catch (_) {}
+  }
+}
+
+export async function printFoodOrderBluetooth(connection, order, orgName, currency = "") {
+  const data = buildFoodEscPos(order, orgName, currency);
+  const CHUNK = 512;
+  for (let i = 0; i < data.length; i += CHUNK) {
+    await connection.characteristic.writeValueWithoutResponse(data.slice(i, i + CHUNK));
+    await new Promise((r) => setTimeout(r, 80));
+  }
+}
+
+function buildFoodEscPos(order, orgName, currency = "") {
+  const enc = new TextEncoder();
+  const ESC = 0x1b, GS = 0x1d, LF = 0x0a;
+  const buf = [];
+  const push = (...bytes) => bytes.forEach((b) => buf.push(b));
+  const text = (str) => enc.encode(str.replace(/[^\x00-\x7F]/g, "?")).forEach((b) => buf.push(b));
+  const nl   = (n = 1) => { for (let i = 0; i < n; i++) push(LF); };
+  const hr   = () => { text("--------------------------------"); nl(); };
+  const cut  = () => { push(GS, 0x56, 0x00); };
+
+  const fmtShort = (v) => {
+    const n = Number(v ?? 0);
+    if (n >= 1_000_000) return currency + (n / 1_000_000).toFixed(1) + "M";
+    if (n >= 1_000)     return currency + (n / 1_000).toFixed(1) + "k";
+    return currency + Math.round(n);
+  };
+
+  const hasMixed = (order.items || []).some(i => i.toGo);
+  const isDineIn = order.orderType === "DINE_IN";
+
+  // ── CUSTOMER RECEIPT ──────────────────────────────────────────────────────
+  push(ESC, 0x40); // init
+
+  // Org name
+  push(ESC, 0x61, 0x01); push(GS, 0x21, 0x11); push(ESC, 0x45, 0x01);
+  text(orgName.substring(0, 16).toUpperCase()); nl();
+  push(GS, 0x21, 0x00); push(ESC, 0x45, 0x00);
+  text("ORDER RECEIPT"); nl();
+  push(ESC, 0x61, 0x00); hr();
+
+  // Stand number prominently
+  if (isDineIn && order.standNumber) {
+    push(ESC, 0x61, 0x01); push(GS, 0x21, 0x22); push(ESC, 0x45, 0x01);
+    text("#" + order.standNumber); nl();
+    push(GS, 0x21, 0x00); push(ESC, 0x45, 0x00);
+    push(ESC, 0x61, 0x00);
+  }
+
+  text("Order  : " + order.orderNumber); nl();
+  text("Type   : " + (isDineIn ? "Dine In" : "Takeaway")); nl();
+  text("Payment: " + (order.paymentMethod || "").replace("_", " ")); nl();
+  hr();
+
+  // Items
+  (order.items || []).forEach(item => {
+    const name = (item.name || "").substring(0, 20).padEnd(20);
+    const amt  = fmtShort(item.subtotal).padStart(11);
+    push(ESC, 0x45, 0x01);
+    text(`${item.qty}x ${name.trim()}`); push(ESC, 0x45, 0x00);
+    text("  " + fmtShort(item.subtotal)); nl();
+    if (item.toGo) { text("   [TO GO]"); nl(); }
+    (item.modifiers || []).forEach(m => {
+      const modLabel = m.qty > 1 ? `${m.name} x${m.qty}` : m.name;
+      text("   + " + modLabel.substring(0, 26)); nl();
+    });
+  });
+
+  hr();
+
+  // Total
+  push(ESC, 0x61, 0x02); push(GS, 0x21, 0x01); push(ESC, 0x45, 0x01);
+  text("TOTAL: " + fmtShort(order.total)); nl(2);
+  push(GS, 0x21, 0x00); push(ESC, 0x45, 0x00);
+
+  push(ESC, 0x61, 0x01);
+  text("Thank you! Enjoy your meal."); nl();
+  text("Powered by LumiLedger"); nl(4);
+  cut();
+
+  // ── KITCHEN TICKET ────────────────────────────────────────────────────────
+  push(ESC, 0x40); // init
+
+  push(ESC, 0x61, 0x01); push(ESC, 0x45, 0x01);
+  text("-- KITCHEN TICKET --"); nl();
+  push(ESC, 0x45, 0x00);
+
+  // Stand or TKWY — big
+  push(GS, 0x21, 0x22); push(ESC, 0x45, 0x01);
+  text(isDineIn && order.standNumber ? "#" + order.standNumber : "TKWY"); nl();
+  push(GS, 0x21, 0x00); push(ESC, 0x45, 0x00);
+
+  push(ESC, 0x61, 0x00);
+  text(order.orderNumber + " - " + (isDineIn ? "Dine In" : "Takeaway")); nl();
+  hr();
+
+  (order.items || []).forEach(item => {
+    push(ESC, 0x45, 0x01);
+    text(`${item.qty}x ${(item.name || "").substring(0, 22)}`);
+    push(ESC, 0x45, 0x00);
+    if (hasMixed) { text(item.toGo ? " [PACK]" : " [SERVE]"); }
+    nl();
+    (item.modifiers || []).forEach(m => {
+      const modLabel = m.qty > 1 ? `${m.name} x${m.qty}` : m.name;
+      text("   + " + modLabel.substring(0, 26)); nl();
+    });
+  });
+
+  if (order.notes) { hr(); text("Note: " + order.notes.substring(0, 50)); nl(); }
+
+  nl(4); cut();
+
+  return new Uint8Array(buf);
+}
