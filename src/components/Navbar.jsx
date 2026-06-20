@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import api, { getUserFromToken } from "../services/api";
+import { useOrg } from "../context/OrgContext";
 import { getUserType, setUserType, getRegisteredAs, USER_TYPES, paymentLabel } from "../utils/userType";
 import posthog from 'posthog-js';
 import NotificationBell from "./NotificationBell";
@@ -151,6 +152,7 @@ function Navbar({ onClose }) {
   const [plan, setPlan] = useState(getUserFromToken()?.plan ?? null);
   const [userType, setUserTypeState] = useState(getUserType());
 
+  const { staffFeatures } = useOrg();
   const user = getUserFromToken();
   const role = user?.role || (Array.isArray(user?.roles) ? user.roles[0] : null);
 
@@ -270,13 +272,19 @@ function Navbar({ onClose }) {
   const settingsActive = settingsItems.some(i => cur === i.path);
 
   // ── Staff nav items ────────────────────────────────────────────────────────
+  const enabledStaffFeatures = staffFeatures
+    ? new Set(staffFeatures.split(",").map(s => s.trim()).filter(Boolean))
+    : null; // null = all enabled
+
+  const staffFeatureAllowed = (key) => !enabledStaffFeatures || enabledStaffFeatures.has(key);
+
   const staffItems = [
     { path: "/staff-home",      label: "Home",            icon: Home,              info: "Expense dashboard and recent submissions" },
-    { path: "/pos",             label: "Make a Sale",     icon: ShoppingCart,      info: "Sell products and process payments" },
-    { path: "/pos/food",        label: "Food POS",        icon: UtensilsCrossed,   info: "Take food orders and print receipts" },
-    { path: "/orders",          label: "Orders / KDS",    icon: ClipboardList,     info: "View active orders and manage stands" },
-    { path: "/expenses",        label: "Expenses",        icon: Receipt,           info: "Submit and track expense claims" },
-    { path: "/expenses/manage", label: "Manage Expenses", icon: FolderOpen,        info: "Review and approve expense reports" },
+    ...(staffFeatureAllowed("pos")             ? [{ path: "/pos",             label: "Make a Sale",     icon: ShoppingCart,      info: "Sell products and process payments" }] : []),
+    ...(staffFeatureAllowed("food_pos")        ? [{ path: "/pos/food",        label: "Food POS",        icon: UtensilsCrossed,   info: "Take food orders and print receipts" }] : []),
+    ...(staffFeatureAllowed("orders_kds")      ? [{ path: "/orders",          label: "Orders / KDS",    icon: ClipboardList,     info: "View active orders and manage stands" }] : []),
+    ...(staffFeatureAllowed("expenses")        ? [{ path: "/expenses",        label: "Expenses",        icon: Receipt,           info: "Submit and track expense claims" }] : []),
+    ...(staffFeatureAllowed("manage_expenses") ? [{ path: "/expenses/manage", label: "Manage Expenses", icon: FolderOpen,        info: "Review and approve expense reports" }] : []),
     { path: "/settings/org",    label: "Preferences",     icon: SlidersHorizontal, info: "Change your display preferences" },
   ];
 

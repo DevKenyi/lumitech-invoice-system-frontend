@@ -42,6 +42,7 @@ export function OrgProvider({ children }) {
           defaultVatRate: d.defaultVatRate ?? 7.5,
           taxAuthorityLabel: d.taxAuthorityLabel || "NRS",
           orgName: d.name || "",
+          staffFeatures: d.staffFeatures || null,
         });
       })
       .catch(() => {/* keep defaults on error */})

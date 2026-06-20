@@ -2,7 +2,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { getUserFromToken } from "../services/api";
 
 // Routes that staff (expense-only) users are allowed to visit
-const STAFF_ALLOWED = ["/expenses", "/expenses/manage", "/expenses/claims", "/staff-home", "/settings/org", "/pos"];
+const STAFF_ALLOWED = ["/expenses", "/expenses/manage", "/expenses/claims", "/staff-home", "/settings/org", "/pos", "/pos/food", "/orders"];
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem("token");
