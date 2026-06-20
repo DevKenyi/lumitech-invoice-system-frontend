@@ -4,7 +4,7 @@ import api, { getUserFromToken } from "../services/api";
 import {
   Building2, Mail, Phone, MapPin, Globe, Save, FileText, Sun, Moon, Monitor,
   Upload, Trash2, CreditCard, Landmark, Eye, EyeOff, SlidersHorizontal,
-  Lock, CheckCircle2, Pencil, DollarSign, Palette, Users,
+  Lock, CheckCircle2, Pencil, DollarSign, Palette, Users, Smartphone, Copy, Check,
 } from "lucide-react";
 import Toast from "../components/Toast";
 import { useTheme } from "../context/ThemeContext";
@@ -54,6 +54,90 @@ const EMPTY_FORM = {
   pdfAccentColor: PDF_ACCENT_DEFAULT,
   staffFeatures: null,
 };
+
+function MovaraCard() {
+  const [enabled, setEnabled] = useState(false);
+  const [apiKey, setApiKey]   = useState(null);
+  const [saving, setSaving]   = useState(false);
+  const [copied, setCopied]   = useState(false);
+
+  useEffect(() => {
+    api.get("/api/org").then(res => {
+      setEnabled(res.data.movaraEnabled ?? false);
+      setApiKey(res.data.movaraApiKey ?? null);
+    }).catch(() => {});
+  }, []);
+
+  async function toggle() {
+    const next = !enabled;
+    setSaving(true);
+    try {
+      const res = await api.put("/api/org", { movaraEnabled: next });
+      setEnabled(res.data.movaraEnabled);
+      setApiKey(res.data.movaraApiKey ?? null);
+    } catch { /* revert */ setEnabled(enabled); }
+    finally { setSaving(false); }
+  }
+
+  function copyKey() {
+    if (!apiKey) return;
+    navigator.clipboard.writeText(apiKey);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+      <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+        <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+          <Smartphone className="w-4 h-4 text-blue-500" />
+          Movara Online Ordering
+        </h2>
+        <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+          Enable to expose your menu to the Movara app and accept online orders.
+        </p>
+      </div>
+      <div className="p-6 space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Enable Movara integration</p>
+            <p className="text-xs text-slate-400">Your menu and orders will be accessible via the Movara API.</p>
+          </div>
+          <button type="button" onClick={toggle} disabled={saving}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 disabled:opacity-60 ${
+              enabled ? "bg-blue-600" : "bg-slate-200 dark:bg-slate-600"
+            }`}>
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+              enabled ? "translate-x-6" : "translate-x-1"
+            }`} />
+          </button>
+        </div>
+
+        {enabled && apiKey && (
+          <div className="rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/50 p-4 space-y-2">
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">API Key</p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 text-xs font-mono text-slate-800 dark:text-slate-200 break-all">{apiKey}</code>
+              <button type="button" onClick={copyKey}
+                className="shrink-0 flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium border border-blue-200 dark:border-blue-800 px-2.5 py-1.5 rounded-lg transition">
+                {copied ? <Check size={12} /> : <Copy size={12} />}
+                {copied ? "Copied" : "Copy"}
+              </button>
+            </div>
+            <p className="text-xs text-slate-400">
+              Share this key with the Movara team. Keep it secret — it authorises all requests on behalf of your restaurant.
+            </p>
+            <div className="pt-1 space-y-1">
+              <p className="text-xs font-medium text-slate-500">API endpoints:</p>
+              <p className="text-xs font-mono text-slate-500">GET  /api/public/movara/{"{apiKey}"}/menu</p>
+              <p className="text-xs font-mono text-slate-500">POST /api/public/movara/{"{apiKey}"}/orders</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 const ALL_STAFF_FEATURES = [
   { key: "pos",             label: "Make a Sale",    desc: "Retail POS terminal" },
@@ -759,6 +843,9 @@ function OrgSettings() {
           </div>
         </div>
       </form>
+
+      {/* Movara Integration Card — admin only */}
+      {!isStaff && <MovaraCard />}
 
       {/* Staff Features Card — admin only, self-saving */}
       {!isStaff && <StaffFeaturesCard />}
