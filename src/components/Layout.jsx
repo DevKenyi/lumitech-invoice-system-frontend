@@ -162,7 +162,7 @@ function Layout({ children }) {
         </main>
       </div>
 
-      <WhatsAppChat context="dashboard" />
+      {location.pathname !== "/food-pos" && <WhatsAppChat context="dashboard" />}
     </div>
   );
 }

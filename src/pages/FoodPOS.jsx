@@ -267,6 +267,11 @@ export default function FoodPOS() {
               <ShoppingBag size={14} /> Takeaway
             </button>
           </div>
+          {orderType === "DINE_IN" && (
+            <p className="text-xs text-slate-400 dark:text-slate-500 text-center">
+              Mixed order? Keep <strong>Dine In</strong> and tap <span className="text-orange-500 font-semibold">SERVE / TO GO</span> on each item below.
+            </p>
+          )}
         </div>
 
         {/* Cart header */}
@@ -323,13 +328,13 @@ export default function FoodPOS() {
                     {orderType === "DINE_IN" && (
                       <button onClick={() => toggleToGo(ci.cartId)}
                         title={ci.toGo ? "Mark as Dine In" : "Mark as To Go"}
-                        className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border transition-colors ${
+                        className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border-2 transition-colors ${
                           ci.toGo
                             ? "bg-orange-500 text-white border-orange-500"
-                            : "border-slate-300 dark:border-slate-500 text-slate-400 hover:border-orange-400 hover:text-orange-500"
+                            : "bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-500 text-slate-500 dark:text-slate-400 hover:border-orange-400 hover:text-orange-500"
                         }`}>
-                        <Package size={10} />
-                        {ci.toGo ? "To Go" : "Serve"}
+                        <Package size={11} />
+                        {ci.toGo ? "TO GO" : "SERVE"}
                       </button>
                     )}
                     <span className="text-sm font-bold text-blue-600">{fmt(ci.unitPrice * ci.qty, currency)}</span>
