@@ -1,171 +1,9 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import api from "../services/api";
 import {
   Building2, RefreshCw, Trash2, Plus, AlertTriangle,
   CheckCircle, Clock, ChevronRight, X, Loader2,
-  Upload, FileText, CloudUpload, Download, XCircle, Info, Landmark,
 } from "lucide-react";
-
-const SAMPLE_CSV = `date,description,debit_account,credit_account,amount,reference
-2026-01-15,Client payment received,1100,4000,5000.00,INV-001
-2026-01-16,Rent payment,5200,1100,50000.00,RENT-JAN`;
-
-function downloadSample() {
-  const blob = new Blob([SAMPLE_CSV], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a"); a.href = url; a.download = "sample-bank-statement.csv"; a.click();
-  URL.revokeObjectURL(url);
-}
-
-function ImportStatementModal({ onClose }) {
-  const [file, setFile] = useState(null);
-  const [dragging, setDragging] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
-  const [submitError, setSubmitError] = useState("");
-  const inputRef = useRef(null);
-
-  const acceptFile = (f) => {
-    if (!f) return;
-    if (!f.name.endsWith(".csv")) { setSubmitError("Only .csv files are accepted."); return; }
-    setFile(f); setResult(null); setSubmitError("");
-  };
-
-  const onDrop = useCallback((e) => {
-    e.preventDefault(); setDragging(false); acceptFile(e.dataTransfer.files?.[0]);
-  }, []);
-
-  const handleImport = async () => {
-    if (!file) return;
-    setLoading(true); setSubmitError(""); setResult(null);
-    const formData = new FormData();
-    formData.append("file", file);
-    try {
-      const { data } = await api.post("/api/accounting/import", formData);
-      setResult(data); setFile(null);
-      if (inputRef.current) inputRef.current.value = "";
-    } catch (err) {
-      setSubmitError(err.response?.data?.message || "Import failed. Please check your file and try again.");
-    } finally { setLoading(false); }
-  };
-
-  const allPassed = result && result.errors?.length === 0;
-
-  return (
-    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700">
-          <div className="flex items-center gap-2">
-            <Landmark className="w-5 h-5 text-blue-600" />
-            <h2 className="font-semibold text-slate-900 dark:text-white">Import Bank Statement</h2>
-          </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition text-slate-400">
-            <X size={16} />
-          </button>
-        </div>
-
-        <div className="p-6 space-y-5">
-          {/* Info */}
-          <div className="flex items-start gap-3 px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/60 rounded-xl">
-            <Info className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-blue-700 dark:text-blue-300">
-              Each CSV row creates a journal entry. Use account codes from your{" "}
-              <a href="/accounting/accounts" className="underline font-medium">Chart of Accounts</a>.
-            </p>
-          </div>
-
-          {/* Format */}
-          <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700">
-              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5"><FileText size={13} />Expected Format</span>
-              <button onClick={downloadSample} className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400">
-                <Download size={12} /> Download Sample
-              </button>
-            </div>
-            <pre className="px-4 py-3 text-xs text-emerald-400 dark:text-emerald-300 font-mono overflow-x-auto bg-slate-900 dark:bg-slate-950">{SAMPLE_CSV}</pre>
-          </div>
-
-          {/* Drop zone */}
-          <div
-            onDrop={onDrop}
-            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-            onDragLeave={() => setDragging(false)}
-            onClick={() => inputRef.current?.click()}
-            className={`relative cursor-pointer rounded-2xl border-2 border-dashed transition-all px-6 py-10 text-center ${
-              dragging ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-              : file ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-900/10"
-              : "border-slate-300 dark:border-slate-600 hover:border-blue-400 hover:bg-slate-50 dark:hover:bg-slate-700/30"
-            }`}
-          >
-            <input ref={inputRef} type="file" accept=".csv" className="hidden" onChange={e => acceptFile(e.target.files?.[0])} />
-            {file ? (
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/40 rounded-xl flex items-center justify-center">
-                  <FileText className="w-5 h-5 text-emerald-600" />
-                </div>
-                <p className="text-sm font-semibold text-slate-900 dark:text-white">{file.name}</p>
-                <p className="text-xs text-slate-400">{(file.size / 1024).toFixed(1)} KB</p>
-                <button type="button" onClick={e => { e.stopPropagation(); setFile(null); if (inputRef.current) inputRef.current.value = ""; }}
-                  className="text-xs text-rose-500 hover:text-rose-600 flex items-center gap-1">
-                  <X size={11} /> Remove
-                </button>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-xl flex items-center justify-center">
-                  <CloudUpload className="w-5 h-5 text-slate-400" />
-                </div>
-                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  {dragging ? "Drop your CSV here" : "Drag & drop your CSV here"}
-                </p>
-                <p className="text-xs text-slate-400">or click to browse — .csv files only</p>
-              </div>
-            )}
-          </div>
-
-          {submitError && (
-            <div className="flex items-start gap-2 px-4 py-3 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-xl">
-              <AlertTriangle className="w-4 h-4 text-rose-500 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-rose-700 dark:text-rose-300">{submitError}</p>
-            </div>
-          )}
-
-          {result && (
-            <div className={`rounded-2xl border overflow-hidden ${allPassed ? "border-emerald-200 dark:border-emerald-800" : "border-amber-200 dark:border-amber-800"}`}>
-              <div className={`px-5 py-3 flex items-center gap-3 ${allPassed ? "bg-emerald-50 dark:bg-emerald-900/20" : "bg-amber-50 dark:bg-amber-900/20"}`}>
-                {allPassed ? <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" /> : <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />}
-                <p className={`text-sm font-semibold ${allPassed ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300"}`}>
-                  {result.imported} of {result.totalRows} rows imported successfully
-                </p>
-              </div>
-              {result.errors?.length > 0 && (
-                <div className="bg-white dark:bg-slate-800 px-5 py-4 space-y-2">
-                  {result.errors.map((err, i) => (
-                    <div key={i} className="flex items-start gap-2 px-3 py-2 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-xl">
-                      <XCircle className="w-4 h-4 text-rose-500 flex-shrink-0 mt-0.5" />
-                      <p className="text-sm text-rose-700 dark:text-rose-300">{err}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="flex justify-end gap-3">
-            <button onClick={onClose} className="px-4 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition text-slate-600 dark:text-slate-300">
-              Close
-            </button>
-            <button onClick={handleImport} disabled={!file || loading}
-              className="inline-flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-lg shadow-blue-600/25 transition disabled:opacity-50 disabled:cursor-not-allowed">
-              {loading ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Importing…</> : <><Upload size={14} />Import</>}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 const MONO_PUBLIC_KEY = import.meta.env.VITE_MONO_PUBLIC_KEY;
 
@@ -189,7 +27,6 @@ export default function BankConnections() {
   const [syncing, setSyncing] = useState(null);
   const [connecting, setConnecting] = useState(false);
   const [confirmDisconnect, setConfirmDisconnect] = useState(null);
-  const [showImport, setShowImport] = useState(false);
   const [toast, setToast] = useState(null);
 
   const showToast = (message, type = "success") => {
@@ -296,23 +133,14 @@ export default function BankConnections() {
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Bank Connections</h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Connect your bank account to automatically import transactions</p>
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowImport(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-medium rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition"
-            >
-              <Upload size={16} />
-              Import Statement
-            </button>
-            <button
-              onClick={openMonoConnect}
-              disabled={connecting}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-lg shadow-blue-600/25 transition disabled:opacity-60"
-            >
-              {connecting ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-              Connect Bank Account
-            </button>
-          </div>
+          <button
+            onClick={openMonoConnect}
+            disabled={connecting}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-lg shadow-blue-600/25 transition disabled:opacity-60"
+          >
+            {connecting ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+            Connect Bank Account
+          </button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -455,9 +283,6 @@ export default function BankConnections() {
           </div>
         </div>
       </div>
-
-      {/* Import Statement modal */}
-      {showImport && <ImportStatementModal onClose={() => setShowImport(false)} />}
 
       {/* Disconnect confirmation */}
       {confirmDisconnect && (
