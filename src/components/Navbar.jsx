@@ -169,6 +169,21 @@ function Navbar({ onClose }) {
     }).catch(() => {});
   }, [isStaffRole]);
 
+  // Admin nav visibility — localStorage only, updates instantly when OrgSettings changes
+  const [hiddenAdminSections, setHiddenAdminSections] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem("lumi_admin_nav_hidden") || "[]")); }
+    catch { return new Set(); }
+  });
+  useEffect(() => {
+    const handler = () => {
+      try { setHiddenAdminSections(new Set(JSON.parse(localStorage.getItem("lumi_admin_nav_hidden") || "[]"))); }
+      catch { setHiddenAdminSections(new Set()); }
+    };
+    window.addEventListener("adminNavChange", handler);
+    return () => window.removeEventListener("adminNavChange", handler);
+  }, []);
+  const adminSectionVisible = (key) => !hiddenAdminSections.has(key);
+
   const isActive = (path) => location.pathname === path;
   const isMobile = !!onClose;
   const isPlatformAdmin = role === "PLATFORM_ADMIN" || (Array.isArray(user?.roles) && user.roles.includes("PLATFORM_ADMIN"));
@@ -303,9 +318,14 @@ function Navbar({ onClose }) {
 
   // ── Sections config ───────────────────────────────────────────────────────
   // For collapsed (icon-only) mode, collect all items in a flat list
-  const allItemsFlat = isAccountant
-    ? [...salesItems, ...purchasesItems, ...accountingItems, ...reportItems, ...posItems, ...settingsItems]
-    : [...salesItems, ...purchasesItems, ...reportItems, ...posItems, ...settingsItems];
+  const allItemsFlat = [
+    ...(adminSectionVisible("sales")      ? salesItems      : []),
+    ...(adminSectionVisible("purchases")  ? purchasesItems  : []),
+    ...(isAccountant && adminSectionVisible("accounting") ? accountingItems : []),
+    ...(adminSectionVisible("reports")    ? reportItems     : []),
+    ...(adminSectionVisible("pos")        ? posItems        : []),
+    ...settingsItems,
+  ];
 
   return (
     <aside className={`h-screen sticky top-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-r border-slate-200/60 dark:border-slate-700/60 flex flex-col transition-all duration-300 ${effectiveCollapsed ? "w-16" : "w-64"}`}>
@@ -375,21 +395,23 @@ function Navbar({ onClose }) {
               />
             )}
 
-            {/* 1 · Sales & Invoicing ── always visible */}
-            <NavSection
-              id="sales"
-              label="Sales & Invoicing"
-              icon={FileText}
-              items={salesItems}
-              collapsed={false}
-              defaultOpen={salesActive}
-              onClick={onClose}
-              isActive={isActive}
-              isMobile={isMobile}
-            />
+            {/* 1 · Sales & Invoicing */}
+            {adminSectionVisible("sales") && (
+              <NavSection
+                id="sales"
+                label="Sales & Invoicing"
+                icon={FileText}
+                items={salesItems}
+                collapsed={false}
+                defaultOpen={salesActive}
+                onClick={onClose}
+                isActive={isActive}
+                isMobile={isMobile}
+              />
+            )}
 
             {/* 2 · Bills & Purchases ── GROWTH+ or locked */}
-            {canAccessGrowthFeatures ? (
+            {adminSectionVisible("purchases") && (canAccessGrowthFeatures ? (
               <NavSection
                 id="purchases"
                 label="Bills & Purchases"
@@ -414,10 +436,10 @@ function Navbar({ onClose }) {
                 isActive={isActive}
                 isMobile={isMobile}
               />
-            )}
+            ))}
 
-            {/* 3 · Accounting ── GROWTH+ or locked, always visible for Accountant mode */}
-            {canAccessGrowthFeatures ? (
+            {/* 3 · Accounting ── GROWTH+ or locked */}
+            {adminSectionVisible("accounting") && (canAccessGrowthFeatures ? (
               <NavSection
                 id="accounting"
                 label="Accounting"
@@ -442,23 +464,25 @@ function Navbar({ onClose }) {
                 isActive={isActive}
                 isMobile={isMobile}
               />
+            ))}
+
+            {/* 4 · Reports */}
+            {adminSectionVisible("reports") && (
+              <NavSection
+                id="reports"
+                label="Reports"
+                icon={BarChart2}
+                items={reportItems}
+                collapsed={false}
+                defaultOpen={reportsActive}
+                onClick={onClose}
+                isActive={isActive}
+                isMobile={isMobile}
+              />
             )}
 
-            {/* 4 · Reports ── all plans, some items gated */}
-            <NavSection
-              id="reports"
-              label="Reports"
-              icon={BarChart2}
-              items={reportItems}
-              collapsed={false}
-              defaultOpen={reportsActive}
-              onClick={onClose}
-              isActive={isActive}
-              isMobile={isMobile}
-            />
-
             {/* 5 · Retail & POS ── GROWTH+ or locked */}
-            {canAccessGrowthFeatures ? (
+            {adminSectionVisible("pos") && (canAccessGrowthFeatures ? (
               <NavSection
                 id="pos"
                 label="Retail & POS"
@@ -483,7 +507,7 @@ function Navbar({ onClose }) {
                 isActive={isActive}
                 isMobile={isMobile}
               />
-            )}
+            ))}
 
             {/* 6 · Settings ── always visible */}
             <NavSection

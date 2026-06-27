@@ -147,6 +147,74 @@ const ALL_STAFF_FEATURES = [
   { key: "manage_expenses", label: "Manage Expenses",desc: "Review and approve expense reports" },
 ];
 
+const ADMIN_NAV_SECTIONS = [
+  { key: "sales",      label: "Sales & Invoicing",  desc: "Invoices, quotes, clients, payments, projects" },
+  { key: "purchases",  label: "Bills & Purchases",  desc: "Bills, suppliers, purchase orders, credit & debit notes" },
+  { key: "accounting", label: "Accounting",          desc: "Chart of accounts, journals, reconciliation, payroll" },
+  { key: "reports",    label: "Reports",             desc: "P&L, balance sheet, cash flow, aging, tax" },
+  { key: "pos",        label: "Retail & POS",        desc: "Point of sale, food POS, menu, inventory" },
+];
+
+const ADMIN_NAV_KEY = "lumi_admin_nav_hidden";
+
+function AdminNavCard() {
+  const [hidden, setHidden] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem(ADMIN_NAV_KEY) || "[]")); }
+    catch { return new Set(); }
+  });
+
+  function toggle(key) {
+    setHidden(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      localStorage.setItem(ADMIN_NAV_KEY, JSON.stringify([...next]));
+      window.dispatchEvent(new Event("adminNavChange"));
+      return next;
+    });
+  }
+
+  return (
+    <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+      <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+        <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+          <SlidersHorizontal className="w-4 h-4 text-blue-500" />
+          My Navigation
+        </h2>
+        <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+          Hide sections you don't use to keep the sidebar clean. Only affects your view.
+        </p>
+      </div>
+      <div className="p-6 space-y-3">
+        {ADMIN_NAV_SECTIONS.map(({ key, label, desc }) => {
+          const isOn = !hidden.has(key);
+          return (
+            <div key={key} className="flex items-center justify-between gap-4 py-1">
+              <div>
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{label}</p>
+                <p className="text-xs text-slate-400">{desc}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => toggle(key)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${
+                  isOn ? "bg-blue-600" : "bg-slate-200 dark:bg-slate-600"
+                }`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                  isOn ? "translate-x-6" : "translate-x-1"
+                }`} />
+              </button>
+            </div>
+          );
+        })}
+        <p className="text-xs text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-700">
+          Dashboard and Settings are always visible.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function StaffFeaturesCard() {
   const [enabled, setEnabled] = useState(null); // null = loading
   const [saving, setSaving] = useState(null);   // key of toggle being saved
@@ -849,6 +917,9 @@ function OrgSettings() {
 
       {/* Staff Features Card — admin only, self-saving */}
       {!isStaff && <StaffFeaturesCard />}
+
+      {/* Admin Nav Card — admin only, localStorage only */}
+      {!isStaff && <AdminNavCard />}
 
       {/* Appearance Card */}
       <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
