@@ -252,6 +252,9 @@ function ClientList() {
                           {client.name.charAt(0).toUpperCase()}
                         </div>
                         <span className="text-slate-900 dark:text-white font-medium text-sm sm:text-base">{client.name}</span>
+                        {client.customerType === "WHOLESALE" && (
+                          <span className="hidden sm:inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 border border-violet-200 dark:border-violet-700">WHOLESALE</span>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">

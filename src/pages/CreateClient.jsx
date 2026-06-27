@@ -8,7 +8,8 @@ import {
   User,
   Mail,
   Phone,
-  MapPin
+  MapPin,
+  ShoppingBag,
 } from "lucide-react";
 
 function CreateClient() {
@@ -19,7 +20,8 @@ function CreateClient() {
     name: "",
     email: "",
     phone: "",
-    address: ""
+    address: "",
+    customerType: "RETAIL",
   });
 
   const handleSubmit = async (e) => {
@@ -120,6 +122,31 @@ function CreateClient() {
                 placeholder="Street, city, postal code..."
                 className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl bg-white/50 dark:bg-slate-700/50 dark:text-white dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition resize-none"
               />
+            </div>
+
+            {/* Customer Type */}
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+                <ShoppingBag className="w-4 h-4 text-slate-400" />
+                Customer Type
+              </label>
+              <div className="flex gap-2">
+                {["RETAIL", "WHOLESALE"].map(type => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setForm({ ...form, customerType: type })}
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 transition ${
+                      form.customerType === type
+                        ? "border-blue-600 bg-blue-600 text-white"
+                        : "border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-blue-300"
+                    }`}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-slate-400">Wholesale customers automatically get wholesale pricing at POS</p>
             </div>
 
             {/* Submit Button */}

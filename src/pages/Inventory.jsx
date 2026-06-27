@@ -4,6 +4,7 @@ import api from "../services/api";
 import {
   Plus, Search, Edit2, Trash2, Package, AlertTriangle, X, Check,
   Barcode, Tag, RefreshCw, ChevronDown, ChevronUp, History, TrendingDown, Camera,
+  Layers, SlidersHorizontal,
 } from "lucide-react";
 import Toast from "../components/Toast";
 import BarcodeScanner from "../components/BarcodeScanner";
@@ -14,8 +15,14 @@ const CATS  = ["Electronics", "Food & Drinks", "Clothing", "Beauty", "Health", "
 
 const emptyForm = () => ({
   name: "", sku: "", barcode: "", description: "", price: "",
-  costPrice: "", quantityInStock: 0, lowStockThreshold: 5, category: "", unit: "unit",
-  incomeAccountId: "", directCostAccountId: "",
+  costPrice: "", wholesalePrice: "", quantityInStock: 0, lowStockThreshold: 5,
+  category: "", unit: "unit", incomeAccountId: "", directCostAccountId: "",
+  hasVariants: false,
+});
+
+const emptyVariant = () => ({
+  sku: "", barcode: "", size: "", color: "", customLabel: "", customValue: "",
+  sellingPrice: "", wholesalePrice: "", costPrice: "", stockQty: 0, lowStockThreshold: 5,
 });
 
 const emptyRestockForm = () => ({
@@ -68,11 +75,19 @@ export default function Inventory() {
   const [showForm, setShowForm]   = useState(false);
   const [editing, setEditing]     = useState(null);
   const [form, setForm]           = useState(emptyForm());
+  const [variants, setVariants]   = useState([]);
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+  const [barcodeScanTarget, setBarcodeScanTarget] = useState(null); // null = main, number = variant idx
   const [saving, setSaving]       = useState(false);
   const [page, setPage]           = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [accounts, setAccounts]   = useState([]);
+  const [expandedProduct, setExpandedProduct] = useState(null);
+  const [productVariants, setProductVariants] = useState({});
+  const [adjustTarget, setAdjustTarget] = useState(null); // { type: 'product'|'variant', id, name }
+  const [adjustQty, setAdjustQty]       = useState("");
+  const [adjustNotes, setAdjustNotes]   = useState("");
+  const [adjusting, setAdjusting]       = useState(false);
 
   const [restockOrders, setRestockOrders]   = useState([]);
   const [restockLoading, setRestockLoading] = useState(false);
@@ -120,34 +135,72 @@ export default function Inventory() {
     try {
       const res = await api.get("/api/accounting/accounts");
       setAccounts(res.data || []);
-    } catch { /* silently ignore — accounts are optional */ }
+    } catch { /* silently ignore */ }
   };
 
-  const openCreate = () => { setEditing(null); setForm(emptyForm()); loadAccounts(); setShowForm(true); };
-  const openEdit   = (p)  => {
+  const openCreate = () => {
+    setEditing(null);
+    setForm(emptyForm());
+    setVariants([]);
+    loadAccounts();
+    setShowForm(true);
+  };
+
+  const openEdit = (p) => {
     setEditing(p.id);
     setForm({
       name: p.name || "", sku: p.sku || "", barcode: p.barcode || "",
       description: p.description || "", price: p.price || "",
-      costPrice: p.costPrice || "", quantityInStock: p.quantityInStock,
-      lowStockThreshold: p.lowStockThreshold, category: p.category || "", unit: p.unit || "unit",
+      costPrice: p.costPrice || "", wholesalePrice: p.wholesalePrice || "",
+      quantityInStock: p.quantityInStock, lowStockThreshold: p.lowStockThreshold,
+      category: p.category || "", unit: p.unit || "unit",
       incomeAccountId: p.incomeAccountId || "", directCostAccountId: p.directCostAccountId || "",
+      hasVariants: p.hasVariants || false,
     });
+    setVariants(p.variants ? p.variants.map(v => ({
+      id: v.id,
+      sku: v.sku || "", barcode: v.barcode || "",
+      size: v.size || "", color: v.color || "",
+      customLabel: v.customLabel || "", customValue: v.customValue || "",
+      sellingPrice: v.sellingPrice || "", wholesalePrice: v.wholesalePrice || "",
+      costPrice: v.costPrice || "", stockQty: v.stockQty || 0, lowStockThreshold: v.lowStockThreshold || 5,
+    })) : []);
     loadAccounts();
     setShowForm(true);
   };
 
   const handleSave = async () => {
     if (!form.name || !form.price) { notify("Name and price are required", "error"); return; }
+    if (form.hasVariants && variants.length === 0) { notify("Add at least one variant", "error"); return; }
     setSaving(true);
     try {
-      const payload = { ...form, price: parseFloat(form.price), costPrice: form.costPrice ? parseFloat(form.costPrice) : null };
+      const payload = {
+        ...form,
+        price: parseFloat(form.price),
+        costPrice: form.costPrice ? parseFloat(form.costPrice) : null,
+        wholesalePrice: form.wholesalePrice ? parseFloat(form.wholesalePrice) : null,
+      };
+      let savedProductId = editing;
       if (editing) {
         await api.put(`/api/inventory/products/${editing}`, payload);
         notify("Product updated");
       } else {
-        await api.post("/api/inventory/products", payload);
+        const res = await api.post("/api/inventory/products", payload);
+        savedProductId = res.data.id;
         notify("Product added");
+      }
+      if (form.hasVariants && savedProductId) {
+        const variantPayload = variants.map(v => ({
+          sku: v.sku || null, barcode: v.barcode || null,
+          size: v.size || null, color: v.color || null,
+          customLabel: v.customLabel || null, customValue: v.customValue || null,
+          sellingPrice: v.sellingPrice ? parseFloat(v.sellingPrice) : null,
+          wholesalePrice: v.wholesalePrice ? parseFloat(v.wholesalePrice) : null,
+          costPrice: v.costPrice ? parseFloat(v.costPrice) : null,
+          stockQty: parseInt(v.stockQty) || 0,
+          lowStockThreshold: parseInt(v.lowStockThreshold) || 5,
+        }));
+        await api.put(`/api/inventory/products/${savedProductId}/variants`, variantPayload);
       }
       setShowForm(false);
       load(page);
@@ -166,6 +219,61 @@ export default function Inventory() {
   };
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const addVariant = () => setVariants(prev => [...prev, emptyVariant()]);
+  const removeVariant = (idx) => setVariants(prev => prev.filter((_, i) => i !== idx));
+  const setVariantField = (idx, k, v) =>
+    setVariants(prev => prev.map((vr, i) => i === idx ? { ...vr, [k]: v } : vr));
+
+  const loadVariants = async (productId) => {
+    if (productVariants[productId]) return;
+    try {
+      const res = await api.get(`/api/inventory/products/${productId}/variants`);
+      setProductVariants(prev => ({ ...prev, [productId]: res.data || [] }));
+    } catch { /* ignore */ }
+  };
+
+  const toggleProductExpand = (p) => {
+    if (expandedProduct === p.id) {
+      setExpandedProduct(null);
+    } else {
+      setExpandedProduct(p.id);
+      if (p.hasVariants) loadVariants(p.id);
+    }
+  };
+
+  const openAdjust = (type, id, name) => {
+    setAdjustTarget({ type, id, name });
+    setAdjustQty("");
+    setAdjustNotes("");
+  };
+
+  const handleAdjust = async () => {
+    const qty = parseInt(adjustQty);
+    if (!qty || isNaN(qty)) { notify("Enter a non-zero quantity", "error"); return; }
+    setAdjusting(true);
+    try {
+      if (adjustTarget.type === "variant") {
+        await api.post(`/api/inventory/variants/${adjustTarget.id}/adjust`, { quantity: qty, notes: adjustNotes });
+        setProductVariants(prev => {
+          const updated = { ...prev };
+          for (const pid of Object.keys(updated)) {
+            updated[pid] = updated[pid].map(v =>
+              v.id === adjustTarget.id ? { ...v, stockQty: v.stockQty + qty } : v
+            );
+          }
+          return updated;
+        });
+      } else {
+        await api.post(`/api/inventory/products/${adjustTarget.id}/adjust`, { quantity: qty, notes: adjustNotes });
+      }
+      notify(`Stock adjusted by ${qty > 0 ? "+" : ""}${qty}`);
+      setAdjustTarget(null);
+      load(page);
+    } catch (e) {
+      notify(e.response?.data?.message || "Adjustment failed", "error");
+    } finally { setAdjusting(false); }
+  };
 
   const loadRestockOrders = async () => {
     setRestockLoading(true);
@@ -334,62 +442,136 @@ export default function Inventory() {
                 <table className="w-full text-sm">
                   <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 text-xs uppercase tracking-wide">
                     <tr>
-                      {["Product", "SKU / Barcode", "Price", "Cost", "Stock", "Category", "Linked Accounts", ""].map(h => (
+                      {["Product", "SKU / Barcode", "Price / Wholesale", "Cost", "Stock", "Category", ""].map(h => (
                         <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                     {products.map(p => (
-                      <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
-                        <td className="px-4 py-3">
-                          <p className="font-semibold text-slate-800 dark:text-white">{p.name}</p>
-                          {p.description && <p className="text-xs text-slate-400 truncate max-w-[180px]">{p.description}</p>}
-                        </td>
-                        <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
-                          <span className="font-mono text-xs">{p.sku || "—"}</span>
-                          {p.barcode && <span className="block font-mono text-xs text-slate-400">{p.barcode}</span>}
-                        </td>
-                        <td className="px-4 py-3 font-semibold text-slate-800 dark:text-white">{fmt(p.price)}</td>
-                        <td className="px-4 py-3 text-slate-500">{p.costPrice ? fmt(p.costPrice) : "—"}</td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${
-                            p.lowStock ? "bg-rose-50 text-rose-600 border-rose-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"
-                          }`}>
-                            {p.lowStock && <AlertTriangle className="w-3 h-3" />}
-                            {p.quantityInStock} {p.unit}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-slate-500">{p.category || "—"}</td>
-                        <td className="px-4 py-3">
-                          {p.incomeAccountName || p.directCostAccountName ? (
-                            <div className="space-y-0.5">
-                              {p.incomeAccountName && (
-                                <p className="text-xs text-emerald-700 dark:text-emerald-400">
-                                  <span className="text-slate-400">Income: </span>{p.incomeAccountName}
-                                </p>
+                      <>
+                        <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              {p.hasVariants && (
+                                <button onClick={() => toggleProductExpand(p)}
+                                  className="p-0.5 rounded text-slate-400 hover:text-blue-600 transition">
+                                  {expandedProduct === p.id
+                                    ? <ChevronUp className="w-4 h-4" />
+                                    : <ChevronDown className="w-4 h-4" />}
+                                </button>
                               )}
-                              {p.directCostAccountName && (
-                                <p className="text-xs text-amber-700 dark:text-amber-400">
-                                  <span className="text-slate-400">COGS: </span>{p.directCostAccountName}
+                              <div>
+                                <p className="font-semibold text-slate-800 dark:text-white flex items-center gap-1.5">
+                                  {p.name}
+                                  {p.hasVariants && (
+                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 border border-violet-200">
+                                      <Layers className="w-2.5 h-2.5" /> VARIANTS
+                                    </span>
+                                  )}
                                 </p>
-                              )}
+                                {p.description && <p className="text-xs text-slate-400 truncate max-w-[180px]">{p.description}</p>}
+                              </div>
                             </div>
-                          ) : (
-                            <span className="text-slate-300 dark:text-slate-600 text-xs">—</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-1">
-                            <button onClick={() => openEdit(p)} className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition">
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                            <button onClick={() => handleDelete(p.id, p.name)} className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition">
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
+                          </td>
+                          <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
+                            <span className="font-mono text-xs">{p.sku || "—"}</span>
+                            {p.barcode && <span className="block font-mono text-xs text-slate-400">{p.barcode}</span>}
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="font-semibold text-slate-800 dark:text-white">{fmt(p.price)}</p>
+                            {p.wholesalePrice && (
+                              <p className="text-xs text-violet-600 dark:text-violet-400">WS: {fmt(p.wholesalePrice)}</p>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-slate-500">{p.costPrice ? fmt(p.costPrice) : "—"}</td>
+                          <td className="px-4 py-3">
+                            {p.hasVariants ? (
+                              <button onClick={() => toggleProductExpand(p)}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border bg-violet-50 text-violet-600 border-violet-200 hover:bg-violet-100 transition">
+                                <Layers className="w-3 h-3" /> View variants
+                              </button>
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${
+                                  p.lowStock ? "bg-rose-50 text-rose-600 border-rose-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                }`}>
+                                  {p.lowStock && <AlertTriangle className="w-3 h-3" />}
+                                  {p.quantityInStock} {p.unit}
+                                </span>
+                                <button onClick={() => openAdjust("product", p.id, p.name)}
+                                  className="p-0.5 rounded text-slate-300 hover:text-amber-500 transition" title="Adjust stock">
+                                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-slate-500">{p.category || "—"}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-1">
+                              <button onClick={() => openEdit(p)} className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition">
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => handleDelete(p.id, p.name)} className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                        {/* Variant expansion row */}
+                        {expandedProduct === p.id && p.hasVariants && (
+                          <tr key={`${p.id}-variants`}>
+                            <td colSpan={7} className="px-0 py-0 bg-violet-50/40 dark:bg-violet-900/10">
+                              <div className="px-8 py-3">
+                                <p className="text-xs font-semibold text-violet-700 dark:text-violet-400 uppercase tracking-wide mb-2">Variants</p>
+                                {!productVariants[p.id] ? (
+                                  <p className="text-xs text-slate-400">Loading…</p>
+                                ) : productVariants[p.id].length === 0 ? (
+                                  <p className="text-xs text-slate-400">No variants defined yet</p>
+                                ) : (
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full text-xs">
+                                      <thead>
+                                        <tr className="text-slate-400 uppercase tracking-wide">
+                                          <th className="text-left pb-1 pr-4 font-semibold">Variant</th>
+                                          <th className="text-left pb-1 pr-4 font-semibold">SKU</th>
+                                          <th className="text-right pb-1 pr-4 font-semibold">Price</th>
+                                          <th className="text-right pb-1 pr-4 font-semibold">WS Price</th>
+                                          <th className="text-right pb-1 pr-4 font-semibold">Cost</th>
+                                          <th className="text-right pb-1 font-semibold">Stock</th>
+                                          <th className="w-8" />
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-violet-100 dark:divide-violet-800/30">
+                                        {productVariants[p.id].map(v => (
+                                          <tr key={v.id}>
+                                            <td className="py-1.5 pr-4 font-medium text-slate-700 dark:text-slate-300">{v.label || "—"}</td>
+                                            <td className="py-1.5 pr-4 font-mono text-slate-500">{v.sku || "—"}</td>
+                                            <td className="py-1.5 pr-4 text-right text-slate-700 dark:text-slate-300">{v.sellingPrice ? fmt(v.sellingPrice) : <span className="text-slate-400">↑ parent</span>}</td>
+                                            <td className="py-1.5 pr-4 text-right text-violet-600">{v.wholesalePrice ? fmt(v.wholesalePrice) : "—"}</td>
+                                            <td className="py-1.5 pr-4 text-right text-slate-500">{v.costPrice ? fmt(v.costPrice) : "—"}</td>
+                                            <td className="py-1.5 text-right">
+                                              <span className={`px-1.5 py-0.5 rounded font-semibold ${v.lowStock ? "text-rose-600" : "text-emerald-600"}`}>
+                                                {v.stockQty}
+                                              </span>
+                                            </td>
+                                            <td className="py-1.5 pl-2">
+                                              <button onClick={() => openAdjust("variant", v.id, `${p.name} — ${v.label}`)}
+                                                className="p-0.5 rounded text-slate-300 hover:text-amber-500 transition" title="Adjust stock">
+                                                <SlidersHorizontal className="w-3.5 h-3.5" />
+                                              </button>
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </>
                     ))}
                   </tbody>
                 </table>
@@ -553,7 +735,7 @@ export default function Inventory() {
       {/* Add/Edit Product Modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700">
               <h2 className="font-bold text-slate-900 dark:text-white text-lg">{editing ? "Edit Product" : "Add Product"}</h2>
               <button onClick={() => setShowForm(false)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
@@ -565,47 +747,74 @@ export default function Inventory() {
                 <label className="block text-xs font-semibold text-slate-500 mb-1">Product Name *</label>
                 <input value={form.name} onChange={e => set("name", e.target.value)} placeholder="e.g. Indomie Noodles" className={inputCls} />
               </div>
+
+              {/* Variant toggle */}
+              <div className="flex items-center gap-3 p-3 bg-violet-50 dark:bg-violet-900/20 rounded-xl border border-violet-200 dark:border-violet-700">
+                <button
+                  type="button"
+                  onClick={() => {
+                    set("hasVariants", !form.hasVariants);
+                    if (!form.hasVariants && variants.length === 0) addVariant();
+                  }}
+                  className={`relative w-10 h-5 rounded-full transition-all flex-shrink-0 ${form.hasVariants ? "bg-violet-600" : "bg-slate-200 dark:bg-slate-600"}`}
+                >
+                  <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${form.hasVariants ? "left-5" : "left-0.5"}`} />
+                </button>
+                <div>
+                  <p className="text-xs font-semibold text-violet-800 dark:text-violet-300 flex items-center gap-1">
+                    <Layers className="w-3.5 h-3.5" /> This product has variants (size, colour, etc.)
+                  </p>
+                  <p className="text-xs text-violet-600 dark:text-violet-400 mt-0.5">
+                    Stock and pricing are tracked per variant. Wholesale prices can be set per variant.
+                  </p>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1">Selling Price ({currencySymbol}) *</label>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Retail Price ({currencySymbol}) *</label>
                   <input type="number" value={form.price} onChange={e => set("price", e.target.value)} placeholder="0" min="0" className={inputCls} />
                 </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Wholesale Price ({currencySymbol})</label>
+                  <input type="number" value={form.wholesalePrice} onChange={e => set("wholesalePrice", e.target.value)} placeholder="Optional" min="0" className={inputCls} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1">Cost Price ({currencySymbol})</label>
                   <input type="number" value={form.costPrice} onChange={e => set("costPrice", e.target.value)} placeholder="Optional" min="0" className={inputCls} />
                 </div>
+                {!form.hasVariants && (
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 mb-1">Quantity in Stock</label>
+                    <input type="number" value={form.quantityInStock} onChange={e => set("quantityInStock", parseInt(e.target.value) || 0)} min="0" className={inputCls} />
+                  </div>
+                )}
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1">Quantity in Stock</label>
-                  <input type="number" value={form.quantityInStock} onChange={e => set("quantityInStock", parseInt(e.target.value) || 0)} min="0" className={inputCls} />
+              {!form.hasVariants && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 mb-1">Low Stock Alert Below</label>
+                    <input type="number" value={form.lowStockThreshold} onChange={e => set("lowStockThreshold", parseInt(e.target.value) || 0)} min="0" className={inputCls} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 mb-1">Barcode</label>
+                    <div className="flex gap-1.5">
+                      <input value={form.barcode} onChange={e => set("barcode", e.target.value)} placeholder="e.g. 6001234567890" className={`${inputCls} flex-1`} />
+                      <button type="button" onClick={() => { setBarcodeScanTarget(null); setShowBarcodeScanner(true); }}
+                        className="px-2.5 py-1.5 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-lg hover:scale-[1.05] transition flex-shrink-0">
+                        <Camera size={14} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1">Low Stock Alert Below</label>
-                  <input type="number" value={form.lowStockThreshold} onChange={e => set("lowStockThreshold", parseInt(e.target.value) || 0)} min="0" className={inputCls} />
-                </div>
-              </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1">SKU</label>
                   <input value={form.sku} onChange={e => set("sku", e.target.value)} placeholder="e.g. IND-001" className={inputCls} />
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1">Barcode</label>
-                  <div className="flex gap-1.5">
-                    <input value={form.barcode} onChange={e => set("barcode", e.target.value)} placeholder="e.g. 6001234567890" className={`${inputCls} flex-1`} />
-                    <button
-                      type="button"
-                      onClick={() => setShowBarcodeScanner(true)}
-                      title="Scan barcode with camera"
-                      className="px-2.5 py-1.5 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-lg hover:scale-[1.05] transition flex-shrink-0"
-                    >
-                      <Camera size={14} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1">Category</label>
                   <select value={form.category} onChange={e => set("category", e.target.value)} className={inputCls}>
@@ -613,44 +822,118 @@ export default function Inventory() {
                     {CATS.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1">Unit</label>
-                  <select value={form.unit} onChange={e => set("unit", e.target.value)} className={inputCls}>
-                    {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-                  </select>
-                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Unit</label>
+                <select value={form.unit} onChange={e => set("unit", e.target.value)} className={inputCls}>
+                  {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                </select>
               </div>
               {accounts.length > 0 && (
-                <>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-500 mb-1">Income Account</label>
-                      <select value={form.incomeAccountId} onChange={e => set("incomeAccountId", e.target.value)} className={inputCls}>
-                        <option value="">None</option>
-                        {accounts.filter(a => a.type === "INCOME").map(a => (
-                          <option key={a.id} value={a.id}>{a.code ? `${a.code} · ` : ""}{a.name}</option>
-                        ))}
-                      </select>
-                      <p className="text-xs text-slate-400 mt-0.5">Revenue account for sales of this item</p>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-500 mb-1">Direct Cost Account</label>
-                      <select value={form.directCostAccountId} onChange={e => set("directCostAccountId", e.target.value)} className={inputCls}>
-                        <option value="">None</option>
-                        {accounts.filter(a => a.type === "EXPENSE" && a.subType === "DIRECT_COST").map(a => (
-                          <option key={a.id} value={a.id}>{a.code ? `${a.code} · ` : ""}{a.name}</option>
-                        ))}
-                      </select>
-                      <p className="text-xs text-slate-400 mt-0.5">COGS account for cost of this item</p>
-                    </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 mb-1">Income Account</label>
+                    <select value={form.incomeAccountId} onChange={e => set("incomeAccountId", e.target.value)} className={inputCls}>
+                      <option value="">None</option>
+                      {accounts.filter(a => a.type === "INCOME").map(a => (
+                        <option key={a.id} value={a.id}>{a.code ? `${a.code} · ` : ""}{a.name}</option>
+                      ))}
+                    </select>
                   </div>
-                </>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 mb-1">Direct Cost Account</label>
+                    <select value={form.directCostAccountId} onChange={e => set("directCostAccountId", e.target.value)} className={inputCls}>
+                      <option value="">None</option>
+                      {accounts.filter(a => a.type === "EXPENSE" && a.subType === "DIRECT_COST").map(a => (
+                        <option key={a.id} value={a.id}>{a.code ? `${a.code} · ` : ""}{a.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               )}
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-1">Description</label>
                 <textarea value={form.description} onChange={e => set("description", e.target.value)}
                   rows={2} placeholder="Optional short description" className={inputCls + " resize-none"} />
               </div>
+
+              {/* Variant builder */}
+              {form.hasVariants && (
+                <div className="border border-violet-200 dark:border-violet-700 rounded-xl overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-violet-50 dark:bg-violet-900/20">
+                    <p className="text-xs font-semibold text-violet-800 dark:text-violet-300 uppercase tracking-wide flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5" /> Variants ({variants.length})
+                    </p>
+                    <button type="button" onClick={addVariant}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-violet-100 dark:bg-violet-800 text-violet-700 dark:text-violet-300 text-xs font-semibold hover:bg-violet-200 transition border border-violet-200 dark:border-violet-700">
+                      <Plus className="w-3 h-3" /> Add Variant
+                    </button>
+                  </div>
+                  <div className="divide-y divide-violet-100 dark:divide-violet-800/30">
+                    {variants.map((v, idx) => (
+                      <div key={idx} className="p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">Variant #{idx + 1}</p>
+                          <button type="button" onClick={() => removeVariant(idx)} disabled={variants.length === 1}
+                            className="p-1 rounded-lg hover:bg-rose-50 text-slate-300 hover:text-rose-500 disabled:opacity-20 transition">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          <div>
+                            <label className="block text-[10px] font-semibold text-slate-400 mb-0.5">Size</label>
+                            <input value={v.size} onChange={e => setVariantField(idx, "size", e.target.value)} placeholder="e.g. S / M / L / XL" className={inputCls} />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-semibold text-slate-400 mb-0.5">Colour</label>
+                            <input value={v.color} onChange={e => setVariantField(idx, "color", e.target.value)} placeholder="e.g. Red / Blue" className={inputCls} />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-semibold text-slate-400 mb-0.5">Custom Label</label>
+                            <input value={v.customLabel} onChange={e => setVariantField(idx, "customLabel", e.target.value)} placeholder="e.g. Weight" className={inputCls} />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-semibold text-slate-400 mb-0.5">Custom Value</label>
+                            <input value={v.customValue} onChange={e => setVariantField(idx, "customValue", e.target.value)} placeholder="e.g. 500g" className={inputCls} />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-semibold text-slate-400 mb-0.5">SKU</label>
+                            <input value={v.sku} onChange={e => setVariantField(idx, "sku", e.target.value)} placeholder="Variant SKU" className={inputCls} />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-semibold text-slate-400 mb-0.5">Barcode</label>
+                            <div className="flex gap-1">
+                              <input value={v.barcode} onChange={e => setVariantField(idx, "barcode", e.target.value)} placeholder="Barcode" className={`${inputCls} flex-1`} />
+                              <button type="button" onClick={() => { setBarcodeScanTarget(idx); setShowBarcodeScanner(true); }}
+                                className="px-1.5 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-lg text-xs">
+                                <Camera size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                          <div>
+                            <label className="block text-[10px] font-semibold text-slate-400 mb-0.5">Retail Price ({currencySymbol})</label>
+                            <input type="number" value={v.sellingPrice} onChange={e => setVariantField(idx, "sellingPrice", e.target.value)} placeholder="↑ parent" min="0" className={inputCls} />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-semibold text-slate-400 mb-0.5">Wholesale ({currencySymbol})</label>
+                            <input type="number" value={v.wholesalePrice} onChange={e => setVariantField(idx, "wholesalePrice", e.target.value)} placeholder="Optional" min="0" className={inputCls} />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-semibold text-slate-400 mb-0.5">Cost ({currencySymbol})</label>
+                            <input type="number" value={v.costPrice} onChange={e => setVariantField(idx, "costPrice", e.target.value)} placeholder="Optional" min="0" className={inputCls} />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-semibold text-slate-400 mb-0.5">Stock Qty</label>
+                            <input type="number" value={v.stockQty} onChange={e => setVariantField(idx, "stockQty", e.target.value)} min="0" className={inputCls} />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             <div className="flex gap-3 p-5 border-t border-slate-100 dark:border-slate-700">
               <button onClick={() => setShowForm(false)}
@@ -661,6 +944,46 @@ export default function Inventory() {
                 className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-60 transition flex items-center justify-center gap-2">
                 {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                 {editing ? "Save Changes" : "Add Product"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Stock Adjustment Modal */}
+      {adjustTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                <SlidersHorizontal className="w-4 h-4 text-amber-500" /> Adjust Stock
+              </h3>
+              <button onClick={() => setAdjustTarget(null)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
+                <X className="w-4 h-4 text-slate-400" />
+              </button>
+            </div>
+            <p className="text-xs text-slate-500 mb-4 truncate">{adjustTarget.name}</p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Quantity (positive to add, negative to remove)</label>
+                <input type="number" value={adjustQty} onChange={e => setAdjustQty(e.target.value)}
+                  placeholder="e.g. 10 or -5" className={inputCls} autoFocus />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Notes (optional)</label>
+                <input value={adjustNotes} onChange={e => setAdjustNotes(e.target.value)}
+                  placeholder="e.g. Stock count correction" className={inputCls} />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => setAdjustTarget(null)}
+                className="flex-1 px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
+                Cancel
+              </button>
+              <button onClick={handleAdjust} disabled={adjusting || !adjustQty}
+                className="flex-1 px-4 py-2.5 bg-amber-500 text-white rounded-xl text-sm font-semibold hover:bg-amber-600 disabled:opacity-60 transition flex items-center justify-center gap-2">
+                {adjusting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                Apply
               </button>
             </div>
           </div>
@@ -760,7 +1083,11 @@ export default function Inventory() {
       {showBarcodeScanner && (
         <BarcodeScanner
           onDetected={(code) => {
-            set("barcode", code);
+            if (barcodeScanTarget === null) {
+              set("barcode", code);
+            } else {
+              setVariantField(barcodeScanTarget, "barcode", code);
+            }
             setShowBarcodeScanner(false);
           }}
           onClose={() => setShowBarcodeScanner(false)}

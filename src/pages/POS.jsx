@@ -4,7 +4,7 @@ import api from "../services/api";
 import {
   Search, Plus, Minus, Trash2, ShoppingCart, CheckCircle,
   X, Barcode, RefreshCw, Printer, Mail, User, Download,
-  Bluetooth, Usb, Settings, Wifi, Camera,
+  Bluetooth, Usb, Settings, Wifi, Camera, Layers,
 } from "lucide-react";
 import Toast from "../components/Toast";
 import BarcodeScanner from "../components/BarcodeScanner";
@@ -291,6 +291,11 @@ export default function POS() {
   const [clientSuggestions, setClientSuggestions] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
 
+  // Variant picker
+  const [pickerProduct, setPickerProduct]     = useState(null);
+  const [pickerVariants, setPickerVariants]   = useState([]);
+  const [pickerLoading, setPickerLoading]     = useState(false);
+
   const notify = (message, type = "success") => setToast({ visible: true, message, type });
 
   // Load all products on mount + org name + clients
@@ -355,40 +360,92 @@ export default function POS() {
     }
   };
 
-  const addToCart = (product) => {
-    if (product.quantityInStock <= 0) { notify(`${product.name} is out of stock`, "error"); return; }
+  const resolvePrice = (retailPrice, wholesalePrice) => {
+    if (selectedClient?.customerType === "WHOLESALE" && wholesalePrice) return wholesalePrice;
+    return retailPrice;
+  };
+
+  const openVariantPicker = async (product) => {
+    setPickerProduct(product);
+    setPickerLoading(true);
+    try {
+      const res = await api.get(`/api/inventory/products/${product.id}/variants`);
+      setPickerVariants(res.data || []);
+    } catch {
+      notify("Failed to load variants", "error");
+      setPickerProduct(null);
+    } finally { setPickerLoading(false); }
+  };
+
+  const addVariantToCart = (product, variant) => {
+    if (variant.stockQty <= 0) { notify(`${variant.label || "Variant"} is out of stock`, "error"); return; }
+    const cartKey = `${product.id}__${variant.id}`;
+    const retailPrice = variant.sellingPrice ?? product.price;
+    const wsPrice = variant.wholesalePrice ?? product.wholesalePrice ?? null;
+    const price = resolvePrice(retailPrice, wsPrice);
     setCart(prev => {
-      const existing = prev.find(i => i.productId === product.id);
+      const existing = prev.find(i => i.cartKey === cartKey);
+      if (existing) {
+        if (existing.quantity >= variant.stockQty) { notify(`Only ${variant.stockQty} in stock`, "error"); return prev; }
+        return prev.map(i => i.cartKey === cartKey ? { ...i, quantity: i.quantity + 1 } : i);
+      }
+      return [...prev, {
+        cartKey, productId: product.id, variantId: variant.id,
+        name: product.name, variantLabel: variant.label,
+        sku: variant.sku || product.sku,
+        price, retailPrice, wholesalePrice: wsPrice,
+        unit: product.unit, maxQty: variant.stockQty, quantity: 1,
+      }];
+    });
+    setPickerProduct(null);
+    setSearch(""); setFiltered([]);
+  };
+
+  const addToCart = (product) => {
+    if (product.hasVariants) { openVariantPicker(product); return; }
+    if (product.quantityInStock <= 0) { notify(`${product.name} is out of stock`, "error"); return; }
+    const cartKey = product.id;
+    const retailPrice = product.price;
+    const wsPrice = product.wholesalePrice ?? null;
+    const price = resolvePrice(retailPrice, wsPrice);
+    setCart(prev => {
+      const existing = prev.find(i => i.cartKey === cartKey);
       if (existing) {
         if (existing.quantity >= product.quantityInStock) {
           notify(`Only ${product.quantityInStock} in stock`, "error");
           return prev;
         }
-        return prev.map(i => i.productId === product.id ? { ...i, quantity: i.quantity + 1 } : i);
+        return prev.map(i => i.cartKey === cartKey ? { ...i, quantity: i.quantity + 1 } : i);
       }
       return [...prev, {
-        productId: product.id,
-        name: product.name,
+        cartKey, productId: product.id, variantId: null,
+        name: product.name, variantLabel: null,
         sku: product.sku,
-        price: product.price,
-        unit: product.unit,
-        maxQty: product.quantityInStock,
-        quantity: 1,
+        price, retailPrice, wholesalePrice: wsPrice,
+        unit: product.unit, maxQty: product.quantityInStock, quantity: 1,
       }];
     });
-    setSearch("");
-    setFiltered([]);
+    setSearch(""); setFiltered([]);
   };
 
-  const updateQty = (productId, delta) => {
+  // Reprice cart when client changes
+  useEffect(() => {
+    const isWholesale = selectedClient?.customerType === "WHOLESALE";
+    setCart(prev => prev.map(item => ({
+      ...item,
+      price: isWholesale && item.wholesalePrice ? item.wholesalePrice : item.retailPrice,
+    })));
+  }, [selectedClient]);
+
+  const updateQty = (cartKey, delta) => {
     setCart(prev => prev.map(i => {
-      if (i.productId !== productId) return i;
+      if (i.cartKey !== cartKey) return i;
       const newQty = Math.max(1, Math.min(i.quantity + delta, i.maxQty));
       return { ...i, quantity: newQty };
     }));
   };
 
-  const removeFromCart = (productId) => setCart(prev => prev.filter(i => i.productId !== productId));
+  const removeFromCart = (cartKey) => setCart(prev => prev.filter(i => i.cartKey !== cartKey));
 
   const subtotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
   const discountAmt = parseFloat(discount) || 0;
@@ -554,7 +611,7 @@ export default function POS() {
     setProcessing(true);
     try {
       const res = await api.post("/api/inventory/sales", {
-        items: cart.map(i => ({ productId: i.productId, quantity: i.quantity })),
+        items: cart.map(i => ({ productId: i.productId, quantity: i.quantity, variantId: i.variantId || null })),
         discount: discountAmt > 0 ? discountAmt : null,
         paymentMethod,
         clientId: selectedClient?.id || null,
@@ -656,35 +713,52 @@ export default function POS() {
             />
             {filtered.length > 0 && (
               <div className="absolute z-20 top-full mt-1 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl overflow-hidden">
-                {filtered.map(p => (
-                  <button key={p.id} onClick={() => addToCart(p)}
-                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-blue-50 dark:hover:bg-slate-700 transition text-left">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-800 dark:text-white">{p.name}</p>
-                      <p className="text-xs text-slate-400">{p.sku || "No SKU"} · {p.quantityInStock} {p.unit} left</p>
-                    </div>
-                    <p className="text-sm font-bold text-blue-600 ml-4 flex-shrink-0">{fmt(p.price)}</p>
-                  </button>
-                ))}
+                {filtered.map(p => {
+                  const isWholesale = selectedClient?.customerType === "WHOLESALE";
+                  const displayPrice = isWholesale && p.wholesalePrice ? p.wholesalePrice : p.price;
+                  return (
+                    <button key={p.id} onClick={() => addToCart(p)}
+                      className="w-full flex items-center justify-between px-4 py-3 hover:bg-blue-50 dark:hover:bg-slate-700 transition text-left">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-800 dark:text-white flex items-center gap-1.5">
+                          {p.name}
+                          {p.hasVariants && <Layers className="w-3 h-3 text-violet-500" />}
+                        </p>
+                        <p className="text-xs text-slate-400">{p.sku || "No SKU"} · {p.hasVariants ? "Has variants" : `${p.quantityInStock} ${p.unit} left`}</p>
+                      </div>
+                      <p className="text-sm font-bold text-blue-600 ml-4 flex-shrink-0">{fmt(displayPrice)}</p>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
 
           {/* Quick product grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[420px] overflow-y-auto pr-1">
-            {products.slice(0, 30).map(p => (
-              <button key={p.id} onClick={() => addToCart(p)}
-                disabled={p.quantityInStock <= 0}
-                className={`text-left p-3 rounded-xl border transition ${
-                  p.quantityInStock <= 0
-                    ? "opacity-40 cursor-not-allowed border-slate-100"
-                    : "border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:shadow-sm bg-white dark:bg-slate-800"
-                }`}>
-                <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">{p.name}</p>
-                <p className="text-xs text-slate-400 mt-0.5">{p.quantityInStock > 0 ? `${p.quantityInStock} ${p.unit}` : "Out of stock"}</p>
-                <p className="text-sm font-bold text-blue-600 mt-1">{fmt(p.price)}</p>
-              </button>
-            ))}
+            {products.slice(0, 30).map(p => {
+              const isWholesale = selectedClient?.customerType === "WHOLESALE";
+              const displayPrice = isWholesale && p.wholesalePrice ? p.wholesalePrice : p.price;
+              const outOfStock = !p.hasVariants && p.quantityInStock <= 0;
+              return (
+                <button key={p.id} onClick={() => addToCart(p)}
+                  disabled={outOfStock}
+                  className={`text-left p-3 rounded-xl border transition ${
+                    outOfStock
+                      ? "opacity-40 cursor-not-allowed border-slate-100"
+                      : "border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:shadow-sm bg-white dark:bg-slate-800"
+                  }`}>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-white truncate flex items-center gap-1">
+                    {p.name}
+                    {p.hasVariants && <Layers className="w-3 h-3 text-violet-500 flex-shrink-0" />}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {p.hasVariants ? "Select variant" : (outOfStock ? "Out of stock" : `${p.quantityInStock} ${p.unit}`)}
+                  </p>
+                  <p className="text-sm font-bold text-blue-600 mt-1">{fmt(displayPrice)}</p>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -704,18 +778,23 @@ export default function POS() {
                 <p className="text-center py-8 text-slate-400 text-sm">No items yet</p>
               ) : (
                 cart.map(item => (
-                  <div key={item.productId} className="flex items-center gap-3 px-4 py-3">
+                  <div key={item.cartKey} className="flex items-center gap-3 px-4 py-3">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">{item.name}</p>
+                      {item.variantLabel && (
+                        <p className="text-xs text-violet-600 dark:text-violet-400 flex items-center gap-1">
+                          <Layers className="w-3 h-3" />{item.variantLabel}
+                        </p>
+                      )}
                       <p className="text-xs text-slate-400">{fmt(item.price)} each</p>
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <button onClick={() => updateQty(item.productId, -1)}
+                      <button onClick={() => updateQty(item.cartKey, -1)}
                         className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center hover:bg-slate-200 transition">
                         <Minus className="w-3 h-3" />
                       </button>
                       <span className="w-6 text-center text-sm font-bold text-slate-800 dark:text-white">{item.quantity}</span>
-                      <button onClick={() => updateQty(item.productId, 1)}
+                      <button onClick={() => updateQty(item.cartKey, 1)}
                         className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center hover:bg-slate-200 transition">
                         <Plus className="w-3 h-3" />
                       </button>
@@ -723,7 +802,7 @@ export default function POS() {
                     <p className="text-sm font-bold text-slate-800 dark:text-white w-20 text-right">
                       {fmt(item.price * item.quantity)}
                     </p>
-                    <button onClick={() => removeFromCart(item.productId)}
+                    <button onClick={() => removeFromCart(item.cartKey)}
                       className="text-slate-300 hover:text-rose-500 transition">
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -757,7 +836,12 @@ export default function POS() {
                 <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg text-sm">
                   <User className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-blue-700 dark:text-blue-300 truncate">{selectedClient.name}</p>
+                    <p className="font-semibold text-blue-700 dark:text-blue-300 truncate flex items-center gap-1.5">
+                      {selectedClient.name}
+                      {selectedClient.customerType === "WHOLESALE" && (
+                        <span className="px-1 py-0.5 rounded text-[9px] font-bold bg-violet-100 text-violet-700 border border-violet-200">WS</span>
+                      )}
+                    </p>
                     {selectedClient.email && <p className="text-xs text-blue-500 truncate">{selectedClient.email}</p>}
                   </div>
                   <button onClick={() => { setSelectedClient(null); setClientSearch(""); }}
@@ -892,6 +976,66 @@ export default function POS() {
           onDetected={handleCameraScan}
           onClose={() => setShowCameraScanner(false)}
         />
+      )}
+
+      {/* Variant Picker Modal */}
+      {pickerProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-700">
+              <div>
+                <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-violet-600" /> {pickerProduct.name}
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">Select a variant to add</p>
+              </div>
+              <button onClick={() => setPickerProduct(null)}
+                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                <X className="w-4 h-4 text-slate-400" />
+              </button>
+            </div>
+            <div className="p-4 max-h-80 overflow-y-auto">
+              {pickerLoading ? (
+                <div className="text-center py-8 text-slate-400 text-sm">Loading variants…</div>
+              ) : pickerVariants.length === 0 ? (
+                <div className="text-center py-8 text-slate-400 text-sm">No variants found</div>
+              ) : (
+                <div className="space-y-2">
+                  {pickerVariants.map(v => {
+                    const isWholesale = selectedClient?.customerType === "WHOLESALE";
+                    const displayPrice = isWholesale && v.wholesalePrice
+                      ? v.wholesalePrice
+                      : (v.sellingPrice ?? pickerProduct.price);
+                    const outOfStock = v.stockQty <= 0;
+                    return (
+                      <button
+                        key={v.id}
+                        onClick={() => addVariantToCart(pickerProduct, v)}
+                        disabled={outOfStock}
+                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition text-left ${
+                          outOfStock
+                            ? "opacity-40 cursor-not-allowed border-slate-100 bg-slate-50"
+                            : "border-slate-200 dark:border-slate-600 hover:border-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20"
+                        }`}
+                      >
+                        <div>
+                          <p className="font-semibold text-slate-800 dark:text-white text-sm">{v.label || v.sku || "Variant"}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            {outOfStock ? "Out of stock" : `${v.stockQty} in stock`}
+                          </p>
+                          {isWholesale && v.wholesalePrice && (
+                            <p className="text-[10px] text-violet-600 mt-0.5">Wholesale price</p>
+                          )}
+                        </div>
+                        <p className="text-sm font-bold text-blue-600 ml-4 flex-shrink-0">{fmt(displayPrice)}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

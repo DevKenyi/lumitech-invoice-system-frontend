@@ -57,7 +57,7 @@ function ClientDetail() {
 
   // Edit state
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", address: "" });
+  const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", address: "", customerType: "RETAIL" });
   const [editCcList, setEditCcList] = useState([]);
   const [editCcInput, setEditCcInput] = useState("");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
@@ -95,7 +95,7 @@ function ClientDetail() {
   }, [activeTab, id]);
 
   const openEditModal = () => {
-    setEditForm({ name: client.name || "", email: client.email || "", phone: client.phone || "", address: client.address || "" });
+    setEditForm({ name: client.name || "", email: client.email || "", phone: client.phone || "", address: client.address || "", customerType: client.customerType || "RETAIL" });
     setEditCcList(client.ccEmails || []);
     setEditCcInput("");
     setShowEditModal(true);
@@ -279,6 +279,11 @@ function ClientDetail() {
               <MapPin className="w-4 h-4 text-slate-400 dark:text-slate-500" />
               {client.address}
             </div>
+          )}
+          {client.customerType === "WHOLESALE" && (
+            <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-bold bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 border border-violet-200 dark:border-violet-700">
+              WHOLESALE
+            </span>
           )}
         </div>
       </div>
@@ -468,6 +473,23 @@ function ClientDetail() {
                   </div>
                 </div>
               ))}
+            </div>
+
+            {/* Customer Type */}
+            <div className="mt-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Customer Type</label>
+              <div className="flex gap-2">
+                {["RETAIL", "WHOLESALE"].map(type => (
+                  <button key={type} type="button"
+                    onClick={() => setEditForm({ ...editForm, customerType: type })}
+                    className={`flex-1 py-2 rounded-xl text-sm font-semibold border-2 transition ${
+                      editForm.customerType === type
+                        ? "border-blue-600 bg-blue-600 text-white"
+                        : "border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-blue-300"
+                    }`}
+                  >{type}</button>
+                ))}
+              </div>
             </div>
 
             {/* CC Emails */}
