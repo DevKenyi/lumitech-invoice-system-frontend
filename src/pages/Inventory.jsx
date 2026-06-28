@@ -789,7 +789,7 @@ export default function Inventory() {
                   <input type="number" value={form.wholesalePrice} onChange={e => set("wholesalePrice", e.target.value)} placeholder="Optional" min="0" className={inputCls} />
                 </div>
               </div>
-              {form.wholesalePrice && !form.hasVariants && (
+              {(form.wholesalePrice || form.hasVariants) && (
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1">Min Wholesale Qty (MOQ)</label>
                   <input type="number" value={form.wholesaleMinQty || ""} onChange={e => set("wholesaleMinQty", e.target.value ? parseInt(e.target.value) : null)} placeholder="No minimum" min="1" className={inputCls} />
