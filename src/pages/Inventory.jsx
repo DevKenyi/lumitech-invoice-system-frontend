@@ -1,10 +1,10 @@
-// Inventory.jsx — Product management + Restock Orders + Stock Movements
+// Inventory.jsx — Product management + Restock Orders + Stock Movements + Batch Tracking
 import { useEffect, useState } from "react";
 import api from "../services/api";
 import {
   Plus, Search, Edit2, Trash2, Package, AlertTriangle, X, Check,
   Barcode, Tag, RefreshCw, ChevronDown, ChevronUp, History, TrendingDown, Camera,
-  Layers, SlidersHorizontal,
+  Layers, SlidersHorizontal, FlaskConical, CalendarClock,
 } from "lucide-react";
 import Toast from "../components/Toast";
 import BarcodeScanner from "../components/BarcodeScanner";
@@ -32,7 +32,15 @@ const emptyRestockForm = () => ({
 
 const inputCls = "w-full px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition";
 
-const TABS = ["Products", "Restock Orders", "Stock Movements"];
+const NAV_ITEMS_LS_KEY = "lumi_hidden_nav_items";
+const getBatchTabVisible = () => {
+  try {
+    const hidden = new Set((localStorage.getItem(NAV_ITEMS_LS_KEY) || "").split(",").filter(Boolean));
+    return !hidden.has("nav_batches");
+  } catch { return true; }
+};
+
+const TABS_BASE = ["Products", "Restock Orders", "Stock Movements"];
 
 function RestockStatusBadge({ status }) {
   const styles = {
@@ -101,6 +109,18 @@ export default function Inventory() {
   const [movements, setMovements]         = useState([]);
   const [movementsLoading, setMovementsLoading] = useState(false);
   const [movementFilter, setMovementFilter]     = useState("All");
+
+  const [batchTabVisible, setBatchTabVisible] = useState(getBatchTabVisible);
+  const [batches, setBatches]               = useState([]);
+  const [expiringBatches, setExpiringBatches] = useState([]);
+  const [batchesLoading, setBatchesLoading] = useState(false);
+  const [batchFilter, setBatchFilter]       = useState("All"); // All | FRESH | EXPIRING_SOON | EXPIRED
+  const [showBatchForm, setShowBatchForm]   = useState(false);
+  const [batchFormProductId, setBatchFormProductId] = useState(null);
+  const [batchForm, setBatchForm]           = useState({ batchNumber: "", expiryDate: "", quantity: 0, notes: "" });
+  const [savingBatch, setSavingBatch]       = useState(false);
+  const [editingBatch, setEditingBatch]     = useState(null);
+  const [productBatches, setProductBatches] = useState({}); // productId -> batches[]
 
   const load = async (p = 0) => {
     setLoading(true);
@@ -244,6 +264,7 @@ export default function Inventory() {
     } else {
       setExpandedProduct(p.id);
       if (p.hasVariants) loadVariants(p.id);
+      if (batchTabVisible) loadProductBatches(p.id);
     }
   };
 
@@ -397,6 +418,95 @@ export default function Inventory() {
     ? movements
     : movements.filter(m => m.movementType === movementFilter);
 
+  const loadBatches = async () => {
+    setBatchesLoading(true);
+    try {
+      const [allRes, expRes] = await Promise.all([
+        api.get("/api/inventory/batches"),
+        api.get("/api/inventory/batches/expiring"),
+      ]);
+      setBatches(allRes.data || []);
+      setExpiringBatches(expRes.data || []);
+    } catch { notify("Failed to load batches", "error"); }
+    finally { setBatchesLoading(false); }
+  };
+
+  const loadProductBatches = async (productId) => {
+    if (productBatches[productId]) return;
+    try {
+      const res = await api.get(`/api/inventory/products/${productId}/batches`);
+      setProductBatches(prev => ({ ...prev, [productId]: res.data || [] }));
+    } catch { /* ignore */ }
+  };
+
+  useEffect(() => {
+    if (activeTab === "Batches") loadBatches();
+  }, [activeTab]);
+
+  useEffect(() => {
+    const handler = () => setBatchTabVisible(getBatchTabVisible());
+    window.addEventListener("navItemsChange", handler);
+    return () => window.removeEventListener("navItemsChange", handler);
+  }, []);
+
+  const openAddBatch = (productId) => {
+    setEditingBatch(null);
+    setBatchFormProductId(productId);
+    setBatchForm({ batchNumber: "", expiryDate: "", quantity: 0, notes: "" });
+    setShowBatchForm(true);
+  };
+
+  const openEditBatch = (batch) => {
+    setEditingBatch(batch.id);
+    setBatchFormProductId(batch.productId);
+    setBatchForm({
+      batchNumber: batch.batchNumber || "",
+      expiryDate: batch.expiryDate || "",
+      quantity: batch.quantity,
+      notes: batch.notes || "",
+    });
+    setShowBatchForm(true);
+  };
+
+  const handleSaveBatch = async () => {
+    if (!batchForm.batchNumber.trim()) { notify("Batch number is required", "error"); return; }
+    setSavingBatch(true);
+    try {
+      const payload = {
+        batchNumber: batchForm.batchNumber.trim(),
+        expiryDate: batchForm.expiryDate || null,
+        quantity: parseInt(batchForm.quantity) || 0,
+        notes: batchForm.notes.trim() || null,
+      };
+      if (editingBatch) {
+        await api.put(`/api/inventory/batches/${editingBatch}`, payload);
+        notify("Batch updated");
+      } else {
+        await api.post(`/api/inventory/products/${batchFormProductId}/batches`, payload);
+        notify("Batch added");
+      }
+      setShowBatchForm(false);
+      setProductBatches(prev => { const n = { ...prev }; delete n[batchFormProductId]; return n; });
+      loadBatches();
+    } catch (e) {
+      notify(e.response?.data?.message || "Failed to save batch", "error");
+    } finally { setSavingBatch(false); }
+  };
+
+  const handleDeleteBatch = async (batchId, productId) => {
+    if (!window.confirm("Delete this batch record?")) return;
+    try {
+      await api.delete(`/api/inventory/batches/${batchId}`);
+      notify("Batch deleted");
+      setProductBatches(prev => { const n = { ...prev }; delete n[productId]; return n; });
+      loadBatches();
+    } catch { notify("Failed to delete batch", "error"); }
+  };
+
+  const TABS = [...TABS_BASE, ...(batchTabVisible ? ["Batches"] : [])];
+
+  const filteredBatches = batchFilter === "All" ? batches : batches.filter(b => b.status === batchFilter);
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
       <Toast {...toast} onClose={() => setToast(t => ({ ...t, visible: false }))} />
@@ -433,7 +543,11 @@ export default function Inventory() {
             {tab === "Restock Orders" && <RefreshCw className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />}
             {tab === "Stock Movements" && <History className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />}
             {tab === "Products" && <Package className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />}
+            {tab === "Batches" && <FlaskConical className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />}
             {tab}
+            {tab === "Batches" && expiringBatches.length > 0 && (
+              <span className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-bold">{expiringBatches.length}</span>
+            )}
           </button>
         ))}
       </div>
@@ -450,6 +564,19 @@ export default function Inventory() {
                 </p>
                 <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
                   {lowStock.map(p => `${p.name} (${p.totalStock ?? p.quantityInStock} left)`).join(" · ")}
+                </p>
+              </div>
+            </div>
+          )}
+          {batchTabVisible && expiringBatches.length > 0 && (
+            <div className="bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-700 rounded-xl p-4 flex items-start gap-3">
+              <CalendarClock className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-rose-800 dark:text-rose-300">
+                  {expiringBatches.length} batch{expiringBatches.length > 1 ? "es" : ""} expiring within 30 days
+                </p>
+                <p className="text-xs text-rose-600 dark:text-rose-400 mt-0.5">
+                  {expiringBatches.map(b => `${b.productName} — Batch ${b.batchNumber} (${b.expiryDate})`).join(" · ")}
                 </p>
               </div>
             </div>
@@ -487,7 +614,7 @@ export default function Inventory() {
                               {p.imageUrl && (
                                 <img src={p.imageUrl} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-slate-100 dark:border-slate-700" />
                               )}
-                              {p.hasVariants && (
+                              {(p.hasVariants || batchTabVisible) && (
                                 <button onClick={() => toggleProductExpand(p)}
                                   className="p-0.5 rounded text-slate-400 hover:text-blue-600 transition">
                                   {expandedProduct === p.id
@@ -566,6 +693,7 @@ export default function Inventory() {
                             <td colSpan={7} className="px-0 py-0 bg-violet-50/40 dark:bg-violet-900/10">
                               <div className="px-8 py-3">
                                 <p className="text-xs font-semibold text-violet-700 dark:text-violet-400 uppercase tracking-wide mb-2">Variants</p>
+
                                 {!productVariants[p.id] ? (
                                   <p className="text-xs text-slate-400">Loading…</p>
                                 ) : productVariants[p.id].length === 0 ? (
@@ -607,6 +735,87 @@ export default function Inventory() {
                                         ))}
                                       </tbody>
                                     </table>
+                                  </div>
+                                )}
+                                {batchTabVisible && (
+                                  <div className="mt-3 pt-3 border-t border-violet-200 dark:border-violet-700/40">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wide flex items-center gap-1">
+                                        <FlaskConical className="w-3.5 h-3.5" /> Batches
+                                      </p>
+                                      <button onClick={() => openAddBatch(p.id)}
+                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-700 text-[10px] font-semibold hover:bg-emerald-100 transition">
+                                        <Plus className="w-2.5 h-2.5" /> Add Batch
+                                      </button>
+                                    </div>
+                                    {!productBatches[p.id] ? (
+                                      <p className="text-xs text-slate-400">Loading batches…</p>
+                                    ) : productBatches[p.id].length === 0 ? (
+                                      <p className="text-xs text-slate-400 italic">No batches recorded. Add one to track expiry.</p>
+                                    ) : (
+                                      <div className="space-y-1">
+                                        {productBatches[p.id].map(b => (
+                                          <div key={b.id} className="flex items-center gap-3 text-xs">
+                                            <span className={`px-1.5 py-0.5 rounded-full font-semibold border text-[10px] ${
+                                              b.status === "EXPIRED"       ? "bg-rose-50 text-rose-600 border-rose-200" :
+                                              b.status === "EXPIRING_SOON" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                                                                             "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                            }`}>{b.status === "EXPIRING_SOON" ? "EXPIRING" : b.status}</span>
+                                            <span className="font-mono font-medium text-slate-700 dark:text-slate-300">{b.batchNumber}</span>
+                                            <span className="text-slate-500">{b.expiryDate || "No expiry"}</span>
+                                            <span className="text-slate-500">Qty: {b.quantity}</span>
+                                            {b.notes && <span className="text-slate-400 italic truncate max-w-[120px]">{b.notes}</span>}
+                                            <div className="ml-auto flex gap-1">
+                                              <button onClick={() => openEditBatch(b)} className="p-0.5 rounded hover:text-blue-600 text-slate-300 transition"><Edit2 className="w-3 h-3" /></button>
+                                              <button onClick={() => handleDeleteBatch(b.id, p.id)} className="p-0.5 rounded hover:text-rose-500 text-slate-300 transition"><Trash2 className="w-3 h-3" /></button>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                        {/* Non-variant product expansion — batch panel only */}
+                        {expandedProduct === p.id && !p.hasVariants && batchTabVisible && (
+                          <tr key={`${p.id}-batches`}>
+                            <td colSpan={7} className="px-0 py-0 bg-emerald-50/30 dark:bg-emerald-900/10">
+                              <div className="px-8 py-3">
+                                <div className="flex items-center justify-between mb-2">
+                                  <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wide flex items-center gap-1">
+                                    <FlaskConical className="w-3.5 h-3.5" /> Batches
+                                  </p>
+                                  <button onClick={() => openAddBatch(p.id)}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-700 text-[10px] font-semibold hover:bg-emerald-100 transition">
+                                    <Plus className="w-2.5 h-2.5" /> Add Batch
+                                  </button>
+                                </div>
+                                {!productBatches[p.id] ? (
+                                  <p className="text-xs text-slate-400">Loading batches…</p>
+                                ) : productBatches[p.id].length === 0 ? (
+                                  <p className="text-xs text-slate-400 italic">No batches recorded. Add one to track expiry.</p>
+                                ) : (
+                                  <div className="space-y-1">
+                                    {productBatches[p.id].map(b => (
+                                      <div key={b.id} className="flex items-center gap-3 text-xs">
+                                        <span className={`px-1.5 py-0.5 rounded-full font-semibold border text-[10px] ${
+                                          b.status === "EXPIRED"       ? "bg-rose-50 text-rose-600 border-rose-200" :
+                                          b.status === "EXPIRING_SOON" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                                                                         "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                        }`}>{b.status === "EXPIRING_SOON" ? "EXPIRING" : b.status}</span>
+                                        <span className="font-mono font-medium text-slate-700 dark:text-slate-300">{b.batchNumber}</span>
+                                        <span className="text-slate-500">{b.expiryDate || "No expiry"}</span>
+                                        <span className="text-slate-500">Qty: {b.quantity}</span>
+                                        {b.notes && <span className="text-slate-400 italic truncate max-w-[120px]">{b.notes}</span>}
+                                        <div className="ml-auto flex gap-1">
+                                          <button onClick={() => openEditBatch(b)} className="p-0.5 rounded hover:text-blue-600 text-slate-300 transition"><Edit2 className="w-3 h-3" /></button>
+                                          <button onClick={() => handleDeleteBatch(b.id, p.id)} className="p-0.5 rounded hover:text-rose-500 text-slate-300 transition"><Trash2 className="w-3 h-3" /></button>
+                                        </div>
+                                      </div>
+                                    ))}
                                   </div>
                                 )}
                               </div>
@@ -765,6 +974,85 @@ export default function Inventory() {
                       <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{m.unitCost ? fmt(m.unitCost) : "—"}</td>
                       <td className="px-4 py-3 font-semibold text-slate-800 dark:text-white">{m.totalCost ? fmt(m.totalCost) : "—"}</td>
                       <td className="px-4 py-3 font-mono text-xs text-slate-500">{m.reference || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* BATCHES TAB */}
+      {activeTab === "Batches" && batchTabVisible && (
+        <>
+          <div className="flex flex-wrap gap-2">
+            {["All", "FRESH", "EXPIRING_SOON", "EXPIRED"].map(s => (
+              <button key={s} onClick={() => setBatchFilter(s)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
+                  batchFilter === s
+                    ? "bg-blue-600 text-white border-blue-600"
+                    : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:border-blue-300 hover:text-blue-600"
+                }`}>
+                {s === "EXPIRING_SOON" ? "Expiring Soon" : s.charAt(0) + s.slice(1).toLowerCase()}
+              </button>
+            ))}
+            {!batchesLoading && (
+              <button onClick={loadBatches}
+                className="ml-auto p-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-400 hover:text-blue-600 hover:border-blue-300 transition">
+                <RefreshCw className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          {batchesLoading ? (
+            <div className="text-center py-16 text-slate-400">Loading…</div>
+          ) : filteredBatches.length === 0 ? (
+            <div className="text-center py-16">
+              <FlaskConical className="w-12 h-12 text-slate-200 mx-auto mb-3" />
+              <p className="text-slate-500 font-medium">No batches found</p>
+              <p className="text-xs text-slate-400 mt-1">Expand a product in the Products tab to add batches.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-700">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 text-xs uppercase tracking-wide">
+                  <tr>
+                    {["Status", "Product", "Batch No.", "Expiry Date", "Qty", "Notes", ""].map(h => (
+                      <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                  {filteredBatches.map(b => (
+                    <tr key={b.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${
+                          b.status === "EXPIRED"       ? "bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-700" :
+                          b.status === "EXPIRING_SOON" ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-700" :
+                                                         "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-700"
+                        }`}>
+                          {b.status === "EXPIRING_SOON" ? "Expiring Soon" : b.status.charAt(0) + b.status.slice(1).toLowerCase()}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 font-semibold text-slate-800 dark:text-white">{b.productName}</td>
+                      <td className="px-4 py-3 font-mono text-slate-600 dark:text-slate-300">{b.batchNumber || "—"}</td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
+                        {b.expiryDate
+                          ? <span className={b.status === "EXPIRED" ? "text-rose-600 font-semibold" : b.status === "EXPIRING_SOON" ? "text-amber-600 font-semibold" : ""}>{b.expiryDate}</span>
+                          : <span className="text-slate-400">—</span>}
+                      </td>
+                      <td className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">{b.quantity}</td>
+                      <td className="px-4 py-3 text-xs text-slate-400 italic max-w-[160px] truncate">{b.notes || "—"}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => openEditBatch(b)} className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition">
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleDeleteBatch(b.id, b.productId)} className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -1174,6 +1462,56 @@ export default function Inventory() {
           }}
           onClose={() => setShowBarcodeScanner(false)}
         />
+      )}
+
+      {/* Add/Edit Batch Modal */}
+      {showBatchForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700">
+              <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <FlaskConical className="w-4 h-4 text-emerald-600" />
+                {editingBatch ? "Edit Batch" : "Add Batch"}
+              </h3>
+              <button onClick={() => setShowBatchForm(false)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
+                <X className="w-4 h-4 text-slate-400" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Batch / Lot Number *</label>
+                <input value={batchForm.batchNumber} onChange={e => setBatchForm(f => ({ ...f, batchNumber: e.target.value }))}
+                  placeholder="e.g. LOT-2024-001" className={inputCls} autoFocus />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Expiry Date</label>
+                <input type="date" value={batchForm.expiryDate} onChange={e => setBatchForm(f => ({ ...f, expiryDate: e.target.value }))}
+                  className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Quantity in this Batch</label>
+                <input type="number" value={batchForm.quantity} onChange={e => setBatchForm(f => ({ ...f, quantity: e.target.value }))}
+                  min="0" className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Notes (optional)</label>
+                <input value={batchForm.notes} onChange={e => setBatchForm(f => ({ ...f, notes: e.target.value }))}
+                  placeholder="e.g. Received from supplier X" className={inputCls} />
+              </div>
+            </div>
+            <div className="flex gap-3 p-5 border-t border-slate-100 dark:border-slate-700">
+              <button onClick={() => setShowBatchForm(false)}
+                className="flex-1 px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 transition">
+                Cancel
+              </button>
+              <button onClick={handleSaveBatch} disabled={savingBatch}
+                className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 disabled:opacity-60 transition flex items-center justify-center gap-2">
+                {savingBatch ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                {editingBatch ? "Save Changes" : "Add Batch"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
