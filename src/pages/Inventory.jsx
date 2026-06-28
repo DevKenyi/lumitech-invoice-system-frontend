@@ -418,7 +418,7 @@ export default function Inventory() {
                   {lowStock.length} product{lowStock.length > 1 ? "s" : ""} running low on stock
                 </p>
                 <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
-                  {lowStock.map(p => `${p.name} (${p.quantityInStock} left)`).join(" · ")}
+                  {lowStock.map(p => `${p.name} (${p.totalStock ?? p.quantityInStock} left)`).join(" · ")}
                 </p>
               </div>
             </div>
@@ -487,10 +487,18 @@ export default function Inventory() {
                           <td className="px-4 py-3 text-slate-500">{p.costPrice ? fmt(p.costPrice) : "—"}</td>
                           <td className="px-4 py-3">
                             {p.hasVariants ? (
-                              <button onClick={() => toggleProductExpand(p)}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border bg-violet-50 text-violet-600 border-violet-200 hover:bg-violet-100 transition">
-                                <Layers className="w-3 h-3" /> View variants
-                              </button>
+                              <div className="flex flex-col gap-0.5">
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border w-fit ${
+                                  p.lowStock ? "bg-rose-50 text-rose-600 border-rose-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                }`}>
+                                  {p.lowStock && <AlertTriangle className="w-3 h-3" />}
+                                  {p.totalStock ?? 0} {p.unit}
+                                </span>
+                                <button onClick={() => toggleProductExpand(p)}
+                                  className="inline-flex items-center gap-1 text-[11px] text-violet-600 hover:text-violet-800 transition font-medium">
+                                  <Layers className="w-3 h-3" /> View variants
+                                </button>
+                              </div>
                             ) : (
                               <div className="flex items-center gap-1">
                                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${
