@@ -159,15 +159,38 @@ function Navbar({ onClose }) {
   const [staffFeatures, setStaffFeatures] = useState(() =>
     localStorage.getItem("staffFeatures") ?? null
   );
+  // For admins, fetch hiddenNavItems from server on mount
+  const [hiddenNavItems, setHiddenNavItems] = useState(() => {
+    try { return new Set((localStorage.getItem("lumi_hidden_nav_items") || "").split(",").filter(Boolean)); }
+    catch { return new Set(); }
+  });
   useEffect(() => {
-    if (!isStaffRole) return;
-    api.get("/api/org").then(res => {
-      const sf = res.data.staffFeatures ?? null;
-      setStaffFeatures(sf);
-      if (sf !== null) localStorage.setItem("staffFeatures", sf);
-      else localStorage.removeItem("staffFeatures");
-    }).catch(() => {});
+    if (isStaffRole) {
+      api.get("/api/org").then(res => {
+        const sf = res.data.staffFeatures ?? null;
+        setStaffFeatures(sf);
+        if (sf !== null) localStorage.setItem("staffFeatures", sf);
+        else localStorage.removeItem("staffFeatures");
+      }).catch(() => {});
+    } else {
+      api.get("/api/org").then(res => {
+        const raw = res.data.hiddenNavItems ?? "";
+        const items = new Set(raw.split(",").filter(Boolean));
+        setHiddenNavItems(items);
+        if (raw) localStorage.setItem("lumi_hidden_nav_items", raw);
+        else localStorage.removeItem("lumi_hidden_nav_items");
+      }).catch(() => {});
+    }
   }, [isStaffRole]);
+  useEffect(() => {
+    const handler = () => {
+      try {
+        setHiddenNavItems(new Set((localStorage.getItem("lumi_hidden_nav_items") || "").split(",").filter(Boolean)));
+      } catch { setHiddenNavItems(new Set()); }
+    };
+    window.addEventListener("navItemsChange", handler);
+    return () => window.removeEventListener("navItemsChange", handler);
+  }, []);
 
   // Admin nav visibility — localStorage only, updates instantly when OrgSettings changes
   const [hiddenAdminSections, setHiddenAdminSections] = useState(() => {
@@ -275,13 +298,14 @@ function Navbar({ onClose }) {
   const reportsActive = reportItems.some(i => cur.startsWith(i.path));
 
   // ── Section: Retail & POS ─────────────────────────────────────────────────
+  const navVisible = (key) => !hiddenNavItems.has(key);
   const posItems = [
-    { path: "/pos",          label: "Point of Sale",  icon: ShoppingCart,  info: "Sell products and process payments" },
-    { path: "/pos/food",     label: "Food POS",       icon: UtensilsCrossed, info: "Food & beverage ordering terminal" },
-    { path: "/menu",         label: "Menu",           icon: Tag,           info: "Manage food menu categories and items" },
-    { path: "/orders",       label: "Order Fulfillment", icon: ClipboardList, info: "View and fulfil incoming orders" },
-    { path: "/inventory",    label: "Inventory",      icon: Package,       info: "Manage products, stock and prices" },
-    { path: "/sales/report", label: "Sales Reports",  icon: BarChart2,     info: "Revenue, transactions and performance" },
+    ...(navVisible("nav_pos")          ? [{ path: "/pos",          label: "Point of Sale",     icon: ShoppingCart,    info: "Sell products and process payments" }] : []),
+    ...(navVisible("nav_food_pos")     ? [{ path: "/pos/food",     label: "Food POS",          icon: UtensilsCrossed, info: "Food & beverage ordering terminal" }] : []),
+    ...(navVisible("nav_menu")         ? [{ path: "/menu",         label: "Menu",              icon: Tag,             info: "Manage food menu categories and items" }] : []),
+    ...(navVisible("nav_orders")       ? [{ path: "/orders",       label: "Order Fulfillment", icon: ClipboardList,   info: "View and fulfil incoming orders" }] : []),
+    ...(navVisible("nav_inventory")    ? [{ path: "/inventory",    label: "Inventory",         icon: Package,         info: "Manage products, stock and prices" }] : []),
+    ...(navVisible("nav_sales_report") ? [{ path: "/sales/report", label: "Sales Reports",     icon: BarChart2,       info: "Revenue, transactions and performance" }] : []),
   ];
   const posActive = posItems.some(i => cur.startsWith(i.path));
 

@@ -155,6 +155,17 @@ const ADMIN_NAV_SECTIONS = [
   { key: "pos",        label: "Retail & POS",        desc: "Point of sale, food POS, menu, inventory" },
 ];
 
+const ALL_NAV_ITEMS = [
+  { key: "nav_pos",          label: "Point of Sale",     desc: "Retail checkout terminal",                  section: "Retail & POS" },
+  { key: "nav_food_pos",     label: "Food POS",          desc: "Food & beverage ordering terminal",         section: "Retail & POS" },
+  { key: "nav_menu",         label: "Menu",              desc: "Manage food menu categories and items",     section: "Retail & POS" },
+  { key: "nav_orders",       label: "Order Fulfillment", desc: "View and fulfil incoming food orders",      section: "Retail & POS" },
+  { key: "nav_inventory",    label: "Inventory",         desc: "Manage products, stock and prices",        section: "Retail & POS" },
+  { key: "nav_sales_report", label: "Sales Reports",     desc: "Revenue, transactions and performance",     section: "Retail & POS" },
+];
+
+const NAV_ITEMS_LS_KEY = "lumi_hidden_nav_items";
+
 const ADMIN_NAV_KEY = "lumi_admin_nav_hidden";
 
 function AdminNavCard() {
@@ -282,6 +293,92 @@ function StaffFeaturesCard() {
         })}
         <p className="text-xs text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-700">
           Home and Preferences are always visible to team members.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function AdminNavItemsCard() {
+  const [hidden, setHidden] = useState(null); // null = loading
+  const [saving, setSaving] = useState(null);
+
+  useEffect(() => {
+    api.get("/api/org").then(res => {
+      const raw = res.data.hiddenNavItems;
+      setHidden(raw ? new Set(raw.split(",").map(s => s.trim()).filter(Boolean)) : new Set());
+    }).catch(() => setHidden(new Set()));
+  }, []);
+
+  async function toggle(key) {
+    if (hidden === null || saving) return;
+    const next = new Set(hidden);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    setHidden(next);
+    setSaving(key);
+    try {
+      const value = [...next].join(",");
+      await api.put("/api/org", { hiddenNavItems: value });
+      if (value) localStorage.setItem(NAV_ITEMS_LS_KEY, value);
+      else localStorage.removeItem(NAV_ITEMS_LS_KEY);
+      window.dispatchEvent(new Event("navItemsChange"));
+    } catch {
+      setHidden(hidden);
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  const sections = [...new Set(ALL_NAV_ITEMS.map(i => i.section))];
+
+  return (
+    <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+      <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+        <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+          <SlidersHorizontal className="w-4 h-4 text-blue-500" />
+          Navigation Modules
+        </h2>
+        <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+          Show or hide specific menu items for all admin users. Useful if you don't use Food POS, Menu, or Order Fulfillment.
+        </p>
+      </div>
+      <div className="p-6 space-y-5">
+        {hidden === null ? (
+          <p className="text-xs text-slate-400">Loading…</p>
+        ) : (
+          sections.map(section => (
+            <div key={section}>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{section}</p>
+              <div className="space-y-2">
+                {ALL_NAV_ITEMS.filter(i => i.section === section).map(({ key, label, desc }) => {
+                  const isOn = !hidden.has(key);
+                  return (
+                    <div key={key} className="flex items-center justify-between gap-4 py-0.5">
+                      <div>
+                        <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{label}</p>
+                        <p className="text-xs text-slate-400">{desc}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => toggle(key)}
+                        disabled={saving === key}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 disabled:opacity-60 ${
+                          isOn ? "bg-blue-600" : "bg-slate-200 dark:bg-slate-600"
+                        }`}
+                      >
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                          isOn ? "translate-x-6" : "translate-x-1"
+                        }`} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))
+        )}
+        <p className="text-xs text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-700">
+          Changes are saved immediately and apply to all admin accounts in your organisation.
         </p>
       </div>
     </div>
@@ -917,6 +1014,9 @@ function OrgSettings() {
 
       {/* Staff Features Card — admin only, self-saving */}
       {!isStaff && <StaffFeaturesCard />}
+
+      {/* Navigation Modules Card — admin only, server-backed */}
+      {!isStaff && <AdminNavItemsCard />}
 
       {/* Admin Nav Card — admin only, localStorage only */}
       {!isStaff && <AdminNavCard />}
