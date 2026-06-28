@@ -271,9 +271,10 @@ export default function POS() {
   const [search, setSearch]         = useState("");
   const [barcode, setBarcode]       = useState("");
   const [showCameraScanner, setShowCameraScanner] = useState(false);
-  const [discount, setDiscount]     = useState("");
-  const [paymentMethod, setMethod]  = useState("CASH");
-  const [customerName, setCustName] = useState("");
+  const [discount, setDiscount]           = useState("");
+  const [paymentMethod, setMethod]        = useState("CASH");
+  const [prescriptionNumber, setRxNumber] = useState("");
+  const [customerName, setCustName]       = useState("");
   const [customerEmail, setCustEmail]= useState("");
   const [notes, setNotes]           = useState("");
   const [processing, setProcessing] = useState(false);
@@ -408,6 +409,9 @@ export default function POS() {
     if (isWholesaleClient && product.wholesaleMinQty && product.wholesaleMinQty > 1) {
       notify(`Min order for wholesale is ${product.wholesaleMinQty} ${product.unit}(s) — adjust qty in cart`, "info");
     }
+    if (product.drugCategory === "POM") {
+      notify(`${product.name} is prescription-only (POM) — enter the Rx number before checkout`, "info");
+    }
     const cartKey = product.id;
     const retailPrice = product.price;
     const wsPrice = product.wholesalePrice ?? null;
@@ -457,9 +461,14 @@ export default function POS() {
 
   const clearSale = () => {
     setCart([]); setDiscount(""); setMethod("CASH");
-    setCustName(""); setCustEmail(""); setNotes("");
+    setCustName(""); setCustEmail(""); setNotes(""); setRxNumber("");
     setSelectedClient(null); setClientSearch("");
   };
+
+  const hasPomItem = cart.some(i => {
+    const p = products.find(pr => pr.id === i.productId);
+    return p?.drugCategory === "POM";
+  });
 
   const handlePrint = async (receipt) => {
     if (usbDevice) {
@@ -612,6 +621,10 @@ export default function POS() {
 
   const handleCheckout = async () => {
     if (cart.length === 0) { notify("Add at least one item", "error"); return; }
+    if (hasPomItem && !prescriptionNumber.trim()) {
+      notify("Cart contains prescription-only medicine — please enter the Rx / prescription number", "error");
+      return;
+    }
     setProcessing(true);
     try {
       const res = await api.post("/api/inventory/sales", {
@@ -622,6 +635,7 @@ export default function POS() {
         customerName: selectedClient ? null : (customerName || null),
         customerEmail: selectedClient ? null : (customerEmail || null),
         notes: notes || null,
+        prescriptionNumber: prescriptionNumber.trim() || null,
       });
       setLastReceipt(res.data);
       clearSale();
@@ -760,9 +774,17 @@ export default function POS() {
                       {p.name}
                       {p.hasVariants && <Layers className="w-3 h-3 text-violet-500 flex-shrink-0" />}
                     </p>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      {p.hasVariants ? "Select variant" : (outOfStock ? "Out of stock" : `${p.quantityInStock} ${p.unit}`)}
-                    </p>
+                    <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                      {p.drugCategory === "POM" && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-100 text-rose-700 border border-rose-200">RX</span>
+                      )}
+                      {p.drugCategory === "OTC" && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-700 border border-blue-200">OTC</span>
+                      )}
+                      <p className="text-xs text-slate-400">
+                        {p.hasVariants ? "Select variant" : (outOfStock ? "Out of stock" : `${p.quantityInStock} ${p.unit}`)}
+                      </p>
+                    </div>
                     <p className="text-sm font-bold text-blue-600 mt-1">{fmt(displayPrice)}</p>
                     {isWholesale && p.wholesaleMinQty > 1 && (
                       <p className="text-[10px] text-amber-600 font-semibold mt-0.5">MOQ: {p.wholesaleMinQty}</p>
@@ -898,6 +920,22 @@ export default function POS() {
                 </>
               )}
             </div>
+
+            {/* Prescription number — shown always if cart has POM, collapsible otherwise */}
+            {(hasPomItem || prescriptionNumber) && (
+              <div className="px-4 pb-3">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-100 text-rose-700 border border-rose-200">RX</span>
+                  Prescription Number {hasPomItem && <span className="text-rose-500">*</span>}
+                </p>
+                <input value={prescriptionNumber} onChange={e => setRxNumber(e.target.value)}
+                  placeholder="e.g. RX-2024-00123"
+                  className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 dark:text-white" />
+                {hasPomItem && !prescriptionNumber.trim() && (
+                  <p className="text-xs text-rose-500 mt-1">Required — cart contains prescription-only medicine</p>
+                )}
+              </div>
+            )}
 
             {/* Payment method */}
             <div className="px-4 pb-3 space-y-2">

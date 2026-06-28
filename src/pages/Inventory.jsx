@@ -17,7 +17,7 @@ const emptyForm = () => ({
   name: "", sku: "", barcode: "", description: "", price: "",
   costPrice: "", wholesalePrice: "", wholesaleMinQty: null, quantityInStock: 0, lowStockThreshold: 5,
   category: "", unit: "unit", incomeAccountId: "", directCostAccountId: "",
-  hasVariants: false,
+  hasVariants: false, nafdacNumber: "", drugCategory: "NONE",
 });
 
 const emptyVariant = () => ({
@@ -179,6 +179,7 @@ export default function Inventory() {
       category: p.category || "", unit: p.unit || "unit",
       incomeAccountId: p.incomeAccountId || "", directCostAccountId: p.directCostAccountId || "",
       hasVariants: p.hasVariants || false,
+      nafdacNumber: p.nafdacNumber || "", drugCategory: p.drugCategory || "NONE",
     });
     setProductImage(p.imageUrl || null);
     setVariants(p.variants ? p.variants.map(v => ({
@@ -632,6 +633,17 @@ export default function Inventory() {
                                   )}
                                 </p>
                                 {p.description && <p className="text-xs text-slate-400 truncate max-w-[180px]">{p.description}</p>}
+                                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                  {p.drugCategory === "POM" && (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 border border-rose-200">RX</span>
+                                  )}
+                                  {p.drugCategory === "OTC" && (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200">OTC</span>
+                                  )}
+                                  {p.nafdacNumber && (
+                                    <span className="text-[9px] text-slate-400 font-mono">{p.nafdacNumber}</span>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </td>
@@ -1225,6 +1237,23 @@ export default function Inventory() {
                 <label className="block text-xs font-semibold text-slate-500 mb-1">Description</label>
                 <textarea value={form.description} onChange={e => set("description", e.target.value)}
                   rows={2} placeholder="Optional short description" className={inputCls + " resize-none"} />
+              </div>
+
+              {/* Pharmacy fields */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Drug Category</label>
+                  <select value={form.drugCategory} onChange={e => set("drugCategory", e.target.value)} className={inputCls}>
+                    <option value="NONE">Not a drug / N/A</option>
+                    <option value="OTC">OTC — Over the Counter</option>
+                    <option value="POM">POM — Prescription Only</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">NAFDAC / Reg. Number</label>
+                  <input value={form.nafdacNumber} onChange={e => set("nafdacNumber", e.target.value)}
+                    placeholder="e.g. A4-0001" className={inputCls} />
+                </div>
               </div>
 
               {/* Variant builder */}
