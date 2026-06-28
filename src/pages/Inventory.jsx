@@ -1,17 +1,17 @@
-// Inventory.jsx — Product management + Restock Orders + Stock Movements + Batch Tracking
+// Inventory.jsx — Product management + Restock Orders + Stock Movements + Batch Tracking + Pharmacy
 import { useEffect, useState } from "react";
 import api from "../services/api";
 import {
   Plus, Search, Edit2, Trash2, Package, AlertTriangle, X, Check,
   Barcode, Tag, RefreshCw, ChevronDown, ChevronUp, History, TrendingDown, Camera,
-  Layers, SlidersHorizontal, FlaskConical, CalendarClock,
+  Layers, SlidersHorizontal, FlaskConical, CalendarClock, Pill, ChevronRight,
 } from "lucide-react";
 import Toast from "../components/Toast";
 import BarcodeScanner from "../components/BarcodeScanner";
 import { useOrg } from "../context/OrgContext";
 
-const UNITS = ["unit", "piece", "kg", "litre", "pack", "carton", "dozen", "bottle", "bag", "box"];
-const CATS  = ["Electronics", "Food & Drinks", "Clothing", "Beauty", "Health", "Office", "Household", "Automotive", "Stationery", "Other"];
+const UNITS = ["unit", "piece", "kg", "litre", "pack", "carton", "dozen", "bottle", "bag", "box", "tablet", "capsule", "vial", "sachet", "tube", "strip"];
+const CATS  = ["Electronics", "Food & Drinks", "Clothing", "Beauty", "Health", "Pharmaceuticals", "Medical Supplies", "Office", "Household", "Automotive", "Stationery", "Other"];
 
 const emptyForm = () => ({
   name: "", sku: "", barcode: "", description: "", price: "",
@@ -33,10 +33,10 @@ const emptyRestockForm = () => ({
 const inputCls = "w-full px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition";
 
 const NAV_ITEMS_LS_KEY = "lumi_hidden_nav_items";
-const getBatchTabVisible = () => {
+const getNavVisible = (key) => {
   try {
     const hidden = new Set((localStorage.getItem(NAV_ITEMS_LS_KEY) || "").split(",").filter(Boolean));
-    return !hidden.has("nav_batches");
+    return !hidden.has(key);
   } catch { return true; }
 };
 
@@ -110,7 +110,8 @@ export default function Inventory() {
   const [movementsLoading, setMovementsLoading] = useState(false);
   const [movementFilter, setMovementFilter]     = useState("All");
 
-  const [batchTabVisible, setBatchTabVisible] = useState(getBatchTabVisible);
+  const [batchTabVisible, setBatchTabVisible]         = useState(() => getNavVisible("nav_batches"));
+  const [pharmacyTabVisible, setPharmacyTabVisible]   = useState(() => getNavVisible("nav_pharmacy"));
   const [batches, setBatches]               = useState([]);
   const [expiringBatches, setExpiringBatches] = useState([]);
   const [batchesLoading, setBatchesLoading] = useState(false);
@@ -121,6 +122,8 @@ export default function Inventory() {
   const [savingBatch, setSavingBatch]       = useState(false);
   const [editingBatch, setEditingBatch]     = useState(null);
   const [productBatches, setProductBatches] = useState({}); // productId -> batches[]
+  const [fromPharmacy, setFromPharmacy]     = useState(false); // true = form opened from Pharmacy tab
+  const [pharmSearch, setPharmSearch]       = useState("");
 
   const load = async (p = 0) => {
     setLoading(true);
@@ -160,16 +163,18 @@ export default function Inventory() {
     } catch { /* silently ignore */ }
   };
 
-  const openCreate = () => {
+  const openCreate = (pharmacy = false) => {
     setEditing(null);
-    setForm(emptyForm());
+    setFromPharmacy(pharmacy);
+    setForm({ ...emptyForm(), ...(pharmacy ? { drugCategory: "OTC", category: "Pharmaceuticals", unit: "tablet" } : {}) });
     setVariants([]);
     setProductImage(null);
     loadAccounts();
     setShowForm(true);
   };
 
-  const openEdit = (p) => {
+  const openEdit = (p, pharmacy = false) => {
+    setFromPharmacy(pharmacy);
     setEditing(p.id);
     setForm({
       name: p.name || "", sku: p.sku || "", barcode: p.barcode || "",
@@ -441,11 +446,14 @@ export default function Inventory() {
   };
 
   useEffect(() => {
-    if (activeTab === "Batches") loadBatches();
+    if (activeTab === "Batches" || activeTab === "Pharmacy") loadBatches();
   }, [activeTab]);
 
   useEffect(() => {
-    const handler = () => setBatchTabVisible(getBatchTabVisible());
+    const handler = () => {
+      setBatchTabVisible(getNavVisible("nav_batches"));
+      setPharmacyTabVisible(getNavVisible("nav_pharmacy"));
+    };
     window.addEventListener("navItemsChange", handler);
     return () => window.removeEventListener("navItemsChange", handler);
   }, []);
@@ -504,9 +512,28 @@ export default function Inventory() {
     } catch { notify("Failed to delete batch", "error"); }
   };
 
-  const TABS = [...TABS_BASE, ...(batchTabVisible ? ["Batches"] : [])];
+  const TABS = [
+    ...TABS_BASE,
+    ...(batchTabVisible    ? ["Batches"]  : []),
+    ...(pharmacyTabVisible ? ["Pharmacy"] : []),
+  ];
 
   const filteredBatches = batchFilter === "All" ? batches : batches.filter(b => b.status === batchFilter);
+
+  // Pharmacy helpers — computed from already-loaded data
+  const pharmProducts = products.filter(p => p.drugCategory === "OTC" || p.drugCategory === "POM");
+  const pharmAll = pharmSearch.trim()
+    ? pharmProducts.filter(p =>
+        p.name.toLowerCase().includes(pharmSearch.toLowerCase()) ||
+        (p.nafdacNumber || "").toLowerCase().includes(pharmSearch.toLowerCase()))
+    : pharmProducts;
+
+  const getNearestExpiry = (productId) => {
+    const pb = batches.filter(b => b.productId === productId && b.expiryDate && b.quantity > 0);
+    if (!pb.length) return null;
+    return pb.sort((a, b) => a.expiryDate.localeCompare(b.expiryDate))[0];
+  };
+  const getProductBatchCount = (productId) => batches.filter(b => b.productId === productId).length;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
@@ -520,9 +547,15 @@ export default function Inventory() {
           <p className="text-sm text-slate-500 mt-0.5">Manage your products, restock orders and stock movements</p>
         </div>
         {activeTab === "Products" && (
-          <button onClick={openCreate}
+          <button onClick={() => openCreate(false)}
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition">
             <Plus className="w-4 h-4" /> Add Product
+          </button>
+        )}
+        {activeTab === "Pharmacy" && (
+          <button onClick={() => openCreate(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold text-sm hover:bg-emerald-700 transition">
+            <Pill className="w-4 h-4" /> Add Drug
           </button>
         )}
         {activeTab === "Restock Orders" && (
@@ -543,11 +576,15 @@ export default function Inventory() {
             }`}>
             {tab === "Restock Orders" && <RefreshCw className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />}
             {tab === "Stock Movements" && <History className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />}
-            {tab === "Products" && <Package className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />}
-            {tab === "Batches" && <FlaskConical className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />}
+            {tab === "Products"        && <Package className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />}
+            {tab === "Batches"         && <FlaskConical className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />}
+            {tab === "Pharmacy"        && <Pill className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />}
             {tab}
             {tab === "Batches" && expiringBatches.length > 0 && (
               <span className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-bold">{expiringBatches.length}</span>
+            )}
+            {tab === "Pharmacy" && pharmProducts.length > 0 && (
+              <span className="ml-1.5 inline-flex items-center justify-center px-1.5 py-0.5 rounded-full bg-emerald-500 text-white text-[9px] font-bold">{pharmProducts.length}</span>
             )}
           </button>
         ))}
@@ -1074,6 +1111,122 @@ export default function Inventory() {
         </>
       )}
 
+      {/* PHARMACY TAB */}
+      {activeTab === "Pharmacy" && pharmacyTabVisible && (
+        <>
+          {/* Summary strip */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: "Total Drugs",    value: pharmProducts.length,                                       color: "blue"   },
+              { label: "OTC",            value: pharmProducts.filter(p => p.drugCategory === "OTC").length, color: "blue"   },
+              { label: "Prescription",   value: pharmProducts.filter(p => p.drugCategory === "POM").length, color: "rose"   },
+              { label: "Expiring Soon",  value: expiringBatches.length,                                     color: "amber"  },
+            ].map(({ label, value, color }) => (
+              <div key={label} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-3">
+                <p className="text-xs text-slate-500 font-medium">{label}</p>
+                <p className={`text-2xl font-bold mt-0.5 text-${color}-600`}>{value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input value={pharmSearch} onChange={e => setPharmSearch(e.target.value)}
+              placeholder="Search by drug name or NAFDAC number…"
+              className="w-full pl-9 pr-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition" />
+          </div>
+
+          {pharmAll.length === 0 ? (
+            <div className="text-center py-16">
+              <Pill className="w-12 h-12 text-slate-200 mx-auto mb-3" />
+              <p className="text-slate-500 font-medium">No drugs in inventory yet</p>
+              <p className="text-xs text-slate-400 mt-1">Click "Add Drug" to register your first pharmaceutical product.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-700">
+              <table className="w-full text-sm">
+                <thead className="bg-emerald-50 dark:bg-emerald-900/20 text-slate-500 text-xs uppercase tracking-wide">
+                  <tr>
+                    {["Type", "Drug / Product", "NAFDAC No.", "Price", "Stock", "Nearest Expiry", "Batches", ""].map(h => (
+                      <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                  {pharmAll.map(p => {
+                    const nearestBatch = getNearestExpiry(p.id);
+                    const batchCount   = getProductBatchCount(p.id);
+                    const expStatus    = nearestBatch?.status;
+                    return (
+                      <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
+                        <td className="px-4 py-3">
+                          {p.drugCategory === "POM"
+                            ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 border border-rose-200">RX</span>
+                            : <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200">OTC</span>}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            {p.imageUrl && <img src={p.imageUrl} alt="" className="w-8 h-8 rounded-lg object-cover flex-shrink-0 border border-slate-100" />}
+                            <div>
+                              <p className="font-semibold text-slate-800 dark:text-white">{p.name}</p>
+                              {p.description && <p className="text-xs text-slate-400 truncate max-w-[160px]">{p.description}</p>}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 font-mono text-xs text-slate-500">{p.nafdacNumber || "—"}</td>
+                        <td className="px-4 py-3 font-semibold text-slate-800 dark:text-white">{fmt(p.price)}</td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${
+                            p.lowStock ? "bg-rose-50 text-rose-600 border-rose-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          }`}>
+                            {p.lowStock && <AlertTriangle className="w-3 h-3" />}
+                            {p.hasVariants ? (p.totalStock ?? 0) : p.quantityInStock} {p.unit}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {nearestBatch ? (
+                            <span className={`text-xs font-semibold ${
+                              expStatus === "EXPIRED"       ? "text-rose-600" :
+                              expStatus === "EXPIRING_SOON" ? "text-amber-600" :
+                                                             "text-emerald-600"
+                            }`}>
+                              {expStatus === "EXPIRED" ? "⚠ " : expStatus === "EXPIRING_SOON" ? "⏰ " : ""}
+                              {nearestBatch.expiryDate}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-slate-400 italic">No batch</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <button onClick={() => { setActiveTab("Batches"); loadBatches(); }}
+                            className="inline-flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-800 font-semibold transition">
+                            <FlaskConical className="w-3 h-3" /> {batchCount > 0 ? batchCount : "Add"}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => openEdit(p, true)} className="p-1.5 rounded-lg hover:bg-emerald-50 text-slate-400 hover:text-emerald-600 transition">
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => openAddBatch(p.id)} className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition" title="Add batch">
+                              <FlaskConical className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => handleDelete(p.id, p.name)} className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+
       {/* Add/Edit Product Modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
@@ -1087,7 +1240,9 @@ export default function Inventory() {
             <div className="p-5 space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-1">Product Name *</label>
-                <input value={form.name} onChange={e => set("name", e.target.value)} placeholder="e.g. Indomie Noodles" className={inputCls} />
+                <input value={form.name} onChange={e => set("name", e.target.value)}
+                  placeholder={fromPharmacy ? "e.g. Amoxicillin 500mg" : "e.g. Panadol 500mg / Indomie / T-Shirt"}
+                  className={inputCls} />
               </div>
 
               {/* Product image — only uploadable when editing (needs product ID) */}
@@ -1239,22 +1394,54 @@ export default function Inventory() {
                   rows={2} placeholder="Optional short description" className={inputCls + " resize-none"} />
               </div>
 
-              {/* Pharmacy fields */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1">Drug Category</label>
-                  <select value={form.drugCategory} onChange={e => set("drugCategory", e.target.value)} className={inputCls}>
-                    <option value="NONE">Not a drug / N/A</option>
-                    <option value="OTC">OTC — Over the Counter</option>
-                    <option value="POM">POM — Prescription Only</option>
-                  </select>
+              {/* Pharmacy / Drug Details */}
+              {fromPharmacy ? (
+                <div className="border border-emerald-200 dark:border-emerald-700 rounded-xl overflow-hidden">
+                  <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 dark:bg-emerald-900/20">
+                    <Pill className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
+                    <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 uppercase tracking-wide">Drug / Pharmacy Details</p>
+                  </div>
+                  <div className="p-4 grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 mb-1">Drug Category *</label>
+                      <select value={form.drugCategory} onChange={e => set("drugCategory", e.target.value)} className={inputCls}>
+                        <option value="NONE">Not a drug / N/A</option>
+                        <option value="OTC">OTC — Over the Counter</option>
+                        <option value="POM">POM — Prescription Only</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 mb-1">NAFDAC / Reg. Number</label>
+                      <input value={form.nafdacNumber} onChange={e => set("nafdacNumber", e.target.value)}
+                        placeholder="e.g. A4-0001" className={inputCls} />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1">NAFDAC / Reg. Number</label>
-                  <input value={form.nafdacNumber} onChange={e => set("nafdacNumber", e.target.value)}
-                    placeholder="e.g. A4-0001" className={inputCls} />
-                </div>
-              </div>
+              ) : (
+                form.drugCategory !== "NONE" ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 mb-1">Drug Category</label>
+                      <select value={form.drugCategory} onChange={e => set("drugCategory", e.target.value)} className={inputCls}>
+                        <option value="NONE">Not a drug / N/A</option>
+                        <option value="OTC">OTC — Over the Counter</option>
+                        <option value="POM">POM — Prescription Only</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 mb-1">NAFDAC / Reg. Number</label>
+                      <input value={form.nafdacNumber} onChange={e => set("nafdacNumber", e.target.value)}
+                        placeholder="e.g. A4-0001" className={inputCls} />
+                    </div>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => set("drugCategory", "OTC")}
+                    className="flex items-center gap-2 text-xs text-slate-400 hover:text-emerald-600 transition">
+                    <Pill className="w-3.5 h-3.5" /> This is a pharmaceutical product — add drug details
+                    <ChevronRight className="w-3 h-3" />
+                  </button>
+                )
+              )}
 
               {/* Variant builder */}
               {form.hasVariants && (

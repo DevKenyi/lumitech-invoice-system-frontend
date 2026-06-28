@@ -162,7 +162,8 @@ const ALL_NAV_ITEMS = [
   { key: "nav_orders",       label: "Order Fulfillment", desc: "View and fulfil incoming food orders",             section: "Retail & POS" },
   { key: "nav_inventory",    label: "Inventory",         desc: "Manage products, stock and prices",               section: "Retail & POS" },
   { key: "nav_sales_report", label: "Sales Reports",     desc: "Revenue, transactions and performance",            section: "Retail & POS" },
-  { key: "nav_batches",      label: "Batch Tracking",    desc: "Track product batches and expiry dates (pharma / food)", section: "Retail & POS" },
+  { key: "nav_batches",      label: "Batch Tracking",    desc: "Track product batches and expiry dates (pharma / food)",     section: "Retail & POS" },
+  { key: "nav_pharmacy",     label: "Pharmacy",           desc: "Dedicated pharmacy tab with drug catalogue, NAFDAC, expiry", section: "Retail & POS" },
 ];
 
 const NAV_ITEMS_LS_KEY = "lumi_hidden_nav_items";
