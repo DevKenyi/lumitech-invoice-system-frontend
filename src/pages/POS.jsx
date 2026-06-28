@@ -747,22 +747,27 @@ export default function POS() {
               return (
                 <button key={p.id} onClick={() => addToCart(p)}
                   disabled={outOfStock}
-                  className={`text-left p-3 rounded-xl border transition ${
+                  className={`text-left rounded-xl border transition overflow-hidden ${
                     outOfStock
                       ? "opacity-40 cursor-not-allowed border-slate-100"
                       : "border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:shadow-sm bg-white dark:bg-slate-800"
                   }`}>
-                  <p className="text-sm font-semibold text-slate-800 dark:text-white truncate flex items-center gap-1">
-                    {p.name}
-                    {p.hasVariants && <Layers className="w-3 h-3 text-violet-500 flex-shrink-0" />}
-                  </p>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    {p.hasVariants ? "Select variant" : (outOfStock ? "Out of stock" : `${p.quantityInStock} ${p.unit}`)}
-                  </p>
-                  <p className="text-sm font-bold text-blue-600 mt-1">{fmt(displayPrice)}</p>
-                  {isWholesale && p.wholesaleMinQty > 1 && (
-                    <p className="text-[10px] text-amber-600 font-semibold mt-0.5">MOQ: {p.wholesaleMinQty}</p>
+                  {p.imageUrl && (
+                    <img src={p.imageUrl} alt="" className="w-full h-24 object-cover" />
                   )}
+                  <div className="p-3">
+                    <p className="text-sm font-semibold text-slate-800 dark:text-white truncate flex items-center gap-1">
+                      {p.name}
+                      {p.hasVariants && <Layers className="w-3 h-3 text-violet-500 flex-shrink-0" />}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {p.hasVariants ? "Select variant" : (outOfStock ? "Out of stock" : `${p.quantityInStock} ${p.unit}`)}
+                    </p>
+                    <p className="text-sm font-bold text-blue-600 mt-1">{fmt(displayPrice)}</p>
+                    {isWholesale && p.wholesaleMinQty > 1 && (
+                      <p className="text-[10px] text-amber-600 font-semibold mt-0.5">MOQ: {p.wholesaleMinQty}</p>
+                    )}
+                  </div>
                 </button>
               );
             })}
@@ -990,11 +995,16 @@ export default function POS() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm">
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-700">
-              <div>
-                <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-violet-600" /> {pickerProduct.name}
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">Select a variant to add</p>
+              <div className="flex items-center gap-3">
+                {pickerProduct.imageUrl && (
+                  <img src={pickerProduct.imageUrl} alt="" className="w-12 h-12 rounded-xl object-cover flex-shrink-0 border border-slate-100 dark:border-slate-700" />
+                )}
+                <div>
+                  <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-violet-600" /> {pickerProduct.name}
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Select a variant to add</p>
+                </div>
               </div>
               <button onClick={() => setPickerProduct(null)}
                 className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition">

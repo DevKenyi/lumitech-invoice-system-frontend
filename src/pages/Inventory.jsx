@@ -88,6 +88,8 @@ export default function Inventory() {
   const [adjustQty, setAdjustQty]       = useState("");
   const [adjustNotes, setAdjustNotes]   = useState("");
   const [adjusting, setAdjusting]       = useState(false);
+  const [productImage, setProductImage] = useState(null);   // current image URL for the open form
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const [restockOrders, setRestockOrders]   = useState([]);
   const [restockLoading, setRestockLoading] = useState(false);
@@ -142,6 +144,7 @@ export default function Inventory() {
     setEditing(null);
     setForm(emptyForm());
     setVariants([]);
+    setProductImage(null);
     loadAccounts();
     setShowForm(true);
   };
@@ -157,6 +160,7 @@ export default function Inventory() {
       incomeAccountId: p.incomeAccountId || "", directCostAccountId: p.directCostAccountId || "",
       hasVariants: p.hasVariants || false,
     });
+    setProductImage(p.imageUrl || null);
     setVariants(p.variants ? p.variants.map(v => ({
       id: v.id,
       sku: v.sku || "", barcode: v.barcode || "",
@@ -247,6 +251,32 @@ export default function Inventory() {
     setAdjustTarget({ type, id, name });
     setAdjustQty("");
     setAdjustNotes("");
+  };
+
+  const handleImageUpload = async (file) => {
+    if (!editing) return;
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await api.post(`/api/inventory/products/${editing}/image`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setProductImage(res.data.imageUrl);
+      setProducts(prev => prev.map(p => p.id === editing ? { ...p, imageUrl: res.data.imageUrl } : p));
+      notify("Image uploaded");
+    } catch { notify("Failed to upload image", "error"); }
+    finally { setUploadingImage(false); }
+  };
+
+  const handleImageDelete = async () => {
+    if (!editing) return;
+    try {
+      await api.delete(`/api/inventory/products/${editing}/image`);
+      setProductImage(null);
+      setProducts(prev => prev.map(p => p.id === editing ? { ...p, imageUrl: null } : p));
+      notify("Image removed");
+    } catch { notify("Failed to remove image", "error"); }
   };
 
   const handleAdjust = async () => {
@@ -454,6 +484,9 @@ export default function Inventory() {
                         <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
+                              {p.imageUrl && (
+                                <img src={p.imageUrl} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-slate-100 dark:border-slate-700" />
+                              )}
                               {p.hasVariants && (
                                 <button onClick={() => toggleProductExpand(p)}
                                   className="p-0.5 rounded text-slate-400 hover:text-blue-600 transition">
@@ -755,6 +788,39 @@ export default function Inventory() {
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-1">Product Name *</label>
                 <input value={form.name} onChange={e => set("name", e.target.value)} placeholder="e.g. Indomie Noodles" className={inputCls} />
+              </div>
+
+              {/* Product image — only uploadable when editing (needs product ID) */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Product Image</label>
+                {editing ? (
+                  productImage ? (
+                    <div className="flex items-center gap-3">
+                      <img src={productImage} alt="Product" className="w-20 h-20 object-cover rounded-xl border border-slate-200 dark:border-slate-600 flex-shrink-0" />
+                      <div className="flex flex-col gap-2">
+                        <label className={`cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-700 text-xs font-semibold hover:bg-blue-100 transition ${uploadingImage ? "opacity-60 pointer-events-none" : ""}`}>
+                          {uploadingImage ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+                          {uploadingImage ? "Uploading…" : "Change"}
+                          <input type="file" accept="image/*" className="hidden" onChange={e => { if (e.target.files[0]) handleImageUpload(e.target.files[0]); e.target.value = ""; }} disabled={uploadingImage} />
+                        </label>
+                        <button type="button" onClick={handleImageDelete}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-700 text-xs font-semibold hover:bg-rose-100 transition">
+                          <Trash2 className="w-3.5 h-3.5" /> Remove
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className={`cursor-pointer flex flex-col items-center justify-center gap-1.5 h-24 border-2 border-dashed border-slate-200 dark:border-slate-600 rounded-xl hover:border-blue-400 transition ${uploadingImage ? "opacity-60 pointer-events-none" : ""}`}>
+                      {uploadingImage
+                        ? <RefreshCw className="w-5 h-5 text-blue-500 animate-spin" />
+                        : <Camera className="w-6 h-6 text-slate-300" />}
+                      <span className="text-xs text-slate-400">{uploadingImage ? "Uploading…" : "Click to upload image"}</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={e => { if (e.target.files[0]) handleImageUpload(e.target.files[0]); e.target.value = ""; }} disabled={uploadingImage} />
+                    </label>
+                  )
+                ) : (
+                  <p className="text-xs text-slate-400 italic">Save the product first, then come back to upload an image.</p>
+                )}
               </div>
 
               {/* Variant toggle */}
