@@ -404,6 +404,10 @@ export default function POS() {
   const addToCart = (product) => {
     if (product.hasVariants) { openVariantPicker(product); return; }
     if (product.quantityInStock <= 0) { notify(`${product.name} is out of stock`, "error"); return; }
+    const isWholesaleClient = selectedClient?.customerType === "WHOLESALE";
+    if (isWholesaleClient && product.wholesaleMinQty && product.wholesaleMinQty > 1) {
+      notify(`Min order for wholesale is ${product.wholesaleMinQty} ${product.unit}(s) — adjust qty in cart`, "info");
+    }
     const cartKey = product.id;
     const retailPrice = product.price;
     const wsPrice = product.wholesalePrice ?? null;
@@ -756,6 +760,9 @@ export default function POS() {
                     {p.hasVariants ? "Select variant" : (outOfStock ? "Out of stock" : `${p.quantityInStock} ${p.unit}`)}
                   </p>
                   <p className="text-sm font-bold text-blue-600 mt-1">{fmt(displayPrice)}</p>
+                  {isWholesale && p.wholesaleMinQty > 1 && (
+                    <p className="text-[10px] text-amber-600 font-semibold mt-0.5">MOQ: {p.wholesaleMinQty}</p>
+                  )}
                 </button>
               );
             })}

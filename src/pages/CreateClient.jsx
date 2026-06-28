@@ -22,6 +22,7 @@ function CreateClient() {
     phone: "",
     address: "",
     customerType: "RETAIL",
+    paymentTermsDays: 0,
   });
 
   const handleSubmit = async (e) => {
@@ -147,6 +148,25 @@ function CreateClient() {
                 ))}
               </div>
               <p className="text-xs text-slate-400">Wholesale customers automatically get wholesale pricing at POS</p>
+            </div>
+
+            {/* Payment Terms */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Payment Terms</label>
+              <select
+                value={form.paymentTermsDays}
+                onChange={(e) => setForm({ ...form, paymentTermsDays: parseInt(e.target.value) })}
+                className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl bg-white/50 dark:bg-slate-700/50 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+              >
+                <option value={0}>Due on receipt</option>
+                <option value={7}>Net 7 days</option>
+                <option value={14}>Net 14 days</option>
+                <option value={30}>Net 30 days</option>
+                <option value={45}>Net 45 days</option>
+                <option value={60}>Net 60 days</option>
+                <option value={90}>Net 90 days</option>
+              </select>
+              <p className="text-xs text-slate-400">Used to set due dates when generating invoices from wholesale sales</p>
             </div>
 
             {/* Submit Button */}

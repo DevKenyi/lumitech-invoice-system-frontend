@@ -57,7 +57,7 @@ function ClientDetail() {
 
   // Edit state
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", address: "", customerType: "RETAIL" });
+  const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", address: "", customerType: "RETAIL", paymentTermsDays: 0 });
   const [editCcList, setEditCcList] = useState([]);
   const [editCcInput, setEditCcInput] = useState("");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
@@ -95,7 +95,7 @@ function ClientDetail() {
   }, [activeTab, id]);
 
   const openEditModal = () => {
-    setEditForm({ name: client.name || "", email: client.email || "", phone: client.phone || "", address: client.address || "", customerType: client.customerType || "RETAIL" });
+    setEditForm({ name: client.name || "", email: client.email || "", phone: client.phone || "", address: client.address || "", customerType: client.customerType || "RETAIL", paymentTermsDays: client.paymentTermsDays ?? 0 });
     setEditCcList(client.ccEmails || []);
     setEditCcInput("");
     setShowEditModal(true);
@@ -280,11 +280,22 @@ function ClientDetail() {
               {client.address}
             </div>
           )}
-          {client.customerType === "WHOLESALE" && (
-            <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-bold bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 border border-violet-200 dark:border-violet-700">
-              WHOLESALE
-            </span>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            {client.customerType === "WHOLESALE" && (
+              <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-bold bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 border border-violet-200 dark:border-violet-700">
+                WHOLESALE
+              </span>
+            )}
+            {client.paymentTermsDays > 0 ? (
+              <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                Net {client.paymentTermsDays} days
+              </span>
+            ) : (
+              <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-500 border border-slate-200">
+                Due on receipt
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -490,6 +501,24 @@ function ClientDetail() {
                   >{type}</button>
                 ))}
               </div>
+            </div>
+
+            {/* Payment Terms */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Payment Terms</label>
+              <select
+                value={editForm.paymentTermsDays}
+                onChange={e => setEditForm({ ...editForm, paymentTermsDays: parseInt(e.target.value) })}
+                className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-xl bg-white/50 dark:bg-slate-700/50 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+              >
+                <option value={0}>Due on receipt</option>
+                <option value={7}>Net 7 days</option>
+                <option value={14}>Net 14 days</option>
+                <option value={30}>Net 30 days</option>
+                <option value={45}>Net 45 days</option>
+                <option value={60}>Net 60 days</option>
+                <option value={90}>Net 90 days</option>
+              </select>
             </div>
 
             {/* CC Emails */}

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import api from "../services/api";
 import {
   TrendingUp, ShoppingBag, Users, BarChart2,
-  RefreshCw, ChevronRight, Receipt, UtensilsCrossed,
+  RefreshCw, ChevronRight, Receipt, UtensilsCrossed, FileText, Store, Tag,
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import Toast from "../components/Toast";
@@ -31,6 +31,7 @@ export default function SalesReport() {
   const [page, setPage]       = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [toast, setToast]     = useState({ visible: false, message: "", type: "info" });
+  const [generatingInvoice, setGeneratingInvoice] = useState(null);
 
   const load = async (p = 0, per = period, t = tab) => {
     setLoading(true);
@@ -58,6 +59,18 @@ export default function SalesReport() {
 
   useEffect(() => { load(0, period, tab); setPage(0); }, [period, tab]);
   useEffect(() => { load(page, period, tab); }, [page]);
+
+  const generateInvoice = async (saleId) => {
+    setGeneratingInvoice(saleId);
+    try {
+      const res = await api.post(`/api/inventory/sales/${saleId}/invoice`);
+      window.location.href = `/invoices/${res.data.id}`;
+    } catch (e) {
+      setToast({ visible: true, message: e.response?.data?.message || "Failed to generate invoice", type: "error" });
+    } finally {
+      setGeneratingInvoice(null);
+    }
+  };
 
   const statCards = report ? [
     { label: "Total Revenue",  value: fmt(report.totalRevenue),      icon: <TrendingUp className="w-5 h-5 text-emerald-600" />, bg: "bg-emerald-50 dark:bg-emerald-900/20" },
@@ -132,6 +145,30 @@ export default function SalesReport() {
             ))}
           </div>
 
+          {/* Retail vs Wholesale breakdown */}
+          {tab === "retail" && report?.typeBreakdown?.length > 0 && (
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
+              <h2 className="font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                <Tag className="w-4 h-4 text-violet-600" /> Customer Type Breakdown
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {report.typeBreakdown.map(t => {
+                  const label = t.customerType === "WHOLESALE" ? "Wholesale" : t.customerType === "RETAIL" ? "Retail" : "Walk-in";
+                  const color = t.customerType === "WHOLESALE" ? "bg-violet-50 dark:bg-violet-900/20 border-violet-100 text-violet-700"
+                              : t.customerType === "RETAIL"    ? "bg-blue-50 dark:bg-blue-900/20 border-blue-100 text-blue-700"
+                              : "bg-slate-50 dark:bg-slate-700/40 border-slate-100 text-slate-600";
+                  return (
+                    <div key={t.customerType} className={`rounded-xl p-4 border ${color}`}>
+                      <p className="text-xs font-bold uppercase tracking-wide mb-1">{label}</p>
+                      <p className="text-lg font-extrabold">{fmt(t.revenue)}</p>
+                      <p className="text-xs mt-0.5 opacity-70">{t.transactions} transaction{t.transactions !== 1 ? "s" : ""}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Staff leaderboard */}
           {report?.staffBreakdown?.length > 0 && (
             <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
@@ -194,7 +231,7 @@ export default function SalesReport() {
                 No {tab === "food" ? "orders" : "sales"} recorded for this period
               </p>
             ) : tab === "retail" ? (
-              <RetailTable sales={sales} fmt={fmt} />
+              <RetailTable sales={sales} fmt={fmt} generateInvoice={generateInvoice} generatingInvoice={generatingInvoice} />
             ) : (
               <FoodTable orders={sales} fmt={fmt} />
             )}
@@ -216,13 +253,13 @@ export default function SalesReport() {
   );
 }
 
-function RetailTable({ sales, fmt }) {
+function RetailTable({ sales, fmt, generateInvoice, generatingInvoice }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead className="bg-slate-50 dark:bg-slate-700/50 text-slate-500 text-xs uppercase tracking-wide">
           <tr>
-            {["Receipt", "Customer", "Items", "Total", "Payment", "Staff", "Date"].map(h => (
+            {["Receipt", "Customer", "Items", "Total", "Payment", "Staff", "Date", ""].map(h => (
               <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>
             ))}
           </tr>
@@ -231,7 +268,10 @@ function RetailTable({ sales, fmt }) {
           {sales.map(s => (
             <tr key={s.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition">
               <td className="px-4 py-3 font-mono text-xs font-semibold text-blue-600">{s.receiptNumber}</td>
-              <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{s.customerName || "Walk-in"}</td>
+              <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                <span>{s.customerName || "Walk-in"}</span>
+                {s.clientId && <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-violet-100 text-violet-600 font-bold">CLIENT</span>}
+              </td>
               <td className="px-4 py-3 text-slate-500">{s.items?.length || 0} item(s)</td>
               <td className="px-4 py-3 font-bold text-slate-800 dark:text-white">{fmt(s.total)}</td>
               <td className="px-4 py-3">
@@ -242,6 +282,19 @@ function RetailTable({ sales, fmt }) {
               <td className="px-4 py-3 text-slate-500">{s.soldBy || "—"}</td>
               <td className="px-4 py-3 text-slate-400 text-xs">
                 {new Date(s.saleDate).toLocaleDateString("en-NG", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+              </td>
+              <td className="px-4 py-3">
+                {s.clientId && (
+                  <button
+                    onClick={() => generateInvoice(s.id)}
+                    disabled={generatingInvoice === s.id}
+                    title="Generate invoice from this sale"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200 transition disabled:opacity-50"
+                  >
+                    <FileText className="w-3 h-3" />
+                    {generatingInvoice === s.id ? "…" : "Invoice"}
+                  </button>
+                )}
               </td>
             </tr>
           ))}

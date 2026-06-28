@@ -15,7 +15,7 @@ const CATS  = ["Electronics", "Food & Drinks", "Clothing", "Beauty", "Health", "
 
 const emptyForm = () => ({
   name: "", sku: "", barcode: "", description: "", price: "",
-  costPrice: "", wholesalePrice: "", quantityInStock: 0, lowStockThreshold: 5,
+  costPrice: "", wholesalePrice: "", wholesaleMinQty: null, quantityInStock: 0, lowStockThreshold: 5,
   category: "", unit: "unit", incomeAccountId: "", directCostAccountId: "",
   hasVariants: false,
 });
@@ -151,7 +151,7 @@ export default function Inventory() {
     setForm({
       name: p.name || "", sku: p.sku || "", barcode: p.barcode || "",
       description: p.description || "", price: p.price || "",
-      costPrice: p.costPrice || "", wholesalePrice: p.wholesalePrice || "",
+      costPrice: p.costPrice || "", wholesalePrice: p.wholesalePrice || "", wholesaleMinQty: p.wholesaleMinQty || null,
       quantityInStock: p.quantityInStock, lowStockThreshold: p.lowStockThreshold,
       category: p.category || "", unit: p.unit || "unit",
       incomeAccountId: p.incomeAccountId || "", directCostAccountId: p.directCostAccountId || "",
@@ -179,6 +179,7 @@ export default function Inventory() {
         price: parseFloat(form.price),
         costPrice: form.costPrice ? parseFloat(form.costPrice) : null,
         wholesalePrice: form.wholesalePrice ? parseFloat(form.wholesalePrice) : null,
+        wholesaleMinQty: form.wholesaleMinQty || null,
       };
       let savedProductId = editing;
       if (editing) {
@@ -788,6 +789,13 @@ export default function Inventory() {
                   <input type="number" value={form.wholesalePrice} onChange={e => set("wholesalePrice", e.target.value)} placeholder="Optional" min="0" className={inputCls} />
                 </div>
               </div>
+              {form.wholesalePrice && !form.hasVariants && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Min Wholesale Qty (MOQ)</label>
+                  <input type="number" value={form.wholesaleMinQty || ""} onChange={e => set("wholesaleMinQty", e.target.value ? parseInt(e.target.value) : null)} placeholder="No minimum" min="1" className={inputCls} />
+                  <p className="text-xs text-slate-400 mt-1">Warn at POS if wholesale order is below this quantity</p>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1">Cost Price ({currencySymbol})</label>
