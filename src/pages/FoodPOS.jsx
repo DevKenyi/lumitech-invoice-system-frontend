@@ -38,6 +38,7 @@ export default function FoodPOS() {
   const [showPrinterSetup, setShowPrinterSetup] = useState(false);
   const [usbDevice, setUsbDevice] = useState(null);
   const [btConn, setBtConn] = useState(null);
+  const [showCartSheet, setShowCartSheet] = useState(false);
 
   const showToast = (msg, type = "success") => setToast({ msg, type });
 
@@ -156,6 +157,7 @@ export default function FoodPOS() {
       setSuccessOrder(order);
       setCart([]);
       setNotes("");
+      setShowCartSheet(false);
       handlePrint(order);
     } catch (e) {
       showToast(e.response?.data?.message || "Failed to place order", "error");
@@ -169,7 +171,7 @@ export default function FoodPOS() {
   );
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
+    <div className="flex h-[calc(100dvh-4rem)] overflow-hidden">
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
 
       {/* Left: Menu */}
@@ -196,7 +198,7 @@ export default function FoodPOS() {
         </div>
 
         {/* Items grid */}
-        <div className="flex-1 overflow-y-auto p-3 bg-slate-50 dark:bg-slate-900">
+        <div className="flex-1 overflow-y-auto p-3 pb-24 md:pb-3 bg-slate-50 dark:bg-slate-900">
           {visibleItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-slate-400">
               <UtensilsCrossed size={40} className="mb-2 opacity-30" />
@@ -236,8 +238,40 @@ export default function FoodPOS() {
         </div>
       </div>
 
-      {/* Right: Order panel */}
-      <div className="w-72 xl:w-80 flex flex-col bg-white dark:bg-slate-800 shrink-0">
+      {/* Mobile: floating cart button */}
+      {cart.length > 0 && (
+        <button
+          onClick={() => setShowCartSheet(true)}
+          className="fixed bottom-4 left-4 right-4 z-30 md:hidden flex items-center justify-between px-4 py-3 bg-blue-600 text-white rounded-2xl shadow-xl">
+          <span className="flex items-center gap-2 font-semibold">
+            <ShoppingCart size={18} />
+            {cart.reduce((s, i) => s + i.qty, 0)} item{cart.reduce((s, i) => s + i.qty, 0) !== 1 ? "s" : ""}
+          </span>
+          <span className="font-bold text-base">{fmt(total, currency)}</span>
+        </button>
+      )}
+
+      {/* Mobile: overlay */}
+      {showCartSheet && (
+        <div className="fixed inset-0 bg-black/40 z-30 md:hidden" onClick={() => setShowCartSheet(false)} />
+      )}
+
+      {/* Right: Order panel — sidebar on desktop, bottom sheet on mobile */}
+      <div className={`
+        md:relative md:flex md:w-72 xl:md:w-80 md:flex-col md:bg-white md:dark:bg-slate-800 md:shrink-0
+        ${showCartSheet
+          ? "fixed bottom-0 left-0 right-0 z-40 flex flex-col bg-white dark:bg-slate-800 rounded-t-2xl max-h-[92dvh] overflow-hidden"
+          : "hidden md:flex"
+        }
+      `}>
+
+        {/* Mobile sheet handle + close */}
+        <div className="md:hidden flex items-center justify-between px-4 pt-3 pb-1">
+          <div className="w-10 h-1 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto" />
+          <button onClick={() => setShowCartSheet(false)} className="absolute right-4 top-3 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
+            <X size={16} className="text-slate-500" />
+          </button>
+        </div>
 
         {/* Order type toggle + printer setup */}
         <div className="p-3 border-b border-slate-200 dark:border-slate-700 space-y-2">
@@ -289,7 +323,7 @@ export default function FoodPOS() {
         </div>
 
         {/* Cart items */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+        <div className="flex-1 overflow-y-auto p-3 space-y-2 overscroll-contain">
           {cart.length === 0 ? (
             <p className="text-center text-slate-400 text-sm mt-8">
               {orderType === "DINE_IN" ? "Select items for the order" : "Select items + packaging"}

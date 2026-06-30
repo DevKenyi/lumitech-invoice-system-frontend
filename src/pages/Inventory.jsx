@@ -566,10 +566,10 @@ export default function Inventory() {
         )}
       </div>
 
-      <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-fit">
+      <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl overflow-x-auto max-w-full">
         {TABS.map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
+            className={`shrink-0 whitespace-nowrap px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition ${
               activeTab === tab
                 ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
                 : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"

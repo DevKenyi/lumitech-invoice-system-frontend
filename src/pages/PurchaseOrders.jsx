@@ -303,9 +303,9 @@ export default function PurchaseOrders() {
                 <div className="space-y-2">
                   {form.items.map((item, idx) => (
                     <div key={idx} className="grid grid-cols-12 gap-2 items-start">
-                      <div className="col-span-6"><input placeholder="Description" value={item.description} onChange={e => handleItemChange(idx, "description", e.target.value)} required className={inputCls} /></div>
-                      <div className="col-span-2"><input type="number" min="1" placeholder="Qty" value={item.quantity} onChange={e => handleItemChange(idx, "quantity", e.target.value)} required className={inputCls} /></div>
-                      <div className="col-span-3"><input type="number" min="0" step="0.01" placeholder="Unit price" value={item.unitPrice} onChange={e => handleItemChange(idx, "unitPrice", e.target.value)} required className={inputCls} /></div>
+                      <div className="col-span-12 sm:col-span-6"><input placeholder="Description" value={item.description} onChange={e => handleItemChange(idx, "description", e.target.value)} required className={inputCls} /></div>
+                      <div className="col-span-5 sm:col-span-2"><input type="number" min="1" placeholder="Qty" value={item.quantity} onChange={e => handleItemChange(idx, "quantity", e.target.value)} required className={inputCls} /></div>
+                      <div className="col-span-6 sm:col-span-3"><input type="number" min="0" step="0.01" placeholder="Unit price" value={item.unitPrice} onChange={e => handleItemChange(idx, "unitPrice", e.target.value)} required className={inputCls} /></div>
                       <div className="col-span-1 flex items-center justify-center pt-2">
                         {form.items.length > 1 && <button type="button" onClick={() => removeItem(idx)} className="text-slate-400 hover:text-rose-500 transition"><Trash2 size={14} /></button>}
                       </div>

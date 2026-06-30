@@ -164,9 +164,32 @@ export default function MenuManagement() {
       </div>
 
       {tab === "items" && (
-        <div className="flex gap-4">
-          {/* Category sidebar */}
-          <div className="w-48 shrink-0">
+        <div className="flex flex-col md:flex-row gap-4">
+
+          {/* Mobile: horizontal scroll category chips */}
+          <div className="md:hidden flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
+            <button onClick={() => setSelectedCat(null)}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                !selectedCat ? "bg-blue-600 text-white" : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+              }`}>
+              All ({items.length})
+            </button>
+            {categories.map(c => (
+              <button key={c.id} onClick={() => setSelectedCat(c.id)}
+                className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  selectedCat === c.id ? "bg-blue-600 text-white" : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                }`}>
+                {c.name} ({items.filter(i => i.categoryId === c.id).length})
+              </button>
+            ))}
+            <button onClick={() => setCatModal({ mode: "add", data: {} })}
+              className="shrink-0 px-3 py-1.5 rounded-full text-sm font-medium border border-dashed border-blue-300 text-blue-600">
+              + Add
+            </button>
+          </div>
+
+          {/* Desktop: sidebar */}
+          <div className="hidden md:block w-48 shrink-0">
             <button onClick={() => setCatModal({ mode: "add", data: {} })}
               className="w-full flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 font-medium mb-3">
               <Plus size={14} /> Add Category
