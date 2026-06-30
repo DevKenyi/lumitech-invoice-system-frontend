@@ -1,7 +1,7 @@
 // Billing.jsx
 import { useEffect, useState } from "react";
 import api from "../services/api";
-import { CreditCard, CheckCircle, Clock, ArrowRight, Zap, Calculator, Shield, Lock } from "lucide-react";
+import { CreditCard, CheckCircle, Clock, ArrowRight, Zap, Calculator, Shield, Lock, Building2 } from "lucide-react";
 import Toast from "../components/Toast";
 import { setUserType, setRegisteredAs, USER_TYPES } from "../utils/userType";
 import { useOrg } from "../context/OrgContext";
@@ -47,6 +47,21 @@ function Billing() {
       }
     } catch (err) {
       const msg = err.response?.data?.message || "Failed to start subscription.";
+      setToast({ visible: true, message: msg, type: "error" });
+    } finally {
+      setUpgrading(null);
+    }
+  };
+
+  const handlePayManually = async (planKey) => {
+    try {
+      setUpgrading(planKey + "_manual");
+      const res = await api.post("/api/billing/pay", { plan: planKey });
+      if (res.data.paymentUrl) {
+        window.location.href = res.data.paymentUrl;
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || "Failed to initialize payment.";
       setToast({ visible: true, message: msg, type: "error" });
     } finally {
       setUpgrading(null);
@@ -250,13 +265,22 @@ function Billing() {
                     Current Plan
                   </div>
                 ) : (
-                  <button
-                    onClick={() => handleUpgrade("STARTER")}
-                    disabled={!!upgrading}
-                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-white text-blue-700 font-bold rounded-xl hover:bg-blue-50 transition-all shadow-lg text-sm disabled:opacity-50"
-                  >
-                    {upgrading === "STARTER" ? "Processing..." : <>Get Essential <ArrowRight className="w-4 h-4" /></>}
-                  </button>
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => handleUpgrade("STARTER")}
+                      disabled={!!upgrading}
+                      className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-white text-blue-700 font-bold rounded-xl hover:bg-blue-50 transition-all shadow-lg text-sm disabled:opacity-50"
+                    >
+                      {upgrading === "STARTER" ? "Processing..." : <><CreditCard className="w-4 h-4" /> Card (auto-renew)</>}
+                    </button>
+                    <button
+                      onClick={() => handlePayManually("STARTER")}
+                      disabled={!!upgrading}
+                      className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white/20 text-white border border-white/30 font-medium rounded-xl hover:bg-white/30 transition-all text-sm disabled:opacity-50"
+                    >
+                      {upgrading === "STARTER_manual" ? "Processing..." : <><Building2 className="w-4 h-4" /> Pay by transfer</>}
+                    </button>
+                  </div>
                 )}
                 <p className="text-center text-xs text-blue-300 mt-2">Cancel anytime.</p>
               </div>
@@ -302,13 +326,22 @@ function Billing() {
                     Current Plan
                   </div>
                 ) : (
-                  <button
-                    onClick={() => handleUpgrade("GROWTH")}
-                    disabled={!!upgrading}
-                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-600/30 text-sm disabled:opacity-50"
-                  >
-                    {upgrading === "GROWTH" ? "Processing..." : <>Get Business <ArrowRight className="w-4 h-4" /></>}
-                  </button>
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => handleUpgrade("GROWTH")}
+                      disabled={!!upgrading}
+                      className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-600/30 text-sm disabled:opacity-50"
+                    >
+                      {upgrading === "GROWTH" ? "Processing..." : <><CreditCard className="w-4 h-4" /> Card (auto-renew)</>}
+                    </button>
+                    <button
+                      onClick={() => handlePayManually("GROWTH")}
+                      disabled={!!upgrading}
+                      className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 text-slate-300 border border-slate-600 font-medium rounded-xl hover:bg-slate-700 transition-all text-sm disabled:opacity-50"
+                    >
+                      {upgrading === "GROWTH_manual" ? "Processing..." : <><Building2 className="w-4 h-4" /> Pay by transfer</>}
+                    </button>
+                  </div>
                 )}
                 <p className="text-center text-xs text-slate-500 mt-2">Cancel anytime.</p>
               </div>
@@ -352,13 +385,22 @@ function Billing() {
                     Current Plan
                   </div>
                 ) : (
-                  <button
-                    onClick={() => handleUpgrade("ACCOUNTANT_PRO")}
-                    disabled={!!upgrading}
-                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-violet-600/20 text-sm disabled:opacity-50"
-                  >
-                    {upgrading === "ACCOUNTANT_PRO" ? "Processing..." : <>Get Accountant Pro <ArrowRight className="w-4 h-4" /></>}
-                  </button>
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => handleUpgrade("ACCOUNTANT_PRO")}
+                      disabled={!!upgrading}
+                      className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-violet-600/20 text-sm disabled:opacity-50"
+                    >
+                      {upgrading === "ACCOUNTANT_PRO" ? "Processing..." : <><CreditCard className="w-4 h-4" /> Card (auto-renew)</>}
+                    </button>
+                    <button
+                      onClick={() => handlePayManually("ACCOUNTANT_PRO")}
+                      disabled={!!upgrading}
+                      className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-violet-50 text-violet-700 border border-violet-200 font-medium rounded-xl hover:bg-violet-100 transition-all text-sm disabled:opacity-50"
+                    >
+                      {upgrading === "ACCOUNTANT_PRO_manual" ? "Processing..." : <><Building2 className="w-4 h-4" /> Pay by transfer</>}
+                    </button>
+                  </div>
                 )}
                 <p className="text-center text-xs text-slate-400 mt-2">Cancel anytime.</p>
               </div>
@@ -372,8 +414,8 @@ function Billing() {
               Secured by <span className="font-semibold text-slate-700">Flutterwave</span> — trusted payment platform
             </div>
             <div className="flex items-center gap-2 text-xs text-slate-500">
-              <Shield className="w-3.5 h-3.5 text-slate-400" />
-              Your card details are never stored by LumiLedger
+              <Building2 className="w-3.5 h-3.5 text-slate-400" />
+              Pay by card, bank transfer, or USSD
             </div>
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <CheckCircle className="w-3.5 h-3.5 text-slate-400" />
