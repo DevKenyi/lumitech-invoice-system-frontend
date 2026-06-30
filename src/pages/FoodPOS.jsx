@@ -123,7 +123,9 @@ export default function FoodPOS() {
     setCart(prev => prev.filter(ci => ci.cartId !== cartId));
   }
 
-  const total = cart.reduce((s, ci) => s + ci.unitPrice * ci.qty, 0);
+  const subtotal = cart.reduce((s, ci) => s + ci.unitPrice * ci.qty, 0);
+  const convenienceFee = Math.round(subtotal * 0.05 * 100) / 100;
+  const total = subtotal + convenienceFee;
 
   async function charge() {
     if (cart.length === 0) return;
@@ -134,6 +136,7 @@ export default function FoodPOS() {
         channel: "IN_STORE",
         paymentMethod,
         notes,
+        convenienceFee,
         items: cart.map(ci => ({
           itemType: ci.itemType,
           refId: ci.refId,
@@ -347,6 +350,18 @@ export default function FoodPOS() {
 
         {/* Footer */}
         <div className="p-3 border-t border-slate-200 dark:border-slate-700 space-y-3">
+          {cart.length > 0 && (
+            <div className="flex justify-between items-center text-sm text-slate-500 dark:text-slate-400">
+              <span>Subtotal</span>
+              <span>{fmt(subtotal, currency)}</span>
+            </div>
+          )}
+          {cart.length > 0 && (
+            <div className="flex justify-between items-center text-sm text-slate-500 dark:text-slate-400">
+              <span>✅ Convenience (5%)</span>
+              <span>{fmt(convenienceFee, currency)}</span>
+            </div>
+          )}
           <div className="flex justify-between items-center">
             <span className="font-semibold text-slate-700 dark:text-slate-200">Total</span>
             <span className="text-xl font-bold text-slate-800 dark:text-slate-100">{fmt(total, currency)}</span>

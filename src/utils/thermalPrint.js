@@ -353,6 +353,10 @@ export function printFoodOrderBrowser(order, orgName, currency = "") {
       <table>${customerItems}</table>
       <div class="divider"></div>
       <table>
+        ${order.convenienceFee && Number(order.convenienceFee) > 0 ? `
+        <tr><td style="font-size:11px;color:#555">Subtotal</td><td style="text-align:right;font-size:11px;color:#555">${fmtAmt(Number(order.total) - Number(order.convenienceFee))}</td></tr>
+        <tr><td style="font-size:11px;color:#555">Convenience fee (5%)</td><td style="text-align:right;font-size:11px;color:#555">${fmtAmt(order.convenienceFee)}</td></tr>
+        ` : ""}
         <tr class="total"><td>TOTAL</td><td style="text-align:right">${fmtAmt(order.total)}</td></tr>
       </table>
       <div class="divider"></div>
@@ -459,6 +463,14 @@ function buildFoodEscPos(order, orgName, currency = "") {
   });
 
   hr();
+
+  // Fee breakdown
+  if (order.convenienceFee && Number(order.convenienceFee) > 0) {
+    const subtotalAmt = Number(order.total) - Number(order.convenienceFee);
+    text("Subtotal       : " + fmtShort(subtotalAmt)); nl();
+    text("Convenience(5%): " + fmtShort(order.convenienceFee)); nl();
+    hr();
+  }
 
   // Total
   push(ESC, 0x61, 0x02); push(GS, 0x21, 0x01); push(ESC, 0x45, 0x01);
