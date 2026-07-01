@@ -197,7 +197,7 @@ function Billing() {
                 Free Trial
               </div>
               <p className="text-3xl font-bold text-slate-900 mb-1">{currencySymbol}0</p>
-              <p className="text-slate-500 text-sm mb-2">for 30 days</p>
+              <p className="text-slate-500 text-sm mb-2">for 14 days</p>
               <p className="text-xs text-slate-400 mb-5 leading-relaxed">
                 Full access to every feature. No restrictions. No card needed.
               </p>
@@ -226,7 +226,7 @@ function Billing() {
                   </div>
                 )}
                 <p className="text-center text-xs text-slate-400 mt-2">
-                  Locks after 30 days
+                  Locks after 14 days
                 </p>
               </div>
             </div>
