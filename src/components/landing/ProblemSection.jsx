@@ -77,7 +77,7 @@ export default function ProblemSection() {
           >
             Yes, show me my numbers — Free <ChevronRight className="w-4 h-4" />
           </Link>
-          <p className="mt-3 text-xs text-slate-600">No credit card · 30-day free trial · Cancel anytime</p>
+          <p className="mt-3 text-xs text-slate-600">No credit card · 14-day free trial · Cancel anytime</p>
         </div>
       </div>
     </section>

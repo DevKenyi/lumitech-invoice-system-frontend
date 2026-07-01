@@ -37,7 +37,7 @@ export default function SocialProofBar() {
           <div className="hidden sm:block w-px h-10 bg-white/10 mx-12" />
 
           <div className="text-center">
-            <p className="text-2xl sm:text-3xl font-extrabold text-white">30 days</p>
+            <p className="text-2xl sm:text-3xl font-extrabold text-white">14 days</p>
             <p className="text-xs text-slate-500 mt-1">Free trial · No card required</p>
           </div>
 

@@ -143,7 +143,7 @@ export default function ForAccountants() {
                 to="/register"
                 className="inline-flex items-center gap-2 px-7 py-3.5 bg-white text-slate-900 font-bold rounded-xl shadow-lg shadow-white/10 hover:bg-slate-100 transition text-sm"
               >
-                Start 30-Day Free Trial <ChevronRight className="w-4 h-4" />
+                Start 14-Day Free Trial <ChevronRight className="w-4 h-4" />
               </Link>
               <p className="text-xs text-slate-600">No credit card · Full access · Cancel anytime</p>
             </div>
@@ -159,7 +159,7 @@ export default function ForAccountants() {
               { value: "100+",    label: "Businesses on the platform" },
               { value: "3",       label: "Countries supported" },
               { value: "🇳🇬 🇬🇭 🇿🇦", label: "Nigeria · Ghana · South Africa" },
-              { value: "30 days", label: "Free trial · No card required" },
+              { value: "14 days", label: "Free trial · No card required" },
             ].map((s, i, arr) => (
               <div key={s.label} className="flex items-center gap-8 sm:gap-12">
                 <div className="text-center">
@@ -319,7 +319,7 @@ export default function ForAccountants() {
             <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
               Built for scale — from solo practitioner to firm
             </h2>
-            <p className="text-slate-400 max-w-xl mx-auto">Every plan includes a 30-day free trial. No credit card required. Cancel anytime.</p>
+            <p className="text-slate-400 max-w-xl mx-auto">Every plan includes a 14-day free trial. No credit card required. Cancel anytime.</p>
           </div>
 
           {/* Country switcher */}
@@ -343,7 +343,7 @@ export default function ForAccountants() {
 
           <div className="flex items-center justify-center gap-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl px-6 py-4 mb-10 flex-wrap text-center">
             <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse flex-shrink-0" />
-            <p className="text-emerald-300 font-semibold text-sm">Every plan starts with a <strong>30-day free trial</strong> — full access, no card required.</p>
+            <p className="text-emerald-300 font-semibold text-sm">Every plan starts with a <strong>14-day free trial</strong> — full access, no card required.</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 items-stretch">
@@ -364,7 +364,7 @@ export default function ForAccountants() {
               </ul>
               <div className="mt-auto">
                 <Link to="/register" className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-slate-900 font-bold rounded-xl hover:bg-slate-100 transition text-sm">
-                  Start 30-Day Free Trial <ArrowRight className="w-4 h-4" />
+                  Start 14-Day Free Trial <ArrowRight className="w-4 h-4" />
                 </Link>
                 <p className="text-center text-xs text-slate-500 mt-2">{plans.essential.sub}</p>
               </div>
@@ -387,7 +387,7 @@ export default function ForAccountants() {
               </ul>
               <div className="mt-auto">
                 <Link to="/register" className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-slate-900 font-bold rounded-xl hover:bg-slate-100 transition text-sm">
-                  Start 30-Day Free Trial <ArrowRight className="w-4 h-4" />
+                  Start 14-Day Free Trial <ArrowRight className="w-4 h-4" />
                 </Link>
                 <p className="text-center text-xs text-slate-500 mt-2">{plans.business.sub}</p>
               </div>
@@ -413,7 +413,7 @@ export default function ForAccountants() {
               </ul>
               <div className="mt-auto">
                 <Link to="/register" className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-white text-blue-700 font-extrabold rounded-xl hover:bg-blue-50 transition shadow-lg text-sm">
-                  Start 30-Day Free Trial <ArrowRight className="w-4 h-4" />
+                  Start 14-Day Free Trial <ArrowRight className="w-4 h-4" />
                 </Link>
                 <p className="text-center text-xs text-blue-300 mt-2">{plans.accountantPro.sub}</p>
               </div>
@@ -467,7 +467,7 @@ export default function ForAccountants() {
                 to="/register"
                 className="inline-flex items-center gap-2 px-8 py-4 bg-white text-blue-700 font-extrabold rounded-2xl shadow-xl hover:bg-blue-50 hover:scale-[1.02] transition-all text-base"
               >
-                Start 30-Day Free Trial — Free <ArrowRight className="w-5 h-5" />
+                Start 14-Day Free Trial — Free <ArrowRight className="w-5 h-5" />
               </Link>
               <div className="flex flex-wrap items-center justify-center gap-6 mt-8">
                 {[

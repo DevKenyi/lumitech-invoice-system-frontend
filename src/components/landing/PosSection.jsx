@@ -347,7 +347,7 @@ export default function PosSection() {
               >
                 Start Selling Today <ArrowRight className="w-4 h-4" />
               </Link>
-              <span className="flex items-center justify-center text-slate-500 text-xs">30-day free trial · No card required</span>
+              <span className="flex items-center justify-center text-slate-500 text-xs">14-day free trial · No card required</span>
             </div>
           </div>
 

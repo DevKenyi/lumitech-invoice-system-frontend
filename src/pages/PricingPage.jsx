@@ -65,7 +65,7 @@ const features = [
 /* ─── FAQ data ─────────────────────────────────────────────────────── */
 const faqs = [
   {
-    q: "What happens when my 30-day trial ends?",
+    q: "What happens when my 14-day trial ends?",
     a: "If you haven't subscribed, your account is suspended the next morning. You can't create invoices or access your data until you pick a plan. Nothing is deleted — subscribing instantly restores full access to everything you had.",
   },
   {
@@ -136,7 +136,7 @@ export default function PricingPage() {
         <div className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-blue-600/20 rounded-full blur-[100px]" />
         <div className="relative max-w-3xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/6 border border-white/10 text-slate-300 text-xs font-semibold rounded-full mb-6">
-            <Zap className="w-3.5 h-3.5 text-blue-400" /> 30-Day Free Trial — No Card Required
+            <Zap className="w-3.5 h-3.5 text-blue-400" /> 14-Day Free Trial — No Card Required
           </div>
           <h1 className="text-4xl sm:text-5xl font-extrabold text-white leading-tight mb-4">
             Simple pricing.{" "}
@@ -145,7 +145,7 @@ export default function PricingPage() {
             </span>
           </h1>
           <p className="text-lg text-slate-400 max-w-xl mx-auto mb-8">
-            Start free. Use everything for 30 days. Pick a plan when you're ready — or walk away, no hard feelings.
+            Start free. Use everything for 14 days. Pick a plan when you're ready — or walk away, no hard feelings.
           </p>
           <Link to="/register" className="inline-flex items-center gap-2 px-7 py-3.5 bg-white text-slate-900 font-bold rounded-xl shadow-lg shadow-white/10 hover:bg-slate-100 transition">
             Start Free Trial <ArrowRight className="w-4 h-4" />
@@ -178,7 +178,7 @@ export default function PricingPage() {
 
             <div className="bg-white/4 border border-white/8 rounded-2xl p-6">
               <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center mb-4 text-lg font-extrabold text-white">2</div>
-              <h3 className="font-bold text-lg text-white mb-2">Use it for 30 days</h3>
+              <h3 className="font-bold text-lg text-white mb-2">Use it for 14 days</h3>
               <p className="text-slate-400 text-sm leading-relaxed">
                 Run your business. Create invoices, record capital, generate reports. Your dashboard shows exactly how many days remain. We'll email you a reminder before it ends.
               </p>
@@ -192,7 +192,7 @@ export default function PricingPage() {
               <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center mb-4 text-lg font-extrabold text-white">3</div>
               <h3 className="font-bold text-lg text-white mb-2">Pick a plan or leave</h3>
               <p className="text-slate-400 text-sm leading-relaxed">
-                Subscribe before day 30 and continue uninterrupted. If you don't subscribe, your account is suspended — but <strong className="text-white">nothing is deleted</strong>. Subscribe anytime to restore full access instantly.
+                Subscribe before day 14 and continue uninterrupted. If you don't subscribe, your account is suspended — but <strong className="text-white">nothing is deleted</strong>. Subscribe anytime to restore full access instantly.
               </p>
               <div className="mt-4 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
@@ -209,7 +209,7 @@ export default function PricingPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">Choose your plan</h2>
-            <p className="text-slate-400 max-w-lg mx-auto">All plans start with a 30-day free trial. Subscribe when you're ready.</p>
+            <p className="text-slate-400 max-w-lg mx-auto">All plans start with a 14-day free trial. Subscribe when you're ready.</p>
           </div>
           <div className="grid md:grid-cols-4 gap-5 items-stretch">
 
@@ -219,7 +219,7 @@ export default function PricingPage() {
                 <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" /> Free Trial
               </div>
               <p className="text-3xl font-extrabold text-white mb-0.5">₦0</p>
-              <p className="text-sm text-slate-500 mb-4">for 30 days</p>
+              <p className="text-sm text-slate-500 mb-4">for 14 days</p>
               <p className="text-xs text-slate-500 mb-5 leading-relaxed">Full access to every feature. No restrictions whatsoever.</p>
               <div className="mt-auto">
                 <Link to="/register" className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-slate-900 font-bold rounded-xl text-sm transition hover:bg-slate-100">
@@ -283,7 +283,7 @@ export default function PricingPage() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">What's included in each plan</h2>
-            <p className="text-slate-400">Every plan starts with a full 30-day free trial.</p>
+            <p className="text-slate-400">Every plan starts with a full 14-day free trial.</p>
           </div>
           <div className="rounded-2xl border border-white/10 overflow-hidden">
             {/* Header */}
@@ -418,7 +418,7 @@ export default function PricingPage() {
             ))}
           </div>
           <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4">Ready to get started?</h2>
-          <p className="text-slate-400 mb-8">30 days free. Full access. No credit card.</p>
+          <p className="text-slate-400 mb-8">14 days free. Full access. No credit card.</p>
           <Link to="/register" className="inline-flex items-center gap-2 px-8 py-4 bg-white text-slate-900 font-extrabold rounded-xl shadow-lg shadow-white/10 hover:bg-slate-100 transition text-base">
             Start Free Trial <ChevronRight className="w-5 h-5" />
           </Link>

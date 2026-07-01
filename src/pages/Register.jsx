@@ -110,7 +110,7 @@ export default function Register() {
           <h1 className="text-2xl font-bold text-slate-900">
             Lumi<span className="text-blue-600">Ledger</span>
           </h1>
-          <p className="text-sm text-slate-400 mt-1">Free for 30 days — no card needed</p>
+          <p className="text-sm text-slate-400 mt-1">Free for 14 days — no card needed</p>
         </div>
 
         <StepDots current={step} />

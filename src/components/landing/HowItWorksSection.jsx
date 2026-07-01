@@ -73,7 +73,7 @@ export default function HowItWorksSection() {
             to="/register"
             className="inline-flex items-center gap-2 px-8 py-4 bg-white text-slate-900 font-bold rounded-xl hover:bg-slate-100 transition shadow-lg shadow-white/10 text-base"
           >
-            Try It Free — 30 Days <ChevronRight className="w-4 h-4" />
+            Try It Free — 14 Days <ChevronRight className="w-4 h-4" />
           </Link>
           <p className="mt-3 text-xs text-slate-600">No credit card. No setup fee. Ready in under 2 minutes.</p>
         </div>

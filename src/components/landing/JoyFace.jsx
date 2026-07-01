@@ -69,7 +69,7 @@ export default function JoyFace() {
                 href="/register"
                 className="inline-flex items-center gap-2 px-6 py-3 bg-white text-slate-900 text-sm font-bold rounded-xl hover:bg-slate-100 transition shadow-lg shadow-white/10"
               >
-                Start free — 30 days →
+                Start free — 14 days →
               </a>
             </div>
           </div>

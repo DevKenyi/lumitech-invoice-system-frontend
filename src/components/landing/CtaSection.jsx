@@ -25,7 +25,7 @@ export default function CtaSection() {
           {/* Trust bullets */}
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 mb-10">
             {[
-              "30-day free trial",
+              "14-day free trial",
               "No credit card required",
               "Set up in under 2 minutes",
               "Cancel anytime",

@@ -17,7 +17,7 @@ export default function PricingSection() {
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 leading-tight">
             Simple pricing. Start free.
           </h2>
-          <p className="text-slate-400 max-w-xl mx-auto">Every plan includes a full 30-day free trial — no credit card, no restrictions. Pick a plan, try everything, then decide.</p>
+          <p className="text-slate-400 max-w-xl mx-auto">Every plan includes a full 14-day free trial — no credit card, no restrictions. Pick a plan, try everything, then decide.</p>
         </div>
 
         {/* Country switcher */}
@@ -64,7 +64,7 @@ export default function PricingSection() {
         {/* Free trial banner */}
         <div className="flex items-center justify-center gap-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl px-6 py-4 mb-10 flex-wrap text-center">
           <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse flex-shrink-0" />
-          <p className="text-emerald-300 font-semibold text-sm">Every plan below starts with a <strong>30-day free trial</strong> — full access, no card required. You only pay after day 30.</p>
+          <p className="text-emerald-300 font-semibold text-sm">Every plan below starts with a <strong>14-day free trial</strong> — full access, no card required. You only pay after day 14.</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 items-stretch">
@@ -88,7 +88,7 @@ export default function PricingSection() {
             </ul>
             <div className="mt-auto">
               <Link to="/register" className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-slate-900 font-bold rounded-xl hover:bg-slate-100 transition text-sm">
-                Start 30-Day Free Trial <ArrowRight className="w-4 h-4" />
+                Start 14-Day Free Trial <ArrowRight className="w-4 h-4" />
               </Link>
               <p className="text-center text-xs text-slate-500 mt-2">{plans.essential.sub}</p>
             </div>
@@ -117,7 +117,7 @@ export default function PricingSection() {
             </ul>
             <div className="mt-auto">
               <Link to="/register" className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-white text-blue-700 font-extrabold rounded-xl hover:bg-blue-50 transition shadow-lg text-sm">
-                Start 30-Day Free Trial <ArrowRight className="w-4 h-4" />
+                Start 14-Day Free Trial <ArrowRight className="w-4 h-4" />
               </Link>
               <p className="text-center text-xs text-blue-300 mt-2">{plans.business.sub}</p>
             </div>
@@ -156,7 +156,7 @@ export default function PricingSection() {
             <p className="text-xs text-violet-400 font-semibold italic mb-4">Built for accountants managing multiple clients</p>
             <div className="mt-auto">
               <Link to="/register" className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-xl transition shadow-lg text-sm">
-                Start 30-Day Free Trial <ArrowRight className="w-4 h-4" />
+                Start 14-Day Free Trial <ArrowRight className="w-4 h-4" />
               </Link>
               <p className="text-center text-xs text-slate-500 mt-2">{plans.accountantPro.sub}</p>
             </div>

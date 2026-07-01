@@ -19,7 +19,7 @@ const SECTIONS = [
           "Choose your business type: Business Owner or Accountant.",
           "Click Register — a verification email is sent to your address.",
           "Open the email and click Verify Email to activate your account.",
-          "Log in with your credentials. You automatically start a 30-day free trial with full access.",
+          "Log in with your credentials. You automatically start a 14-day free trial with full access.",
         ],
         tips: [
           "Use a business email address — it appears on all invoices and client communications.",
@@ -704,7 +704,7 @@ Use it to:
         id: "billing-plans",
         title: "Billing & Subscription Plans",
         summary: "Choose and manage your LumiLedger subscription.",
-        content: `LumiLedger includes a 30-day free trial with full access to all features. After the trial, choose a plan:
+        content: `LumiLedger includes a 14-day free trial with full access to all features. After the trial, choose a plan:
 
 • Starter — for freelancers and micro businesses. Invoicing, clients, and basic reports.
 • Growth — for growing businesses. Adds accounting, purchase orders, inventory, and team support.
