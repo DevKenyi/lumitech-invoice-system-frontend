@@ -67,6 +67,7 @@ import BankConnections from "./pages/BankConnections";
 import MenuManagement from "./pages/MenuManagement";
 import FoodPOS from "./pages/FoodPOS";
 import OrdersKDS from "./pages/OrdersKDS";
+import CommissionPage from "./pages/CommissionPage";
 
 // Shown instead of the full app when the account is suspended or trial has ended.
 // Lives inside OrgProvider so <Billing /> can use OrgContext.
@@ -705,6 +706,7 @@ function App() {
           <Route path="/po-response/:token" element={<POResponse />} />
           <Route path="/followup/:token" element={<FollowupPage />} />
           <Route path="/followup-board/:boardToken" element={<FollowupBoard />} />
+          <Route path="/commission/:token" element={<CommissionPage />} />
 
           {/* DOCS — public, no auth required */}
           <Route path="/docs" element={<Docs />} />

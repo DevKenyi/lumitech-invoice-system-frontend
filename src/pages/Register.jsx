@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import api from "../services/api";
 import {
   Briefcase, Calculator, Building2, Mail, User,
@@ -46,9 +46,11 @@ function StepDots({ current }) {
 
 export default function Register() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [step, setStep] = useState(0);
   const [selectedUserType, setSelectedUserType] = useState("");
   const [businessType, setBusinessType] = useState("");
+  const [referredBy] = useState(() => searchParams.get("ref") || "");
   const [form, setForm] = useState({ orgName: "", email: "", phone: "", username: "", password: "", country: "NG" });
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -66,6 +68,7 @@ export default function Register() {
         ...form,
         userType: selectedUserType.toUpperCase(),
         businessType: businessType || null,
+        referredBy: referredBy || null,
       });
       setUserType(selectedUserType);
       setRegisteredAs(selectedUserType);
