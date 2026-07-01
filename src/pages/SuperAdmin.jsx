@@ -1815,11 +1815,10 @@ function SuperAdmin() {
                 </div>
                 <div className="px-6 py-5 space-y-4">
                   {[
-                    { key: "name",           label: "Full Name",        placeholder: "John Doe" },
-                    { key: "email",          label: "Email",            placeholder: "john@example.com", type: "email" },
-                    { key: "phone",          label: "Phone",            placeholder: "+234 800 000 0000" },
-                    { key: "referralCode",   label: "Referral Code",    placeholder: "BM-JOHN", disabled: bmModal.mode === "edit" },
-                    { key: "commissionRate", label: "Commission Rate",  placeholder: "0.08 (= 8%)", type: "number" },
+                    { key: "name",           label: "Full Name",       placeholder: "John Doe" },
+                    { key: "email",          label: "Email",           placeholder: "john@example.com", type: "email" },
+                    { key: "phone",          label: "Phone",           placeholder: "+234 800 000 0000" },
+                    { key: "commissionRate", label: "Commission Rate", placeholder: "0.08 (= 8%)", type: "number" },
                   ].map(f => (
                     <div key={f.key}>
                       <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{f.label}</label>
@@ -1827,13 +1826,20 @@ function SuperAdmin() {
                         type={f.type || "text"}
                         value={bmForm[f.key]}
                         onChange={e => setBmForm(prev => ({ ...prev, [f.key]: e.target.value }))}
-                        disabled={f.disabled}
                         placeholder={f.placeholder}
                         step={f.type === "number" ? "0.01" : undefined}
-                        className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                        className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
                   ))}
+                  {bmModal.mode === "edit" && bmForm.referralCode && (
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Referral Code</label>
+                      <p className="px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 text-blue-600 dark:text-blue-400 font-mono font-bold tracking-wider">
+                        {bmForm.referralCode}
+                      </p>
+                    </div>
+                  )}
                 </div>
                 <div className="px-6 pb-6 flex gap-2 justify-end">
                   <button onClick={() => setBmModal(null)} className="px-4 py-2 text-sm text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition">Cancel</button>
