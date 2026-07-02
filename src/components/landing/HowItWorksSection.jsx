@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, ShieldCheck, ArrowRightLeft, FileInput } from "lucide-react";
 import useInView from "../../hooks/useInView";
 
 const STEPS = [
@@ -66,6 +66,46 @@ export default function HowItWorksSection() {
               <p className={`text-xs leading-relaxed border rounded-xl px-3 py-2 ${s.badge}`}>{s.detail}</p>
             </div>
           ))}
+        </div>
+
+        {/* ── We never hold your money ─────────────────────────────────────── */}
+        <div className="mb-10 bg-emerald-950/40 border border-emerald-500/20 rounded-2xl p-6 sm:p-8">
+          <div className="flex items-start gap-3 mb-5">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center flex-shrink-0">
+              <ShieldCheck className="w-5 h-5 text-emerald-400" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-white mb-0.5">We never touch your money</h3>
+              <p className="text-xs text-emerald-400/80 font-medium">100% of every payment goes directly to your account</p>
+            </div>
+          </div>
+          <ul className="space-y-3">
+            <li className="flex items-start gap-3 text-sm text-slate-300">
+              <ArrowRightLeft className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+              <span>Payments flow <strong className="text-white">directly from your customer to your bank account</strong> — via Paystack or Flutterwave. LumiLedger never pools, holds, or has custody of any funds.</span>
+            </li>
+            <li className="flex items-start gap-3 text-sm text-slate-300">
+              <ShieldCheck className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+              <span>Paystack and Flutterwave are <strong className="text-white">fully licensed, regulated payment processors</strong>. LumiLedger is software that sits on top — we don't need a banking licence because we don't move money.</span>
+            </li>
+            <li className="flex items-start gap-3 text-sm text-slate-300">
+              <ShieldCheck className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+              <span>LumiLedger only <strong className="text-white">records and organises</strong> what happened. Think of us as your bookkeeper, not your bank.</span>
+            </li>
+          </ul>
+        </div>
+
+        {/* ── Migration reassurance ─────────────────────────────────────────── */}
+        <div className="mb-14 flex items-start gap-4 bg-white/4 border border-white/8 rounded-2xl px-6 py-5">
+          <div className="w-10 h-10 rounded-xl bg-blue-500/15 border border-blue-500/25 flex items-center justify-center flex-shrink-0">
+            <FileInput className="w-5 h-5 text-blue-400" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-white mb-1">Already on Excel, notebooks, or WhatsApp? Bring everything with you.</p>
+            <p className="text-sm text-slate-400 leading-relaxed">
+              You don't start from zero. Our team helps you import your existing records — clients, invoices, outstanding balances — so your history moves with you. No data lost, no clean-slate panic.
+            </p>
+          </div>
         </div>
 
         <div className="text-center">

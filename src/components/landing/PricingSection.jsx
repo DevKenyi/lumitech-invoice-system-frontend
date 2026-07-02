@@ -109,7 +109,7 @@ export default function PricingSection() {
             </div>
             <p className="text-blue-200 text-sm mb-5">For growing businesses that need more</p>
             <ul className="space-y-2.5 mb-6 flex-1">
-              {["Everything in Essential", "Unlimited clients", "Multi-user access", "Advanced reports", "Chart of Accounts & Ledger", "Journal Entries", "Bank reconciliation", "Fixed assets & depreciation"].map(f => (
+              {["Everything in Essential", "Unlimited clients", "Multi-user access", "Advanced reports", "Automatic bookkeeping behind the scenes", "Matches your bank transactions automatically", "Tracks what your equipment is worth over time"].map(f => (
                 <li key={f} className="flex items-start gap-2 text-sm text-white">
                   <CheckCircle className="w-4 h-4 text-blue-200 flex-shrink-0 mt-0.5" />{f}
                 </li>

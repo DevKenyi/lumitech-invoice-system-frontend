@@ -12,7 +12,7 @@ export default function CtaSection() {
           {/* Urgency pill */}
           <div className="inline-flex items-center gap-2 bg-white/15 border border-white/25 rounded-full px-4 py-1.5 mb-7 backdrop-blur-sm">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-white text-xs font-semibold tracking-wide">Free trial — no card needed · Spots filling fast</span>
+            <span className="text-white text-xs font-semibold tracking-wide">Free trial — no card needed · Ready in under 2 minutes</span>
           </div>
 
           <h2 className="text-3xl sm:text-5xl font-extrabold text-white mb-5 leading-tight">
