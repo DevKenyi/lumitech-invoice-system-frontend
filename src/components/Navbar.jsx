@@ -1,5 +1,5 @@
 // Navbar.jsx — Grouped collapsible sections, plan-gated
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, FileText, PlusCircle, Users, LogOut,
   ChevronLeft, ChevronRight, Building2, FolderOpen, ShieldCheck,
@@ -8,13 +8,125 @@ import {
   Info, SlidersHorizontal, Package, ShoppingCart, BarChart2,
   FileCheck, Repeat, Undo2, FileMinus, ClipboardCheck,
   Warehouse, Target, UserCog, GitBranch, BookMarked, TrendingDown, History,
-  Tag, ShoppingBag, UtensilsCrossed,
+  Tag, ShoppingBag, UtensilsCrossed, Search,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import api, { getUserFromToken } from "../services/api";
 import { getUserType, setUserType, getRegisteredAs, USER_TYPES, paymentLabel } from "../utils/userType";
 import posthog from 'posthog-js';
 import NotificationBell from "./NotificationBell";
+
+// ── Command Palette ───────────────────────────────────────────────────────────
+function CommandPalette({ items, onClose }) {
+  const [query, setQuery] = useState("");
+  const [cursor, setCursor] = useState(0);
+  const navigate = useNavigate();
+  const inputRef = useRef(null);
+  const listRef = useRef(null);
+
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  const filtered = query.trim()
+    ? items.filter(item =>
+        item.label.toLowerCase().includes(query.toLowerCase()) ||
+        item.section?.toLowerCase().includes(query.toLowerCase()) ||
+        item.info?.toLowerCase().includes(query.toLowerCase())
+      )
+    : items;
+
+  useEffect(() => { setCursor(0); }, [query]);
+
+  // Scroll cursor into view
+  useEffect(() => {
+    const el = listRef.current?.children[cursor];
+    el?.scrollIntoView({ block: "nearest" });
+  }, [cursor]);
+
+  const go = useCallback((item) => {
+    navigate(item.path);
+    onClose();
+  }, [navigate, onClose]);
+
+  const onKey = (e) => {
+    if (e.key === "ArrowDown") { e.preventDefault(); setCursor(c => Math.min(c + 1, filtered.length - 1)); }
+    if (e.key === "ArrowUp")   { e.preventDefault(); setCursor(c => Math.max(c - 1, 0)); }
+    if (e.key === "Enter" && filtered[cursor]) go(filtered[cursor]);
+    if (e.key === "Escape") onClose();
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-sm flex items-start justify-center pt-[15vh] px-4"
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="w-full max-w-lg bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+        {/* Search input */}
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 dark:border-slate-700">
+          <Search size={16} className="text-slate-400 flex-shrink-0" />
+          <input
+            ref={inputRef}
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            onKeyDown={onKey}
+            placeholder="Search menu…"
+            className="flex-1 text-sm bg-transparent text-slate-900 dark:text-white placeholder-slate-400 outline-none"
+          />
+          <kbd className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 bg-slate-100 dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600">
+            Esc
+          </kbd>
+        </div>
+
+        {/* Results */}
+        <ul ref={listRef} className="max-h-72 overflow-y-auto py-2">
+          {filtered.length === 0 && (
+            <li className="px-4 py-8 text-center text-sm text-slate-400">No results for "{query}"</li>
+          )}
+          {filtered.map((item, i) => {
+            const Icon = item.icon;
+            const active = i === cursor;
+            return (
+              <li key={item.path}>
+                <button
+                  onMouseEnter={() => setCursor(i)}
+                  onClick={() => go(item)}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition ${
+                    active
+                      ? "bg-blue-50 dark:bg-blue-900/30"
+                      : "hover:bg-slate-50 dark:hover:bg-slate-700/40"
+                  }`}
+                >
+                  <div className={`p-1.5 rounded-lg flex-shrink-0 ${active ? "bg-blue-100 dark:bg-blue-800/50" : "bg-slate-100 dark:bg-slate-700"}`}>
+                    <Icon size={14} className={active ? "text-blue-600 dark:text-blue-400" : "text-slate-500 dark:text-slate-400"} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-medium truncate ${active ? "text-blue-700 dark:text-blue-300" : "text-slate-800 dark:text-slate-200"}`}>
+                      {item.label}
+                    </p>
+                    {item.section && (
+                      <p className="text-xs text-slate-400 dark:text-slate-500 truncate">{item.section}</p>
+                    )}
+                  </div>
+                  {active && (
+                    <kbd className="flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-800/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-700 font-medium">
+                      ↵
+                    </kbd>
+                  )}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+
+        {/* Footer hint */}
+        <div className="px-4 py-2 border-t border-slate-100 dark:border-slate-700 flex items-center gap-4">
+          <span className="text-[10px] text-slate-400 flex items-center gap-1"><kbd className="font-mono">↑↓</kbd> navigate</span>
+          <span className="text-[10px] text-slate-400 flex items-center gap-1"><kbd className="font-mono">↵</kbd> open</span>
+          <span className="text-[10px] text-slate-400 flex items-center gap-1"><kbd className="font-mono">Esc</kbd> close</span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const PLAN_BADGE = {
   FREE:           "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400",
@@ -147,6 +259,7 @@ function NavSection({ id, label, icon: Icon, items, collapsed, defaultOpen, lock
 function Navbar({ onClose }) {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const effectiveCollapsed = collapsed;
   const [plan, setPlan] = useState(getUserFromToken()?.plan ?? null);
   const [userType, setUserTypeState] = useState(getUserType());
@@ -229,6 +342,18 @@ function Navbar({ onClose }) {
     api.get("/api/billing/status")
       .then(res => setPlan(res.data.currentPlan ?? null))
       .catch(() => {});
+  }, []);
+
+  // Cmd+K / Ctrl+K global shortcut
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen(o => !o);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
   }, []);
 
   const handleSwitchMode = () => {
@@ -351,8 +476,21 @@ function Navbar({ onClose }) {
     ...settingsItems,
   ];
 
+  // All items with section labels for the command palette
+  const paletteItems = isStaff ? staffItems.map(i => ({ ...i, section: "Menu" })) : [
+    { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard, section: "Home" },
+    ...(adminSectionVisible("sales")      ? salesItems.map(i => ({ ...i, section: "Sales & Invoicing" }))    : []),
+    ...(adminSectionVisible("purchases")  ? purchasesItems.map(i => ({ ...i, section: "Bills & Purchases" })) : []),
+    ...(isAccountant && adminSectionVisible("accounting") ? accountingItems.map(i => ({ ...i, section: "Accounting" })) : []),
+    ...(adminSectionVisible("reports")    ? reportItems.map(i => ({ ...i, section: "Reports" }))             : []),
+    ...(adminSectionVisible("pos")        ? posItems.map(i => ({ ...i, section: "Retail & POS" }))           : []),
+    ...settingsItems.map(i => ({ ...i, section: "Settings" })),
+    { path: "/docs", label: "Help & Docs", icon: BookOpen, section: "Help" },
+  ];
+
   return (
     <aside className={`h-screen sticky top-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-r border-slate-200/60 dark:border-slate-700/60 flex flex-col transition-all duration-300 ${effectiveCollapsed ? "w-16" : "w-64"}`}>
+      {searchOpen && <CommandPalette items={paletteItems} onClose={() => setSearchOpen(false)} />}
 
       {/* Logo & Toggle */}
       <div className="flex items-center justify-between p-3 border-b border-slate-200/60 dark:border-slate-700/60 flex-shrink-0">
@@ -382,6 +520,33 @@ function Navbar({ onClose }) {
           </div>
         </div>
       </div>
+
+      {/* Search trigger */}
+      {!effectiveCollapsed && (
+        <div className="px-3 py-2 border-b border-slate-200/60 dark:border-slate-700/60 flex-shrink-0">
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition text-slate-400 dark:text-slate-500 text-sm"
+          >
+            <Search size={14} className="flex-shrink-0" />
+            <span className="flex-1 text-left text-xs">Search menu…</span>
+            <kbd className="hidden sm:inline-flex text-[10px] font-medium px-1.5 py-0.5 rounded bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-400 dark:text-slate-500">
+              ⌘K
+            </kbd>
+          </button>
+        </div>
+      )}
+      {effectiveCollapsed && (
+        <div className="px-2 py-2 border-b border-slate-200/60 dark:border-slate-700/60 flex-shrink-0 flex justify-center">
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+            title="Search menu (⌘K)"
+          >
+            <Search size={16} className="text-slate-400 dark:text-slate-500" />
+          </button>
+        </div>
+      )}
 
       {/* Navigation */}
       <nav className="flex-1 py-3 px-2 overflow-y-auto space-y-0.5 scrollbar-thin">
