@@ -268,6 +268,22 @@ function PrinterSetupModal({ orgName, onClose }) {
   );
 }
 
+const CARD_GRADIENTS = [
+  "from-blue-400 to-indigo-500",
+  "from-emerald-400 to-teal-500",
+  "from-violet-400 to-purple-500",
+  "from-rose-400 to-pink-500",
+  "from-amber-400 to-orange-500",
+  "from-cyan-400 to-sky-500",
+  "from-pink-400 to-rose-500",
+  "from-lime-400 to-green-500",
+];
+const productGradient = (name = "") => {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+  return `bg-gradient-to-br ${CARD_GRADIENTS[Math.abs(h) % CARD_GRADIENTS.length]}`;
+};
+
 export default function POS() {
   const { fmt, currencySymbol, currency, locale } = useOrg();
   const navigate = useNavigate();
@@ -922,15 +938,21 @@ export default function POS() {
                   const displayPrice = isWholesale && p.wholesalePrice ? p.wholesalePrice : p.price;
                   return (
                     <button key={p.id} onClick={() => addToCart(p)}
-                      className="w-full flex items-center justify-between px-4 py-3 hover:bg-blue-50 dark:hover:bg-slate-700 transition text-left">
-                      <div>
-                        <p className="text-sm font-semibold text-slate-800 dark:text-white flex items-center gap-1.5">
+                      className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-blue-50 dark:hover:bg-slate-700 transition text-left">
+                      <div className={`w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 ${!p.imageUrl ? productGradient(p.name) : ""} flex items-center justify-center`}>
+                        {p.imageUrl
+                          ? <img src={p.imageUrl} alt="" className="w-full h-full object-cover" />
+                          : <span className="text-sm font-black text-white/80">{p.name.charAt(0).toUpperCase()}</span>
+                        }
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-800 dark:text-white flex items-center gap-1.5 truncate">
                           {p.name}
-                          {p.hasVariants && <Layers className="w-3 h-3 text-violet-500" />}
+                          {p.hasVariants && <Layers className="w-3 h-3 text-violet-500 flex-shrink-0" />}
                         </p>
                         <p className="text-xs text-slate-400">{p.sku || "No SKU"} · {p.hasVariants ? "Has variants" : `${p.quantityInStock} ${p.unit} left`}</p>
                       </div>
-                      <p className="text-sm font-bold text-blue-600 ml-4 flex-shrink-0">{fmt(displayPrice)}</p>
+                      <p className="text-sm font-bold text-blue-600 flex-shrink-0">{fmt(displayPrice)}</p>
                     </button>
                   );
                 })}
@@ -939,42 +961,74 @@ export default function POS() {
           </div>
 
           {/* Quick product grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[420px] overflow-y-auto pr-1">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[480px] overflow-y-auto pr-1">
             {products.slice(0, 30).map(p => {
               const isWholesale = selectedClient?.customerType === "WHOLESALE";
               const displayPrice = isWholesale && p.wholesalePrice ? p.wholesalePrice : p.price;
               const outOfStock = !p.hasVariants && p.quantityInStock <= 0;
+              const lowStock = !p.hasVariants && !outOfStock && p.quantityInStock <= (p.lowStockThreshold || 5);
               return (
                 <button key={p.id} onClick={() => addToCart(p)}
                   disabled={outOfStock}
-                  className={`text-left rounded-xl border transition overflow-hidden ${
+                  className={`group text-left rounded-2xl border transition-all overflow-hidden ${
                     outOfStock
-                      ? "opacity-40 cursor-not-allowed border-slate-100"
-                      : "border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:shadow-sm bg-white dark:bg-slate-800"
+                      ? "opacity-50 cursor-not-allowed border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800"
+                      : "border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-lg bg-white dark:bg-slate-800 active:scale-[0.97]"
                   }`}>
-                  {p.imageUrl && (
-                    <img src={p.imageUrl} alt="" className="w-full h-24 object-cover" />
-                  )}
-                  <div className="p-3">
-                    <p className="text-sm font-semibold text-slate-800 dark:text-white truncate flex items-center gap-1">
-                      {p.name}
-                      {p.hasVariants && <Layers className="w-3 h-3 text-violet-500 flex-shrink-0" />}
-                    </p>
-                    <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+
+                  {/* Image / colour placeholder */}
+                  <div className="relative w-full h-28 overflow-hidden">
+                    {p.imageUrl ? (
+                      <img src={p.imageUrl} alt={p.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    ) : (
+                      <div className={`w-full h-full flex items-center justify-center ${productGradient(p.name)}`}>
+                        <span className="text-4xl font-black text-white/70 select-none">
+                          {p.name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Out-of-stock dimmer */}
+                    {outOfStock && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <span className="text-[10px] font-bold text-white bg-black/60 px-2 py-0.5 rounded-full tracking-wide">OUT OF STOCK</span>
+                      </div>
+                    )}
+
+                    {/* Top-left badges */}
+                    <div className="absolute top-2 left-2 flex gap-1">
                       {p.drugCategory === "POM" && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-100 text-rose-700 border border-rose-200">RX</span>
+                        <span className="text-[9px] font-bold bg-rose-500 text-white px-1.5 py-0.5 rounded-full shadow">RX</span>
                       )}
                       {p.drugCategory === "OTC" && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-700 border border-blue-200">OTC</span>
+                        <span className="text-[9px] font-bold bg-blue-500 text-white px-1.5 py-0.5 rounded-full shadow">OTC</span>
                       )}
-                      <p className="text-xs text-slate-400">
-                        {p.hasVariants ? "Select variant" : (outOfStock ? "Out of stock" : `${p.quantityInStock} ${p.unit}`)}
-                      </p>
+                      {p.hasVariants && (
+                        <span className="text-[9px] font-bold bg-violet-500 text-white px-1.5 py-0.5 rounded-full shadow flex items-center gap-0.5">
+                          <Layers className="w-2.5 h-2.5" /> VAR
+                        </span>
+                      )}
                     </div>
-                    <p className="text-sm font-bold text-blue-600 mt-1">{fmt(displayPrice)}</p>
-                    {isWholesale && p.wholesaleMinQty > 1 && (
-                      <p className="text-[10px] text-amber-600 font-semibold mt-0.5">MOQ: {p.wholesaleMinQty}</p>
+
+                    {/* Low stock dot */}
+                    {lowStock && (
+                      <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-amber-400 shadow animate-pulse" />
                     )}
+                  </div>
+
+                  {/* Text */}
+                  <div className="p-3">
+                    <p className="text-sm font-bold text-slate-800 dark:text-white truncate leading-tight">{p.name}</p>
+                    <p className="text-xs text-slate-400 mt-0.5 truncate">
+                      {p.hasVariants ? "Tap to select variant" : outOfStock ? "Out of stock" : `${p.quantityInStock} ${p.unit}`}
+                    </p>
+                    <div className="flex items-center justify-between mt-1.5">
+                      <p className="text-sm font-extrabold text-blue-600">{fmt(displayPrice)}</p>
+                      {isWholesale && p.wholesaleMinQty > 1 && (
+                        <p className="text-[9px] text-amber-600 font-bold bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-full">MOQ {p.wholesaleMinQty}</p>
+                      )}
+                    </div>
                   </div>
                 </button>
               );
