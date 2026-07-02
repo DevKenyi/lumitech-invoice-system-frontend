@@ -138,7 +138,7 @@ export default function ReferralDashboard() {
           Referral Programme
         </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Earn 5% commission for every business you refer that subscribes — for up to 12 months.
+          Earn {data ? `${(data.commissionRate * 100).toFixed(0)}%` : "—"} commission for every business you refer that subscribes — for up to 12 months.
         </p>
       </div>
 
@@ -280,7 +280,7 @@ export default function ReferralDashboard() {
                     <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Business</th>
                     <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
                     <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Payment</th>
-                    <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Commission (5%)</th>
+                    <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Commission ({data ? `${(data.commissionRate * 100).toFixed(0)}%` : ""})</th>
                     <th className="px-5 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
                   </tr>
                 </thead>

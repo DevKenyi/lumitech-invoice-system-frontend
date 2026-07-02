@@ -324,6 +324,8 @@ function SuperAdmin() {
   const [referralPayouts, setReferralPayouts] = useState([]);
   const [referralsLoaded, setReferralsLoaded] = useState(false);
   const [payoutActionId, setPayoutActionId] = useState(null);
+  const [commissionRateInput, setCommissionRateInput] = useState("");
+  const [savingRate, setSavingRate] = useState(false);
 
   // ── Business Managers ──
   const [bms, setBms] = useState([]);
@@ -419,10 +421,13 @@ function SuperAdmin() {
         api.get("/api/superadmin/referrals"),
         api.get("/api/superadmin/referrals/commissions"),
         api.get("/api/superadmin/referrals/payouts"),
-      ]).then(([rRes, cRes, pRes]) => {
+        api.get("/api/superadmin/settings"),
+      ]).then(([rRes, cRes, pRes, sRes]) => {
         setReferrals(rRes.data ?? []);
         setReferralCommissions(cRes.data ?? []);
         setReferralPayouts(pRes.data ?? []);
+        const rate = sRes.data?.referral_commission_rate;
+        if (rate) setCommissionRateInput(String(parseFloat(rate) * 100));
         setReferralsLoaded(true);
       }).catch(() => {});
     }
@@ -1605,6 +1610,50 @@ function SuperAdmin() {
       {/* ── REFERRALS TAB ────────────────────────────────────────────────────── */}
       {tab === "referrals" && (
         <div className="space-y-6">
+          {/* Commission Rate Setting */}
+          <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex-1">
+                <h2 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Gift className="w-4 h-4 text-purple-600" /> Commission Rate
+                </h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                  Applied to all new subscription payments going forward. Existing commission records are not affected.
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.5"
+                    value={commissionRateInput}
+                    onChange={e => setCommissionRateInput(e.target.value)}
+                    className="w-28 px-3 py-2 pr-8 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-right font-mono"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">%</span>
+                </div>
+                <button
+                  disabled={savingRate}
+                  onClick={async () => {
+                    const pct = parseFloat(commissionRateInput);
+                    if (isNaN(pct) || pct < 0 || pct > 100) { showToast("Enter a value between 0 and 100", "error"); return; }
+                    setSavingRate(true);
+                    try {
+                      await api.put("/api/superadmin/settings/referral_commission_rate", { value: String(pct / 100) });
+                      showToast(`Commission rate updated to ${pct}%`);
+                    } catch { showToast("Failed to update rate", "error"); }
+                    finally { setSavingRate(false); }
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-xl transition disabled:opacity-50"
+                >
+                  {savingRate ? "Saving…" : "Save"}
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Payout Requests */}
           <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center gap-2">
