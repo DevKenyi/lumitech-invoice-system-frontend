@@ -479,11 +479,11 @@ export default function Inventory() {
       onDisconnect: () => setInvPhoneConnected(false),
     });
     client.onConnect = () => {
-      setInvPhoneConnected(true);
       client.subscribe(`/topic/scan/${invPhoneSession.sessionId}`, (msg) => {
         try {
           const { barcode: code } = JSON.parse(msg.body);
           if (!code) return;
+          if (code === "__PHONE_CONNECTED__") { setInvPhoneConnected(true); return; }
           setInvPhoneLastScan(code);
           if (invPhoneSession.target === null) {
             set("barcode", code);

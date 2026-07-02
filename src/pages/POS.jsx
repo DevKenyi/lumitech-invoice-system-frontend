@@ -329,15 +329,14 @@ export default function POS() {
     const client = new Client({
       brokerURL: `${wsBaseUrl}/ws`,
       reconnectDelay: 3000,
-      onConnect: () => setPhoneConnected(true),
       onDisconnect: () => setPhoneConnected(false),
     });
     client.onConnect = () => {
-      setPhoneConnected(true);
       client.subscribe(`/topic/scan/${phoneSession.sessionId}`, (msg) => {
         try {
           const { barcode } = JSON.parse(msg.body);
           if (!barcode) return;
+          if (barcode === "__PHONE_CONNECTED__") { setPhoneConnected(true); return; }
           setPhoneLastScan(barcode);
           handleCameraScan(barcode);
         } catch {}

@@ -29,12 +29,18 @@ export default function ScannerPage() {
     const client = new Client({
       brokerURL: `${wsBaseUrl}/ws`,
       reconnectDelay: 3000,
-      onConnect: () => {
-        setStatus("ready");
-      },
       onDisconnect: () => setStatus("connecting"),
       onStompError: () => setStatus("error"),
     });
+
+    client.onConnect = () => {
+      setStatus("ready");
+      // Signal the PC that the phone is now connected
+      client.publish({
+        destination: `/app/scan/${sessionId}`,
+        body: JSON.stringify({ barcode: "__PHONE_CONNECTED__" }),
+      });
+    };
 
     client.activate();
     stompRef.current = client;
