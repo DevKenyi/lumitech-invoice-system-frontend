@@ -5,7 +5,7 @@ import Navbar from "./Navbar";
 import TrialBanner from "./TrialBanner";
 import NotificationBell from "./NotificationBell";
 import WhatsAppChat from "./WhatsAppChat";
-import { Menu, Lock } from "lucide-react";
+import { Menu, Lock, Search } from "lucide-react";
 import api from "../services/api";
 
 // Routes that require GROWTH (Business) plan or above
@@ -151,6 +151,13 @@ function Layout({ children }) {
             </div>
             <span className="font-semibold text-slate-900 dark:text-white truncate">{pageTitle}</span>
           </div>
+          <button
+            onClick={() => window.dispatchEvent(new Event("open-nav-search"))}
+            className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 shrink-0 transition"
+            aria-label="Search menu"
+          >
+            <Search size={18} className="text-slate-500 dark:text-slate-400" />
+          </button>
           <NotificationBell />
         </div>
 

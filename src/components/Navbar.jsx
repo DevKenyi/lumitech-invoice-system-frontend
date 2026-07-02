@@ -56,7 +56,7 @@ function CommandPalette({ items, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-sm flex items-start justify-center pt-[15vh] px-4"
+      className="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-sm flex items-start justify-center pt-[8vh] sm:pt-[15vh] px-3 sm:px-4"
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="w-full max-w-lg bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
@@ -344,16 +344,21 @@ function Navbar({ onClose }) {
       .catch(() => {});
   }, []);
 
-  // Cmd+K / Ctrl+K global shortcut
+  // Cmd+K / Ctrl+K global shortcut + custom event from mobile header
   useEffect(() => {
-    const handler = (e) => {
+    const onKey = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         setSearchOpen(o => !o);
       }
     };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    const onEvent = () => setSearchOpen(true);
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("open-nav-search", onEvent);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("open-nav-search", onEvent);
+    };
   }, []);
 
   const handleSwitchMode = () => {
