@@ -324,6 +324,8 @@ function SuperAdmin() {
   const [bmForm, setBmForm] = useState({ name: "", email: "", phone: "", referralCode: "", commissionRate: "0.08" });
   const [bmSaving, setBmSaving] = useState(false);
   const [bmEarnings, setBmEarnings] = useState(null); // null | { bmId, data }
+  const [bmDeleteTarget, setBmDeleteTarget] = useState(null);
+  const [bmDeleting, setBmDeleting] = useState(false);
 
   const BUSINESS_TYPES = [
     { value: "Retail",        label: "🛍️ Retail / Shop" },
@@ -2039,14 +2041,7 @@ function SuperAdmin() {
                             <Link2 className="w-3.5 h-3.5" />
                           </button>
                           <button
-                            onClick={async () => {
-                              if (!confirm(`Delete ${bm.name}? This will also remove all their commission records.`)) return;
-                              try {
-                                await api.delete(`/api/superadmin/business-managers/${bm.id}`);
-                                setBms(prev => prev.filter(b => b.id !== bm.id));
-                                showToast("Business manager deleted.");
-                              } catch { showToast("Failed to delete.", "error"); }
-                            }}
+                            onClick={() => setBmDeleteTarget(bm)}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition"
                             title="Delete"
                           >
@@ -2080,6 +2075,23 @@ function SuperAdmin() {
         onConfirm={doDelete}
         onCancel={() => setDeleteTarget(null)}
         loading={deleting}
+      />
+      <ConfirmModal
+        visible={!!bmDeleteTarget}
+        title="Delete Business Manager"
+        message={`Delete "${bmDeleteTarget?.name}"? This will also remove all their commission records. This cannot be undone.`}
+        onConfirm={async () => {
+          setBmDeleting(true);
+          try {
+            await api.delete(`/api/superadmin/business-managers/${bmDeleteTarget.id}`);
+            setBms(prev => prev.filter(b => b.id !== bmDeleteTarget.id));
+            showToast("Business manager deleted.");
+            setBmDeleteTarget(null);
+          } catch { showToast("Failed to delete.", "error"); }
+          finally { setBmDeleting(false); }
+        }}
+        onCancel={() => setBmDeleteTarget(null)}
+        loading={bmDeleting}
       />
     </div>
   );
