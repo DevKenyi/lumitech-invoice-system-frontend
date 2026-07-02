@@ -295,6 +295,8 @@ export default function POS() {
   const [phoneSession, setPhoneSession]     = useState(null); // { sessionId, scanUrl }
   const [phoneConnected, setPhoneConnected] = useState(false);
   const [phoneLastScan, setPhoneLastScan]   = useState(null);
+  const [showPhonePanel, setShowPhonePanel] = useState(false);
+  const [phoneScanFlash, setPhoneScanFlash] = useState(false);
   const stompRef                            = useRef(null);
 
   // Client search
@@ -338,6 +340,8 @@ export default function POS() {
           if (!barcode) return;
           if (barcode === "__PHONE_CONNECTED__") { setPhoneConnected(true); return; }
           setPhoneLastScan(barcode);
+          setPhoneScanFlash(true);
+          setTimeout(() => setPhoneScanFlash(false), 600);
           handleCameraScan(barcode);
         } catch {}
       });
@@ -356,6 +360,7 @@ export default function POS() {
       setPhoneSession({ sessionId, scanUrl });
       setPhoneConnected(false);
       setPhoneLastScan(null);
+      setShowPhonePanel(true);
     } catch { notify("Could not create scanner session", "error"); }
   };
 
@@ -367,6 +372,8 @@ export default function POS() {
     setPhoneSession(null);
     setPhoneConnected(false);
     setPhoneLastScan(null);
+    setShowPhonePanel(false);
+    setPhoneScanFlash(false);
   };
 
   // Client autocomplete
@@ -708,10 +715,11 @@ export default function POS() {
     <div className="max-w-7xl mx-auto px-4 py-6">
       <Toast {...toast} onClose={() => setToast(t => ({ ...t, visible: false }))} />
 
-      {/* ── Phone Scanner QR Modal ──────────────────────────────────────── */}
-      {phoneSession && (
+      {/* ── Phone Scanner QR Panel ──────────────────────────────────────── */}
+      {showPhonePanel && phoneSession && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-             style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }}>
+             style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }}
+             onClick={e => { if (e.target === e.currentTarget) setShowPhonePanel(false); }}>
           <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-sm overflow-hidden">
 
             {/* Header */}
@@ -728,7 +736,9 @@ export default function POS() {
                   </div>
                 </div>
               </div>
-              <button onClick={stopPhoneSession} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+              {/* X just closes the panel — does NOT stop the session */}
+              <button onClick={() => setShowPhonePanel(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
                 <X size={16} />
               </button>
             </div>
@@ -737,12 +747,7 @@ export default function POS() {
             {!phoneConnected ? (
               <div className="flex flex-col items-center px-6 py-6 gap-4">
                 <div className="bg-white rounded-2xl p-4 shadow-inner border border-slate-100">
-                  <QRCodeCanvas
-                    value={phoneSession.scanUrl}
-                    size={200}
-                    level="M"
-                    includeMargin={false}
-                  />
+                  <QRCodeCanvas value={phoneSession.scanUrl} size={200} level="M" includeMargin={false} />
                 </div>
                 <div className="text-center space-y-1">
                   <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">1. Open your phone camera</p>
@@ -750,10 +755,13 @@ export default function POS() {
                   <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">3. Point at product barcodes — cart updates instantly</p>
                 </div>
                 <p className="text-[10px] text-slate-400 font-mono">{phoneSession.sessionId}</p>
+                <button onClick={stopPhoneSession}
+                  className="w-full py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition">
+                  Cancel
+                </button>
               </div>
             ) : (
               <div className="flex flex-col items-center px-6 py-8 gap-5">
-                {/* Scanning animation */}
                 <div className="relative w-20 h-20">
                   <span className="absolute inset-0 rounded-full bg-emerald-400/20 animate-ping" style={{ animationDuration: "1.5s" }} />
                   <span className="absolute inset-2 rounded-full bg-emerald-400/20 animate-ping" style={{ animationDuration: "1.5s", animationDelay: "0.3s" }} />
@@ -764,10 +772,9 @@ export default function POS() {
 
                 <div className="text-center">
                   <p className="text-base font-bold text-slate-900 dark:text-white">Phone connected</p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Point your phone at any product barcode</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">You can close this panel — scanning keeps working</p>
                 </div>
 
-                {/* Last scanned */}
                 {phoneLastScan ? (
                   <div className="w-full flex items-center gap-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700 rounded-2xl px-4 py-3">
                     <div className="w-8 h-8 rounded-xl bg-emerald-500 flex items-center justify-center flex-shrink-0">
@@ -785,7 +792,16 @@ export default function POS() {
                   </div>
                 )}
 
-                <p className="text-[10px] text-slate-400">Scanning session active — close to disconnect</p>
+                <div className="w-full flex gap-2">
+                  <button onClick={() => setShowPhonePanel(false)}
+                    className="flex-1 py-2.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 rounded-xl text-sm font-semibold hover:bg-emerald-100 transition">
+                    Keep scanning
+                  </button>
+                  <button onClick={stopPhoneSession}
+                    className="flex-1 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-sm font-semibold hover:bg-slate-200 transition">
+                    Disconnect
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -868,18 +884,24 @@ export default function POS() {
             </button>
             <button
               type="button"
-              onClick={startPhoneSession}
-              title="Use phone as wireless barcode scanner"
-              className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold shadow-sm hover:scale-[1.03] transition-all flex-shrink-0 ${
-                phoneSession
-                  ? "bg-gradient-to-br from-emerald-500 to-teal-600 text-white"
-                  : "bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200"
+              onClick={phoneSession ? () => setShowPhonePanel(true) : startPhoneSession}
+              title={phoneSession ? "Phone scanner active — click to view" : "Use phone as wireless barcode scanner"}
+              className={`relative flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold shadow-sm hover:scale-[1.03] transition-all flex-shrink-0 ${
+                phoneScanFlash
+                  ? "bg-gradient-to-br from-yellow-400 to-amber-500 text-white"
+                  : phoneSession && phoneConnected
+                    ? "bg-gradient-to-br from-emerald-500 to-teal-600 text-white"
+                    : phoneSession
+                      ? "bg-gradient-to-br from-amber-400 to-orange-500 text-white"
+                      : "bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200"
               }`}
             >
               <Smartphone size={15} />
-              <span className="hidden sm:inline">{phoneSession ? "Phone" : "Phone"}</span>
-              {phoneSession && phoneConnected && (
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-200 animate-pulse" />
+              <span className="hidden sm:inline">
+                {phoneSession && phoneConnected ? "Connected" : phoneSession ? "Pairing…" : "Phone"}
+              </span>
+              {phoneSession && phoneConnected && !phoneScanFlash && (
+                <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-pulse" />
               )}
             </button>
           </div>

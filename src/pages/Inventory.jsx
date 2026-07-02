@@ -96,6 +96,8 @@ export default function Inventory() {
   const [invPhoneSession, setInvPhoneSession]     = useState(null); // { sessionId, scanUrl, target }
   const [invPhoneConnected, setInvPhoneConnected] = useState(false);
   const [invPhoneLastScan, setInvPhoneLastScan]   = useState(null);
+  const [showInvPhonePanel, setShowInvPhonePanel] = useState(false);
+  const [invScanFlash, setInvScanFlash]           = useState(false);
   const invStompRef                               = useRef(null);
   const navigate                                  = useNavigate();
   const [saving, setSaving]       = useState(false);
@@ -485,6 +487,8 @@ export default function Inventory() {
           if (!code) return;
           if (code === "__PHONE_CONNECTED__") { setInvPhoneConnected(true); return; }
           setInvPhoneLastScan(code);
+          setInvScanFlash(true);
+          setTimeout(() => setInvScanFlash(false), 600);
           if (invPhoneSession.target === null) {
             set("barcode", code);
           } else {
@@ -507,6 +511,7 @@ export default function Inventory() {
       setInvPhoneSession({ sessionId, scanUrl, target });
       setInvPhoneConnected(false);
       setInvPhoneLastScan(null);
+      setShowInvPhonePanel(true);
     } catch { notify("Could not create scanner session", "error"); }
   };
 
@@ -518,6 +523,8 @@ export default function Inventory() {
     setInvPhoneSession(null);
     setInvPhoneConnected(false);
     setInvPhoneLastScan(null);
+    setShowInvPhonePanel(false);
+    setInvScanFlash(false);
   };
 
   const openAddBatch = (productId) => {
@@ -1413,15 +1420,21 @@ export default function Inventory() {
                         <Camera size={14} />
                       </button>
                       <button type="button"
-                        onClick={() => invPhoneSession ? stopInvPhoneSession() : startInvPhoneSession(null)}
+                        onClick={() => invPhoneSession && invPhoneSession.target === null
+                          ? setShowInvPhonePanel(true)
+                          : startInvPhoneSession(null)}
                         className={`px-2.5 py-1.5 rounded-lg hover:scale-[1.05] transition flex-shrink-0 flex items-center gap-1 ${
-                          invPhoneSession && invPhoneSession.target === null
-                            ? "bg-gradient-to-br from-emerald-500 to-teal-600 text-white"
-                            : "bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300"
+                          invScanFlash && invPhoneSession?.target === null
+                            ? "bg-gradient-to-br from-yellow-400 to-amber-500 text-white"
+                            : invPhoneSession && invPhoneSession.target === null && invPhoneConnected
+                              ? "bg-gradient-to-br from-emerald-500 to-teal-600 text-white"
+                              : invPhoneSession && invPhoneSession.target === null
+                                ? "bg-gradient-to-br from-amber-400 to-orange-500 text-white"
+                                : "bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300"
                         }`}
-                        title="Scan with phone">
+                        title={invPhoneSession?.target === null ? "Phone scanner active — click to view" : "Scan with phone"}>
                         <Smartphone size={14} />
-                        {invPhoneSession && invPhoneSession.target === null && invPhoneConnected && (
+                        {invPhoneSession && invPhoneSession.target === null && invPhoneConnected && !invScanFlash && (
                           <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-pulse" />
                         )}
                       </button>
@@ -1578,15 +1591,21 @@ export default function Inventory() {
                                 <Camera size={12} />
                               </button>
                               <button type="button"
-                                onClick={() => invPhoneSession && invPhoneSession.target === idx ? stopInvPhoneSession() : startInvPhoneSession(idx)}
+                                onClick={() => invPhoneSession && invPhoneSession.target === idx
+                                  ? setShowInvPhonePanel(true)
+                                  : startInvPhoneSession(idx)}
                                 className={`px-1.5 rounded-lg text-xs flex items-center gap-0.5 ${
-                                  invPhoneSession && invPhoneSession.target === idx
-                                    ? "bg-gradient-to-br from-emerald-500 to-teal-600 text-white"
-                                    : "bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300"
+                                  invScanFlash && invPhoneSession?.target === idx
+                                    ? "bg-gradient-to-br from-yellow-400 to-amber-500 text-white"
+                                    : invPhoneSession && invPhoneSession.target === idx && invPhoneConnected
+                                      ? "bg-gradient-to-br from-emerald-500 to-teal-600 text-white"
+                                      : invPhoneSession && invPhoneSession.target === idx
+                                        ? "bg-gradient-to-br from-amber-400 to-orange-500 text-white"
+                                        : "bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300"
                                 }`}
-                                title="Scan with phone">
+                                title={invPhoneSession?.target === idx ? "Phone scanner active — click to view" : "Scan with phone"}>
                                 <Smartphone size={12} />
-                                {invPhoneSession && invPhoneSession.target === idx && invPhoneConnected && (
+                                {invPhoneSession && invPhoneSession.target === idx && invPhoneConnected && !invScanFlash && (
                                   <span className="w-1 h-1 rounded-full bg-white/80 animate-pulse" />
                                 )}
                               </button>
@@ -1777,9 +1796,9 @@ export default function Inventory() {
       )}
 
       {/* Phone scanner QR modal */}
-      {invPhoneSession && (
+      {showInvPhonePanel && invPhoneSession && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
-             onClick={e => { if (e.target === e.currentTarget) stopInvPhoneSession(); }}>
+             onClick={e => { if (e.target === e.currentTarget) setShowInvPhonePanel(false); }}>
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-xs overflow-hidden">
             <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-slate-100 dark:border-slate-700">
               <div className="flex items-center gap-2.5">
@@ -1788,12 +1807,17 @@ export default function Inventory() {
                 </div>
                 <div>
                   <p className="text-sm font-bold text-slate-900 dark:text-white">Phone Scanner</p>
-                  <p className="text-[10px] text-slate-500">
-                    {invPhoneSession.target === null ? "Main product barcode" : `Variant #${invPhoneSession.target + 1} barcode`}
-                  </p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className={`w-1.5 h-1.5 rounded-full ${invPhoneConnected ? "bg-emerald-400" : "bg-amber-400 animate-pulse"}`} />
+                    <span className="text-[10px] text-slate-500">
+                      {invPhoneConnected ? "Connected" : "Waiting for phone…"} ·{" "}
+                      {invPhoneSession.target === null ? "product barcode" : `variant #${invPhoneSession.target + 1}`}
+                    </span>
+                  </div>
                 </div>
               </div>
-              <button onClick={stopInvPhoneSession}
+              {/* X closes panel only — session stays alive */}
+              <button onClick={() => setShowInvPhonePanel(false)}
                 className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition">
                 <X className="w-4 h-4 text-slate-400" />
               </button>
@@ -1812,7 +1836,10 @@ export default function Inventory() {
                   <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
                   <span className="text-xs text-slate-500">Waiting for phone to connect…</span>
                 </div>
-                <p className="text-[10px] text-slate-400 font-mono break-all text-center">{invPhoneSession.scanUrl}</p>
+                <button onClick={stopInvPhoneSession}
+                  className="w-full py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+                  Cancel
+                </button>
               </div>
             ) : (
               <div className="flex flex-col items-center px-6 py-7 gap-5">
@@ -1825,7 +1852,7 @@ export default function Inventory() {
                 </div>
                 <div className="text-center">
                   <p className="text-base font-bold text-slate-900 dark:text-white">Phone connected</p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Point your phone at a product barcode</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">You can close this panel — scanning keeps working</p>
                 </div>
                 {invPhoneLastScan ? (
                   <div className="w-full flex items-center gap-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700 rounded-2xl px-4 py-3">
@@ -1843,10 +1870,16 @@ export default function Inventory() {
                     <p className="text-sm text-slate-500 dark:text-slate-400">Waiting for first scan…</p>
                   </div>
                 )}
-                <button onClick={stopInvPhoneSession}
-                  className="w-full py-2.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-200 dark:hover:bg-slate-600 transition">
-                  Disconnect phone
-                </button>
+                <div className="w-full flex gap-2">
+                  <button onClick={() => setShowInvPhonePanel(false)}
+                    className="flex-1 py-2.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 rounded-xl text-sm font-semibold hover:bg-emerald-100 transition">
+                    Keep scanning
+                  </button>
+                  <button onClick={stopInvPhoneSession}
+                    className="flex-1 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-sm font-semibold hover:bg-slate-200 transition">
+                    Disconnect
+                  </button>
+                </div>
               </div>
             )}
           </div>
