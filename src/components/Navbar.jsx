@@ -8,7 +8,7 @@ import {
   Info, SlidersHorizontal, Package, ShoppingCart, BarChart2,
   FileCheck, Repeat, Undo2, FileMinus, ClipboardCheck,
   Warehouse, Target, UserCog, GitBranch, BookMarked, TrendingDown, History,
-  Tag, ShoppingBag, UtensilsCrossed, Search,
+  Tag, ShoppingBag, UtensilsCrossed, Search, Gift,
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import api, { getUserFromToken } from "../services/api";
@@ -450,6 +450,7 @@ function Navbar({ onClose }) {
     ...(isAccountantPro || !plan || plan === "FREE" ? [{ path: "/expenses", label: "Expenses",    icon: Receipt,    info: "Manage staff expense claims" }] : []),
     ...(isAccountantPro || !plan || plan === "FREE" ? [{ path: "/audit",    label: "Audit Trail", icon: ShieldCheck, info: "Full log of every action in your account" }] : []),
     ...(isPlatformAdmin ? [{ path: "/admin", label: "Platform Admin", icon: ShieldCheck, info: "System-wide administration" }] : []),
+    { path: "/referrals", label: "Referral Programme", icon: Gift, info: "Earn ₦ by referring businesses to LumiLedger" },
   ];
   const settingsActive = settingsItems.some(i => cur === i.path);
 

@@ -7,7 +7,7 @@ import {
   ChevronDown, AlertTriangle, X, Trash2, UserCircle,
   CreditCard, Save, TrendingUp, Activity, Bell,
   PhoneCall, Mail, Search, RefreshCw, Download, Copy, Link2, MessageSquare, RotateCcw,
-  BookOpen, ExternalLink, Lightbulb, Plus, Edit2, Handshake,
+  BookOpen, ExternalLink, Lightbulb, Plus, Edit2, Handshake, Gift,
 } from "lucide-react";
 import Toast from "../components/Toast";
 import ConfirmModal from "../components/ConfirmModal";
@@ -268,6 +268,7 @@ const TABS = [
   { id: "organisations", label: "Organisations",  icon: Building2 },
   { id: "suspicious",    label: "Suspicious",     icon: AlertTriangle },
   { id: "bms",           label: "Managers",       icon: Handshake },
+  { id: "referrals",     label: "Referrals",      icon: Gift },
   { id: "pricing",       label: "Pricing",        icon: CreditCard },
   { id: "tips",          label: "Tips",           icon: Lightbulb },
 ];
@@ -316,6 +317,13 @@ function SuperAdmin() {
   const [addingTip, setAddingTip] = useState(false);
   const [editingTipId, setEditingTipId] = useState(null);
   const [editingTipText, setEditingTipText] = useState("");
+
+  // ── Referrals ──
+  const [referrals, setReferrals] = useState([]);
+  const [referralCommissions, setReferralCommissions] = useState([]);
+  const [referralPayouts, setReferralPayouts] = useState([]);
+  const [referralsLoaded, setReferralsLoaded] = useState(false);
+  const [payoutActionId, setPayoutActionId] = useState(null);
 
   // ── Business Managers ──
   const [bms, setBms] = useState([]);
@@ -406,7 +414,19 @@ function SuperAdmin() {
         .then(res => { setBms(res.data); setBmsLoaded(true); })
         .catch(() => {});
     }
-  }, [tab, tipsLoaded, bmsLoaded]);
+    if (tab === "referrals" && !referralsLoaded) {
+      Promise.all([
+        api.get("/api/superadmin/referrals"),
+        api.get("/api/superadmin/referrals/commissions"),
+        api.get("/api/superadmin/referrals/payouts"),
+      ]).then(([rRes, cRes, pRes]) => {
+        setReferrals(rRes.data ?? []);
+        setReferralCommissions(cRes.data ?? []);
+        setReferralPayouts(pRes.data ?? []);
+        setReferralsLoaded(true);
+      }).catch(() => {});
+    }
+  }, [tab, tipsLoaded, bmsLoaded, referralsLoaded]);
 
   if (!isPlatformAdmin) return <Navigate to="/dashboard" replace />;
 
@@ -1579,6 +1599,194 @@ function SuperAdmin() {
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── REFERRALS TAB ────────────────────────────────────────────────────── */}
+      {tab === "referrals" && (
+        <div className="space-y-6">
+          {/* Payout Requests */}
+          <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center gap-2">
+              <Gift className="w-4 h-4 text-purple-600" />
+              <h2 className="text-base font-semibold text-slate-900 dark:text-white">Payout Requests</h2>
+              <span className="ml-auto text-xs text-slate-400">{referralPayouts.filter(p => p.payoutStatus === "PENDING").length} pending</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50/30 dark:bg-slate-800/30">
+                    {["User", "Amount", "Status", "Date", "Notes", "Actions"].map(h => (
+                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                  {referralPayouts.length === 0 && (
+                    <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-400">No payout requests yet</td></tr>
+                  )}
+                  {referralPayouts.map(p => (
+                    <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/20">
+                      <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">{p.username ?? p.userId}</td>
+                      <td className="px-4 py-3 text-slate-700 dark:text-slate-300">₦{Number(p.amount).toLocaleString()}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                          p.payoutStatus === "PAID"     ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
+                          p.payoutStatus === "APPROVED" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" :
+                          p.payoutStatus === "REJECTED" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" :
+                                                          "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                        }`}>{p.payoutStatus}</span>
+                      </td>
+                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400 text-xs">{p.createdAt ? new Date(p.createdAt).toLocaleDateString() : "—"}</td>
+                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400 text-xs max-w-[180px] truncate">{p.notes || "—"}</td>
+                      <td className="px-4 py-3">
+                        {p.payoutStatus === "PENDING" && (
+                          <div className="flex gap-1.5">
+                            <button
+                              disabled={payoutActionId === p.id}
+                              onClick={async () => {
+                                setPayoutActionId(p.id);
+                                try {
+                                  await api.post(`/api/superadmin/referrals/payouts/${p.id}/approve`);
+                                  setReferralPayouts(prev => prev.map(x => x.id === p.id ? { ...x, payoutStatus: "APPROVED" } : x));
+                                  showToast("Payout approved");
+                                } catch { showToast("Failed to approve", "error"); }
+                                finally { setPayoutActionId(null); }
+                              }}
+                              className="px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg hover:bg-blue-100 transition disabled:opacity-50"
+                            >Approve</button>
+                            <button
+                              disabled={payoutActionId === p.id}
+                              onClick={async () => {
+                                setPayoutActionId(p.id);
+                                try {
+                                  await api.post(`/api/superadmin/referrals/payouts/${p.id}/reject`);
+                                  setReferralPayouts(prev => prev.map(x => x.id === p.id ? { ...x, payoutStatus: "REJECTED" } : x));
+                                  showToast("Payout rejected");
+                                } catch { showToast("Failed to reject", "error"); }
+                                finally { setPayoutActionId(null); }
+                              }}
+                              className="px-2 py-1 text-xs font-medium text-red-600 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg hover:bg-red-100 transition disabled:opacity-50"
+                            >Reject</button>
+                          </div>
+                        )}
+                        {p.payoutStatus === "APPROVED" && (
+                          <button
+                            disabled={payoutActionId === p.id}
+                            onClick={async () => {
+                              setPayoutActionId(p.id);
+                              try {
+                                await api.post(`/api/superadmin/referrals/payouts/${p.id}/pay`);
+                                setReferralPayouts(prev => prev.map(x => x.id === p.id ? { ...x, payoutStatus: "PAID" } : x));
+                                showToast("Marked as paid");
+                              } catch { showToast("Failed to mark paid", "error"); }
+                              finally { setPayoutActionId(null); }
+                            }}
+                            className="px-2 py-1 text-xs font-medium text-green-600 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg hover:bg-green-100 transition disabled:opacity-50"
+                          >Mark Paid</button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Referrals list */}
+          <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center gap-2">
+              <Gift className="w-4 h-4 text-purple-600" />
+              <h2 className="text-base font-semibold text-slate-900 dark:text-white">All Referrals</h2>
+              <span className="ml-auto text-xs text-slate-400">{referrals.length} total</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50/30 dark:bg-slate-800/30">
+                    {["Referrer", "Referred Org", "Code", "Date", "End Date", "Status", "Actions"].map(h => (
+                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                  {referrals.length === 0 && (
+                    <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-400">No referrals yet</td></tr>
+                  )}
+                  {referrals.map(r => (
+                    <tr key={r.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/20">
+                      <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">{r.referrerUsername ?? r.referrerId}</td>
+                      <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{r.referredOrgName ?? r.referredOrgId}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-500 dark:text-slate-400">{r.referralCode}</td>
+                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400 text-xs">{r.referralDate ? new Date(r.referralDate).toLocaleDateString() : "—"}</td>
+                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400 text-xs">{r.commissionEndDate ? new Date(r.commissionEndDate).toLocaleDateString() : "—"}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                          r.status === "ACTIVE"   ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
+                          r.status === "EXPIRED"  ? "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400" :
+                                                    "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                        }`}>{r.status}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {r.status === "ACTIVE" && (
+                          <button
+                            onClick={async () => {
+                              try {
+                                await api.post(`/api/superadmin/referrals/${r.id}/suspend`);
+                                setReferrals(prev => prev.map(x => x.id === r.id ? { ...x, status: "SUSPENDED" } : x));
+                                showToast("Referral suspended");
+                              } catch { showToast("Failed to suspend", "error"); }
+                            }}
+                            className="px-2 py-1 text-xs font-medium text-red-600 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg hover:bg-red-100 transition"
+                          >Suspend</button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Commission records */}
+          <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center gap-2">
+              <Gift className="w-4 h-4 text-purple-600" />
+              <h2 className="text-base font-semibold text-slate-900 dark:text-white">Commission History</h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50/30 dark:bg-slate-800/30">
+                    {["Referrer", "Org", "Payment Ref", "Payment", "Commission", "Date", "Status"].map(h => (
+                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                  {referralCommissions.length === 0 && (
+                    <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-400">No commissions recorded yet</td></tr>
+                  )}
+                  {referralCommissions.map(c => (
+                    <tr key={c.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/20">
+                      <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">{c.referrerUsername ?? "—"}</td>
+                      <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{c.referredOrgName ?? "—"}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-500 dark:text-slate-400 max-w-[120px] truncate">{c.paymentReference}</td>
+                      <td className="px-4 py-3 text-slate-700 dark:text-slate-300">₦{Number(c.paymentAmount).toLocaleString()}</td>
+                      <td className="px-4 py-3 font-semibold text-purple-600 dark:text-purple-400">₦{Number(c.commissionAmount).toLocaleString()}</td>
+                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400 text-xs">{c.paymentDate ? new Date(c.paymentDate).toLocaleDateString() : "—"}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                          c.status === "PAID"    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
+                                                   "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                        }`}>{c.status}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 
