@@ -2038,6 +2038,20 @@ function SuperAdmin() {
                           >
                             <Link2 className="w-3.5 h-3.5" />
                           </button>
+                          <button
+                            onClick={async () => {
+                              if (!confirm(`Delete ${bm.name}? This will also remove all their commission records.`)) return;
+                              try {
+                                await api.delete(`/api/superadmin/business-managers/${bm.id}`);
+                                setBms(prev => prev.filter(b => b.id !== bm.id));
+                                showToast("Business manager deleted.");
+                              } catch { showToast("Failed to delete.", "error"); }
+                            }}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </td>
                     </tr>
