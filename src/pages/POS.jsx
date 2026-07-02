@@ -732,42 +732,61 @@ export default function POS() {
               </button>
             </div>
 
-            {/* QR Code */}
-            <div className="flex flex-col items-center px-6 py-6 gap-4">
-              <div className="bg-white rounded-2xl p-4 shadow-inner border border-slate-100">
-                <QRCodeCanvas
-                  value={phoneSession.scanUrl}
-                  size={200}
-                  level="M"
-                  includeMargin={false}
-                />
+            {/* Body — QR before connect, live view after */}
+            {!phoneConnected ? (
+              <div className="flex flex-col items-center px-6 py-6 gap-4">
+                <div className="bg-white rounded-2xl p-4 shadow-inner border border-slate-100">
+                  <QRCodeCanvas
+                    value={phoneSession.scanUrl}
+                    size={200}
+                    level="M"
+                    includeMargin={false}
+                  />
+                </div>
+                <div className="text-center space-y-1">
+                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">1. Open your phone camera</p>
+                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">2. Scan this QR code</p>
+                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">3. Point at product barcodes — cart updates instantly</p>
+                </div>
+                <p className="text-[10px] text-slate-400 font-mono">{phoneSession.sessionId}</p>
               </div>
-
-              <div className="text-center">
-                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  1. Open your phone camera
-                </p>
-                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  2. Scan this QR code
-                </p>
-                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  3. Point at product barcodes — cart updates instantly
-                </p>
-              </div>
-
-              {/* Last scan indicator */}
-              {phoneLastScan && (
-                <div className="w-full flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700 rounded-xl px-4 py-2.5">
-                  <Zap className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold uppercase tracking-wider">Last scanned</p>
-                    <p className="text-xs font-mono text-emerald-800 dark:text-emerald-200 truncate">{phoneLastScan}</p>
+            ) : (
+              <div className="flex flex-col items-center px-6 py-8 gap-5">
+                {/* Scanning animation */}
+                <div className="relative w-20 h-20">
+                  <span className="absolute inset-0 rounded-full bg-emerald-400/20 animate-ping" style={{ animationDuration: "1.5s" }} />
+                  <span className="absolute inset-2 rounded-full bg-emerald-400/20 animate-ping" style={{ animationDuration: "1.5s", animationDelay: "0.3s" }} />
+                  <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-xl shadow-emerald-500/30">
+                    <Smartphone className="w-8 h-8 text-white" />
                   </div>
                 </div>
-              )}
 
-              <p className="text-[10px] text-slate-400 font-mono">{phoneSession.sessionId}</p>
-            </div>
+                <div className="text-center">
+                  <p className="text-base font-bold text-slate-900 dark:text-white">Phone connected</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Point your phone at any product barcode</p>
+                </div>
+
+                {/* Last scanned */}
+                {phoneLastScan ? (
+                  <div className="w-full flex items-center gap-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700 rounded-2xl px-4 py-3">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                      <Zap className="w-4 h-4 text-white" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider">Last scanned</p>
+                      <p className="text-sm font-mono font-semibold text-emerald-800 dark:text-emerald-200 truncate">{phoneLastScan}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-full flex items-center gap-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3">
+                    <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Waiting for first scan…</p>
+                  </div>
+                )}
+
+                <p className="text-[10px] text-slate-400">Scanning session active — close to disconnect</p>
+              </div>
+            )}
           </div>
         </div>
       )}
