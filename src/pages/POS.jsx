@@ -1,10 +1,11 @@
 // POS.jsx — Point of Sale terminal
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import {
   Search, Plus, Minus, Trash2, ShoppingCart, CheckCircle,
   X, Barcode, RefreshCw, Printer, Mail, User, Download,
-  Bluetooth, Usb, Settings, Wifi, Camera, Layers, Smartphone, Zap,
+  Bluetooth, Usb, Settings, Wifi, Camera, Layers, Smartphone, Zap, Package,
 } from "lucide-react";
 import { Client } from "@stomp/stompjs";
 import { QRCodeCanvas } from "qrcode.react";
@@ -269,6 +270,7 @@ function PrinterSetupModal({ orgName, onClose }) {
 
 export default function POS() {
   const { fmt, currencySymbol, currency, locale } = useOrg();
+  const navigate = useNavigate();
   const [products, setProducts]     = useState([]);
   const [cart, setCart]             = useState([]);
   const [search, setSearch]         = useState("");
@@ -825,15 +827,22 @@ export default function POS() {
             <h1 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <ShoppingCart className="w-5 h-5 text-blue-600" /> Point of Sale
             </h1>
-            <button onClick={() => setShowPrinterSetup(true)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition ${
-                usbDevice || btConn
-                  ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                  : "bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-300"
-              }`}>
-              <Printer className="w-3.5 h-3.5" />
-              {usbDevice ? "USB Printer" : btConn ? "BT Printer" : "Setup Printer"}
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={() => navigate("/inventory")}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-300 transition">
+                <Package className="w-3.5 h-3.5" />
+                Inventory
+              </button>
+              <button onClick={() => setShowPrinterSetup(true)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition ${
+                  usbDevice || btConn
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                    : "bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-300"
+                }`}>
+                <Printer className="w-3.5 h-3.5" />
+                {usbDevice ? "USB Printer" : btConn ? "BT Printer" : "Setup Printer"}
+              </button>
+            </div>
           </div>
 
           {/* Barcode scanner input */}

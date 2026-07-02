@@ -1,11 +1,16 @@
 // Inventory.jsx — Product management + Restock Orders + Stock Movements + Batch Tracking + Pharmacy
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import {
   Plus, Search, Edit2, Trash2, Package, AlertTriangle, X, Check,
   Barcode, Tag, RefreshCw, ChevronDown, ChevronUp, History, TrendingDown, Camera,
   Layers, SlidersHorizontal, FlaskConical, CalendarClock, Pill, ChevronRight,
+  Smartphone, Zap, ShoppingCart,
 } from "lucide-react";
+import { Client } from "@stomp/stompjs";
+import { QRCodeCanvas } from "qrcode.react";
+import { wsBaseUrl } from "../services/api";
 import Toast from "../components/Toast";
 import BarcodeScanner from "../components/BarcodeScanner";
 import { useOrg } from "../context/OrgContext";
@@ -86,6 +91,13 @@ export default function Inventory() {
   const [variants, setVariants]   = useState([]);
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [barcodeScanTarget, setBarcodeScanTarget] = useState(null); // null = main, number = variant idx
+
+  // Phone scanner
+  const [invPhoneSession, setInvPhoneSession]     = useState(null); // { sessionId, scanUrl, target }
+  const [invPhoneConnected, setInvPhoneConnected] = useState(false);
+  const [invPhoneLastScan, setInvPhoneLastScan]   = useState(null);
+  const invStompRef                               = useRef(null);
+  const navigate                                  = useNavigate();
   const [saving, setSaving]       = useState(false);
   const [page, setPage]           = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -458,6 +470,56 @@ export default function Inventory() {
     return () => window.removeEventListener("navItemsChange", handler);
   }, []);
 
+  // Phone scanner — STOMP lifecycle
+  useEffect(() => {
+    if (!invPhoneSession) return;
+    const client = new Client({
+      brokerURL: `${wsBaseUrl}/ws`,
+      reconnectDelay: 3000,
+      onDisconnect: () => setInvPhoneConnected(false),
+    });
+    client.onConnect = () => {
+      setInvPhoneConnected(true);
+      client.subscribe(`/topic/scan/${invPhoneSession.sessionId}`, (msg) => {
+        try {
+          const { barcode: code } = JSON.parse(msg.body);
+          if (!code) return;
+          setInvPhoneLastScan(code);
+          if (invPhoneSession.target === null) {
+            set("barcode", code);
+          } else {
+            setVariantField(invPhoneSession.target, "barcode", code);
+          }
+        } catch {}
+      });
+    };
+    client.activate();
+    invStompRef.current = client;
+    return () => { client.deactivate(); invStompRef.current = null; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invPhoneSession]);
+
+  const startInvPhoneSession = async (target) => {
+    try {
+      const res = await api.post("/api/pos/scan-sessions");
+      const { sessionId } = res.data;
+      const scanUrl = `${window.location.origin}/scan/${sessionId}`;
+      setInvPhoneSession({ sessionId, scanUrl, target });
+      setInvPhoneConnected(false);
+      setInvPhoneLastScan(null);
+    } catch { notify("Could not create scanner session", "error"); }
+  };
+
+  const stopInvPhoneSession = () => {
+    if (invPhoneSession) {
+      api.delete(`/api/pos/scan-sessions/${invPhoneSession.sessionId}`).catch(() => {});
+    }
+    invStompRef.current?.deactivate();
+    setInvPhoneSession(null);
+    setInvPhoneConnected(false);
+    setInvPhoneLastScan(null);
+  };
+
   const openAddBatch = (productId) => {
     setEditingBatch(null);
     setBatchFormProductId(productId);
@@ -546,24 +608,30 @@ export default function Inventory() {
           </h1>
           <p className="text-sm text-slate-500 mt-0.5">Manage your products, restock orders and stock movements</p>
         </div>
-        {activeTab === "Products" && (
-          <button onClick={() => openCreate(false)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition">
-            <Plus className="w-4 h-4" /> Add Product
+        <div className="flex items-center gap-2">
+          <button onClick={() => navigate("/pos")}
+            className="inline-flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded-xl font-semibold text-sm hover:bg-slate-200 dark:hover:bg-slate-600 transition">
+            <ShoppingCart className="w-4 h-4" /> Go to POS
           </button>
-        )}
-        {activeTab === "Pharmacy" && (
-          <button onClick={() => openCreate(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold text-sm hover:bg-emerald-700 transition">
-            <Pill className="w-4 h-4" /> Add Drug
-          </button>
-        )}
-        {activeTab === "Restock Orders" && (
-          <button onClick={() => { setRestockForm(emptyRestockForm()); setShowRestockForm(true); }}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition">
-            <Plus className="w-4 h-4" /> New Restock Order
-          </button>
-        )}
+          {activeTab === "Products" && (
+            <button onClick={() => openCreate(false)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition">
+              <Plus className="w-4 h-4" /> Add Product
+            </button>
+          )}
+          {activeTab === "Pharmacy" && (
+            <button onClick={() => openCreate(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold text-sm hover:bg-emerald-700 transition">
+              <Pill className="w-4 h-4" /> Add Drug
+            </button>
+          )}
+          {activeTab === "Restock Orders" && (
+            <button onClick={() => { setRestockForm(emptyRestockForm()); setShowRestockForm(true); }}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition">
+              <Plus className="w-4 h-4" /> New Restock Order
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl overflow-x-auto max-w-full">
@@ -1340,8 +1408,22 @@ export default function Inventory() {
                     <div className="flex gap-1.5">
                       <input value={form.barcode} onChange={e => set("barcode", e.target.value)} placeholder="e.g. 6001234567890" className={`${inputCls} flex-1`} />
                       <button type="button" onClick={() => { setBarcodeScanTarget(null); setShowBarcodeScanner(true); }}
-                        className="px-2.5 py-1.5 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-lg hover:scale-[1.05] transition flex-shrink-0">
+                        className="px-2.5 py-1.5 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-lg hover:scale-[1.05] transition flex-shrink-0"
+                        title="Scan with this device's camera">
                         <Camera size={14} />
+                      </button>
+                      <button type="button"
+                        onClick={() => invPhoneSession ? stopInvPhoneSession() : startInvPhoneSession(null)}
+                        className={`px-2.5 py-1.5 rounded-lg hover:scale-[1.05] transition flex-shrink-0 flex items-center gap-1 ${
+                          invPhoneSession && invPhoneSession.target === null
+                            ? "bg-gradient-to-br from-emerald-500 to-teal-600 text-white"
+                            : "bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300"
+                        }`}
+                        title="Scan with phone">
+                        <Smartphone size={14} />
+                        {invPhoneSession && invPhoneSession.target === null && invPhoneConnected && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-pulse" />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -1491,8 +1573,22 @@ export default function Inventory() {
                             <div className="flex gap-1">
                               <input value={v.barcode} onChange={e => setVariantField(idx, "barcode", e.target.value)} placeholder="Barcode" className={`${inputCls} flex-1`} />
                               <button type="button" onClick={() => { setBarcodeScanTarget(idx); setShowBarcodeScanner(true); }}
-                                className="px-1.5 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-lg text-xs">
+                                className="px-1.5 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-lg text-xs"
+                                title="Scan with this device's camera">
                                 <Camera size={12} />
+                              </button>
+                              <button type="button"
+                                onClick={() => invPhoneSession && invPhoneSession.target === idx ? stopInvPhoneSession() : startInvPhoneSession(idx)}
+                                className={`px-1.5 rounded-lg text-xs flex items-center gap-0.5 ${
+                                  invPhoneSession && invPhoneSession.target === idx
+                                    ? "bg-gradient-to-br from-emerald-500 to-teal-600 text-white"
+                                    : "bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300"
+                                }`}
+                                title="Scan with phone">
+                                <Smartphone size={12} />
+                                {invPhoneSession && invPhoneSession.target === idx && invPhoneConnected && (
+                                  <span className="w-1 h-1 rounded-full bg-white/80 animate-pulse" />
+                                )}
                               </button>
                             </div>
                           </div>
@@ -1678,6 +1774,83 @@ export default function Inventory() {
           }}
           onClose={() => setShowBarcodeScanner(false)}
         />
+      )}
+
+      {/* Phone scanner QR modal */}
+      {invPhoneSession && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
+             onClick={e => { if (e.target === e.currentTarget) stopInvPhoneSession(); }}>
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-xs overflow-hidden">
+            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-slate-100 dark:border-slate-700">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
+                  <Smartphone className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">Phone Scanner</p>
+                  <p className="text-[10px] text-slate-500">
+                    {invPhoneSession.target === null ? "Main product barcode" : `Variant #${invPhoneSession.target + 1} barcode`}
+                  </p>
+                </div>
+              </div>
+              <button onClick={stopInvPhoneSession}
+                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                <X className="w-4 h-4 text-slate-400" />
+              </button>
+            </div>
+
+            {!invPhoneConnected ? (
+              <div className="flex flex-col items-center px-6 py-7 gap-5">
+                <div className="p-3 bg-white rounded-2xl border border-slate-200 shadow-sm">
+                  <QRCodeCanvas value={invPhoneSession.scanUrl} size={160} />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">Scan QR with your phone</p>
+                  <p className="text-xs text-slate-500 mt-1">Opens the camera scanner — no app needed</p>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                  <span className="text-xs text-slate-500">Waiting for phone to connect…</span>
+                </div>
+                <p className="text-[10px] text-slate-400 font-mono break-all text-center">{invPhoneSession.scanUrl}</p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center px-6 py-7 gap-5">
+                <div className="relative w-20 h-20">
+                  <span className="absolute inset-0 rounded-full bg-emerald-400/20 animate-ping" style={{ animationDuration: "1.5s" }} />
+                  <span className="absolute inset-2 rounded-full bg-emerald-400/20 animate-ping" style={{ animationDuration: "1.5s", animationDelay: "0.3s" }} />
+                  <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-xl shadow-emerald-500/30">
+                    <Smartphone className="w-8 h-8 text-white" />
+                  </div>
+                </div>
+                <div className="text-center">
+                  <p className="text-base font-bold text-slate-900 dark:text-white">Phone connected</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Point your phone at a product barcode</p>
+                </div>
+                {invPhoneLastScan ? (
+                  <div className="w-full flex items-center gap-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700 rounded-2xl px-4 py-3">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                      <Zap className="w-4 h-4 text-white" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider">Last scanned</p>
+                      <p className="text-sm font-mono font-semibold text-emerald-800 dark:text-emerald-200 truncate">{invPhoneLastScan}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-full flex items-center gap-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3">
+                    <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Waiting for first scan…</p>
+                  </div>
+                )}
+                <button onClick={stopInvPhoneSession}
+                  className="w-full py-2.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-200 dark:hover:bg-slate-600 transition">
+                  Disconnect phone
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Add/Edit Batch Modal */}
