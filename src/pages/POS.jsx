@@ -4,8 +4,11 @@ import api from "../services/api";
 import {
   Search, Plus, Minus, Trash2, ShoppingCart, CheckCircle,
   X, Barcode, RefreshCw, Printer, Mail, User, Download,
-  Bluetooth, Usb, Settings, Wifi, Camera, Layers,
+  Bluetooth, Usb, Settings, Wifi, Camera, Layers, Smartphone, Zap,
 } from "lucide-react";
+import { Client } from "@stomp/stompjs";
+import { QRCodeCanvas } from "qrcode.react";
+import { wsBaseUrl } from "../services/api";
 import Toast from "../components/Toast";
 import BarcodeScanner from "../components/BarcodeScanner";
 import {
@@ -286,6 +289,12 @@ export default function POS() {
   const [orgName, setOrgName]       = useState("");
   const barcodeRef                  = useRef(null);
 
+  // Phone scanner (cross-device via WebSocket)
+  const [phoneSession, setPhoneSession]     = useState(null); // { sessionId, scanUrl }
+  const [phoneConnected, setPhoneConnected] = useState(false);
+  const [phoneLastScan, setPhoneLastScan]   = useState(null);
+  const stompRef                            = useRef(null);
+
   // Client search
   const [clients, setClients]             = useState([]);
   const [clientSearch, setClientSearch]   = useState("");
@@ -311,6 +320,53 @@ export default function POS() {
       .then(r => setClients(r.data.content || []))
       .catch(() => {});
   }, []);
+
+  // Phone scanner — STOMP lifecycle
+  useEffect(() => {
+    if (!phoneSession) return;
+    const client = new Client({
+      brokerURL: `${wsBaseUrl}/ws`,
+      reconnectDelay: 3000,
+      onConnect: () => setPhoneConnected(true),
+      onDisconnect: () => setPhoneConnected(false),
+    });
+    client.onConnect = () => {
+      setPhoneConnected(true);
+      client.subscribe(`/topic/scan/${phoneSession.sessionId}`, (msg) => {
+        try {
+          const { barcode } = JSON.parse(msg.body);
+          if (!barcode) return;
+          setPhoneLastScan(barcode);
+          handleCameraScan(barcode);
+        } catch {}
+      });
+    };
+    client.activate();
+    stompRef.current = client;
+    return () => { client.deactivate(); stompRef.current = null; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phoneSession]);
+
+  const startPhoneSession = async () => {
+    try {
+      const res = await api.post("/api/pos/scan-sessions");
+      const { sessionId } = res.data;
+      const scanUrl = `${window.location.origin}/scan/${sessionId}`;
+      setPhoneSession({ sessionId, scanUrl });
+      setPhoneConnected(false);
+      setPhoneLastScan(null);
+    } catch { notify("Could not create scanner session", "error"); }
+  };
+
+  const stopPhoneSession = () => {
+    if (phoneSession) {
+      api.delete(`/api/pos/scan-sessions/${phoneSession.sessionId}`).catch(() => {});
+    }
+    stompRef.current?.deactivate();
+    setPhoneSession(null);
+    setPhoneConnected(false);
+    setPhoneLastScan(null);
+  };
 
   // Client autocomplete
   useEffect(() => {
@@ -651,6 +707,71 @@ export default function POS() {
     <div className="max-w-7xl mx-auto px-4 py-6">
       <Toast {...toast} onClose={() => setToast(t => ({ ...t, visible: false }))} />
 
+      {/* ── Phone Scanner QR Modal ──────────────────────────────────────── */}
+      {phoneSession && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+             style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }}>
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-sm overflow-hidden">
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-md shadow-indigo-500/30">
+                  <Smartphone className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">Phone Scanner</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className={`w-1.5 h-1.5 rounded-full ${phoneConnected ? "bg-emerald-400" : "bg-amber-400 animate-pulse"}`} />
+                    <span className="text-[10px] text-slate-500">{phoneConnected ? "Connected" : "Waiting for phone…"}</span>
+                  </div>
+                </div>
+              </div>
+              <button onClick={stopPhoneSession} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* QR Code */}
+            <div className="flex flex-col items-center px-6 py-6 gap-4">
+              <div className="bg-white rounded-2xl p-4 shadow-inner border border-slate-100">
+                <QRCodeCanvas
+                  value={phoneSession.scanUrl}
+                  size={200}
+                  level="M"
+                  includeMargin={false}
+                />
+              </div>
+
+              <div className="text-center">
+                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  1. Open your phone camera
+                </p>
+                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  2. Scan this QR code
+                </p>
+                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  3. Point at product barcodes — cart updates instantly
+                </p>
+              </div>
+
+              {/* Last scan indicator */}
+              {phoneLastScan && (
+                <div className="w-full flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700 rounded-xl px-4 py-2.5">
+                  <Zap className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold uppercase tracking-wider">Last scanned</p>
+                    <p className="text-xs font-mono text-emerald-800 dark:text-emerald-200 truncate">{phoneLastScan}</p>
+                  </div>
+                </div>
+              )}
+
+              <p className="text-[10px] text-slate-400 font-mono">{phoneSession.sessionId}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Barcode scanner banner */}
       <div className="mb-5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 p-px shadow-lg shadow-blue-600/20">
         <div className="rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 px-4 py-3 sm:px-6 sm:py-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
@@ -712,11 +833,27 @@ export default function POS() {
             <button
               type="button"
               onClick={() => setShowCameraScanner(true)}
-              title="Scan with phone camera"
+              title="Scan with this device's camera"
               className="flex items-center gap-1.5 px-3 py-2.5 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-xl text-xs font-semibold shadow-sm hover:scale-[1.03] transition-all flex-shrink-0"
             >
               <Camera size={15} />
               <span className="hidden sm:inline">Scan</span>
+            </button>
+            <button
+              type="button"
+              onClick={startPhoneSession}
+              title="Use phone as wireless barcode scanner"
+              className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold shadow-sm hover:scale-[1.03] transition-all flex-shrink-0 ${
+                phoneSession
+                  ? "bg-gradient-to-br from-emerald-500 to-teal-600 text-white"
+                  : "bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200"
+              }`}
+            >
+              <Smartphone size={15} />
+              <span className="hidden sm:inline">{phoneSession ? "Phone" : "Phone"}</span>
+              {phoneSession && phoneConnected && (
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-200 animate-pulse" />
+              )}
             </button>
           </div>
 

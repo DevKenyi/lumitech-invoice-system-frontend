@@ -5,6 +5,8 @@ const DEFAULT_PROD = "https://ledgerapi.lumitechsystems.com";
 
 const baseURL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? DEFAULT_DEV : DEFAULT_PROD);
 
+export const wsBaseUrl = baseURL.replace(/^http/, "ws");
+
 const api = axios.create({
   baseURL,
   withCredentials: true

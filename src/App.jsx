@@ -69,6 +69,7 @@ import FoodPOS from "./pages/FoodPOS";
 import OrdersKDS from "./pages/OrdersKDS";
 import CommissionPage from "./pages/CommissionPage";
 import ReferralDashboard from "./pages/ReferralDashboard";
+import ScannerPage from "./pages/ScannerPage";
 
 // Shown instead of the full app when the account is suspended or trial has ended.
 // Lives inside OrgProvider so <Billing /> can use OrgContext.
@@ -708,6 +709,7 @@ function App() {
           <Route path="/followup/:token" element={<FollowupPage />} />
           <Route path="/followup-board/:boardToken" element={<FollowupBoard />} />
           <Route path="/commission/:token" element={<CommissionPage />} />
+          <Route path="/scan/:sessionId" element={<ScannerPage />} />
 
           {/* REFERRAL DASHBOARD */}
           <Route path="/referrals" element={<ProtectedRoute><Layout><ReferralDashboard /></Layout></ProtectedRoute>} />
