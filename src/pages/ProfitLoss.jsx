@@ -100,6 +100,20 @@ function ProfitLoss() {
       {/* Date range + generate */}
       <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
         <div className="flex flex-col gap-4">
+          {/* Quick presets */}
+          <div className="flex flex-wrap gap-2">
+            {[
+              { label: "This Month", fn: () => { const d = new Date(); setFrom(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-01`); setTo(today()); } },
+              { label: "This Year",  fn: () => { setFrom(`${new Date().getFullYear()}-01-01`); setTo(today()); } },
+              { label: "Last Year",  fn: () => { const y = new Date().getFullYear()-1; setFrom(`${y}-01-01`); setTo(`${y}-12-31`); } },
+              { label: "All Time",   fn: () => { setFrom("2000-01-01"); setTo(today()); } },
+            ].map(({ label, fn }) => (
+              <button key={label} onClick={fn}
+                className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-300 dark:hover:border-blue-600 hover:text-blue-700 dark:hover:text-blue-300 transition">
+                {label}
+              </button>
+            ))}
+          </div>
           <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">From</label>
