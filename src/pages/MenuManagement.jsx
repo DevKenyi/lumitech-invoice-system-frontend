@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../services/api";
 import { useOrg } from "../context/OrgContext";
 import Toast from "../components/Toast";
+import ConfirmModal from "../components/ConfirmModal";
 import {
   UtensilsCrossed, Plus, Pencil, Trash2, X, Loader2,
   ToggleLeft, ToggleRight, Tag, ChevronRight, ImagePlus, Camera,
@@ -389,29 +390,17 @@ export default function MenuManagement() {
         />
       )}
 
-      {/* Delete Confirm */}
-      {deleteTarget && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 w-full max-w-sm">
-            <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2">Delete "{deleteTarget.name}"?</h3>
-            <p className="text-sm text-slate-500 mb-6">This action cannot be undone.</p>
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setDeleteTarget(null)}
-                className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-sm">
-                Cancel
-              </button>
-              <button onClick={() => {
-                if (deleteTarget.type === "category") deleteCategory(deleteTarget.id);
-                else if (deleteTarget.type === "item") deleteItem(deleteTarget.id);
-                else deleteModifier(deleteTarget.id);
-              }}
-                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium">
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        visible={!!deleteTarget}
+        title={`Delete "${deleteTarget?.name}"`}
+        message="This action cannot be undone."
+        onConfirm={() => {
+          if (deleteTarget.type === "category") deleteCategory(deleteTarget.id);
+          else if (deleteTarget.type === "item") deleteItem(deleteTarget.id);
+          else deleteModifier(deleteTarget.id);
+        }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

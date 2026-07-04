@@ -6,6 +6,7 @@ import {
   Trash2, BarChart2,
 } from "lucide-react";
 import Toast from "../components/Toast";
+import ConfirmModal from "../components/ConfirmModal";
 import { useOrg } from "../context/OrgContext";
 const pct = (v) => `${parseFloat(v || 0).toFixed(1)}%`;
 
@@ -23,6 +24,10 @@ const yearEnd = () => `${currentYear}-12-31`;
 
 export default function BudgetVsActual() {
   const { fmt, currencySymbol } = useOrg();
+  const [dlg, setDlg] = useState({ visible: false, title: "", message: "", action: null });
+  const [confirming, setConfirming] = useState(false);
+  const openConfirm = (title, message, action) => setDlg({ visible: true, title, message, action });
+  const runConfirm = async () => { setConfirming(true); try { await dlg.action(); } finally { setConfirming(false); setDlg(d => ({ ...d, visible: false })); } };
   const [budgets, setBudgets] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -103,14 +108,15 @@ export default function BudgetVsActual() {
     } catch (err) { notify(err.response?.data?.message || `Failed to ${path} budget`, "error"); }
   };
 
-  const deleteBudget = async (id) => {
-    if (!window.confirm("Delete this draft budget?")) return;
-    try {
-      await api.delete(`/api/budgets/${id}`);
-      notify("Budget deleted");
-      if (selectedBudget === id) { setSelectedBudget(null); setReport(null); }
-      load();
-    } catch (err) { notify(err.response?.data?.message || "Failed to delete", "error"); }
+  const deleteBudget = (id) => {
+    openConfirm("Delete Budget", "Delete this draft budget? This cannot be undone.", async () => {
+      try {
+        await api.delete(`/api/budgets/${id}`);
+        notify("Budget deleted");
+        if (selectedBudget === id) { setSelectedBudget(null); setReport(null); }
+        load();
+      } catch (err) { notify(err.response?.data?.message || "Failed to delete", "error"); }
+    });
   };
 
   return (
@@ -341,6 +347,7 @@ export default function BudgetVsActual() {
       )}
 
       <Toast visible={toast.visible} message={toast.message} type={toast.type} onClose={() => setToast(t => ({ ...t, visible: false }))} />
+      <ConfirmModal visible={dlg.visible} title={dlg.title} message={dlg.message} onConfirm={runConfirm} onCancel={() => setDlg(d => ({ ...d, visible: false }))} loading={confirming} />
     </div>
   );
 }

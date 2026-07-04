@@ -5,6 +5,7 @@ import {
   Calendar, Search, ChevronDown, ChevronUp,
 } from "lucide-react";
 import Toast from "../components/Toast";
+import ConfirmModal from "../components/ConfirmModal";
 import { useOrg } from "../context/OrgContext";
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -30,6 +31,10 @@ const emptyForm = (defaultVatRate = 7.5) => ({
 
 export default function RecurringInvoices() {
   const { fmt, currencySymbol, defaultVatRate } = useOrg();
+  const [dlg, setDlg] = useState({ visible: false, title: "", message: "", action: null });
+  const [confirming, setConfirming] = useState(false);
+  const openConfirm = (title, message, action) => setDlg({ visible: true, title, message, action });
+  const runConfirm = async () => { setConfirming(true); try { await dlg.action(); } finally { setConfirming(false); setDlg(d => ({ ...d, visible: false })); } };
   const [items, setItems] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -123,15 +128,16 @@ export default function RecurringInvoices() {
     }
   };
 
-  const cancel = async (id) => {
-    if (!window.confirm("Cancel this recurring invoice template?")) return;
-    try {
-      await api.delete(`/api/invoices/recurring/${id}`);
-      notify("Cancelled");
-      load();
-    } catch (err) {
-      notify(err.response?.data?.message || "Failed to cancel", "error");
-    }
+  const cancel = (id) => {
+    openConfirm("Cancel Template", "Cancel this recurring invoice template? This cannot be undone.", async () => {
+      try {
+        await api.delete(`/api/invoices/recurring/${id}`);
+        notify("Cancelled");
+        load();
+      } catch (err) {
+        notify(err.response?.data?.message || "Failed to cancel", "error");
+      }
+    });
   };
 
   const filtered = items.filter(r =>
@@ -369,6 +375,7 @@ export default function RecurringInvoices() {
       )}
 
       <Toast visible={toast.visible} message={toast.message} type={toast.type} onClose={() => setToast(t => ({ ...t, visible: false }))} />
+      <ConfirmModal visible={dlg.visible} title={dlg.title} message={dlg.message} onConfirm={runConfirm} onCancel={() => setDlg(d => ({ ...d, visible: false }))} loading={confirming} />
     </div>
   );
 }

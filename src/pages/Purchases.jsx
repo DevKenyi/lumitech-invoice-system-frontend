@@ -5,6 +5,7 @@ import {
   ShoppingBag, X, Repeat,
 } from "lucide-react";
 import Toast from "../components/Toast";
+import ConfirmModal from "../components/ConfirmModal";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { useOrg } from "../context/OrgContext";
 
@@ -58,6 +59,10 @@ const emptyForm = () => ({
 export default function Purchases() {
   const { currencySymbol } = useOrg();
 
+  const [dlg, setDlg] = useState({ visible: false, title: "", message: "", action: null });
+  const [confirming, setConfirming] = useState(false);
+  const openConfirm = (title, message, action) => setDlg({ visible: true, title, message, action });
+  const runConfirm = async () => { setConfirming(true); try { await dlg.action(); } finally { setConfirming(false); setDlg(d => ({ ...d, visible: false })); } };
   const [purchases, setPurchases]   = useState([]);
   const [summary, setSummary]       = useState(null);
   const [loading, setLoading]       = useState(false);
@@ -137,15 +142,16 @@ export default function Purchases() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this purchase?")) return;
-    try {
-      await api.delete(`/api/purchases/${id}`);
-      notify("Purchase deleted");
-      load();
-    } catch {
-      notify("Failed to delete", "error");
-    }
+  const handleDelete = (id) => {
+    openConfirm("Delete Purchase", "Delete this purchase? This cannot be undone.", async () => {
+      try {
+        await api.delete(`/api/purchases/${id}`);
+        notify("Purchase deleted");
+        load();
+      } catch {
+        notify("Failed to delete", "error");
+      }
+    });
   };
 
   const handleExport = async () => {
@@ -332,6 +338,8 @@ export default function Purchases() {
           </div>
         )}
       </div>
+
+      <ConfirmModal visible={dlg.visible} title={dlg.title} message={dlg.message} onConfirm={runConfirm} onCancel={() => setDlg(d => ({ ...d, visible: false }))} loading={confirming} />
 
       {/* ── Modal Form ── */}
       {showForm && (

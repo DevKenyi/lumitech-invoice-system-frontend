@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
+import ConfirmModal from "../components/ConfirmModal";
 import {
   Plus, Search, Edit2, Trash2, Package, AlertTriangle, X, Check,
   Barcode, Tag, RefreshCw, ChevronDown, ChevronUp, History, TrendingDown, Camera,
@@ -77,6 +78,10 @@ function MovementTypeBadge({ type }) {
 export default function Inventory() {
   const { fmt, fmtDate, currencySymbol } = useOrg();
 
+  const [dlg, setDlg] = useState({ visible: false, title: "", message: "", action: null });
+  const [confirming, setConfirming] = useState(false);
+  const openConfirm = (title, message, action) => setDlg({ visible: true, title, message, action });
+  const runConfirm = async () => { setConfirming(true); try { await dlg.action(); } finally { setConfirming(false); setDlg(d => ({ ...d, visible: false })); } };
   const [activeTab, setActiveTab] = useState("Products");
   const [toast, setToast]        = useState({ visible: false, message: "", type: "info" });
   const notify = (message, type = "success") => setToast({ visible: true, message, type });
@@ -254,13 +259,14 @@ export default function Inventory() {
     } finally { setSaving(false); }
   };
 
-  const handleDelete = async (id, name) => {
-    if (!window.confirm(`Remove "${name}" from inventory?`)) return;
-    try {
-      await api.delete(`/api/inventory/products/${id}`);
-      notify("Product removed");
-      load(page);
-    } catch { notify("Failed to remove product", "error"); }
+  const handleDelete = (id, name) => {
+    openConfirm("Remove Product", `Remove "${name}" from inventory? This cannot be undone.`, async () => {
+      try {
+        await api.delete(`/api/inventory/products/${id}`);
+        notify("Product removed");
+        load(page);
+      } catch { notify("Failed to remove product", "error"); }
+    });
   };
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -360,23 +366,25 @@ export default function Inventory() {
     if (activeTab === "Restock Orders") loadRestockOrders();
   }, [activeTab]);
 
-  const handleReceiveOrder = async (id) => {
-    if (!window.confirm("Mark this order as received? This will increment stock levels.")) return;
-    try {
-      await api.put(`/api/inventory/restock/${id}/receive`);
-      notify("Order marked as received — stock updated");
-      loadRestockOrders();
-      load(page);
-    } catch (e) { notify(e.response?.data?.message || "Failed to receive order", "error"); }
+  const handleReceiveOrder = (id) => {
+    openConfirm("Receive Order", "Mark this order as received? This will increment stock levels.", async () => {
+      try {
+        await api.put(`/api/inventory/restock/${id}/receive`);
+        notify("Order marked as received — stock updated");
+        loadRestockOrders();
+        load(page);
+      } catch (e) { notify(e.response?.data?.message || "Failed to receive order", "error"); }
+    });
   };
 
-  const handleCancelOrder = async (id) => {
-    if (!window.confirm("Cancel this restock order?")) return;
-    try {
-      await api.put(`/api/inventory/restock/${id}/cancel`);
-      notify("Order cancelled");
-      loadRestockOrders();
-    } catch (e) { notify(e.response?.data?.message || "Failed to cancel order", "error"); }
+  const handleCancelOrder = (id) => {
+    openConfirm("Cancel Order", "Cancel this restock order? This cannot be undone.", async () => {
+      try {
+        await api.put(`/api/inventory/restock/${id}/cancel`);
+        notify("Order cancelled");
+        loadRestockOrders();
+      } catch (e) { notify(e.response?.data?.message || "Failed to cancel order", "error"); }
+    });
   };
 
   const setRF = (k, v) => setRestockForm(f => ({ ...f, [k]: v }));
@@ -571,14 +579,15 @@ export default function Inventory() {
     } finally { setSavingBatch(false); }
   };
 
-  const handleDeleteBatch = async (batchId, productId) => {
-    if (!window.confirm("Delete this batch record?")) return;
-    try {
-      await api.delete(`/api/inventory/batches/${batchId}`);
-      notify("Batch deleted");
-      setProductBatches(prev => { const n = { ...prev }; delete n[productId]; return n; });
-      loadBatches();
-    } catch { notify("Failed to delete batch", "error"); }
+  const handleDeleteBatch = (batchId, productId) => {
+    openConfirm("Delete Batch", "Delete this batch record? This cannot be undone.", async () => {
+      try {
+        await api.delete(`/api/inventory/batches/${batchId}`);
+        notify("Batch deleted");
+        setProductBatches(prev => { const n = { ...prev }; delete n[productId]; return n; });
+        loadBatches();
+      } catch { notify("Failed to delete batch", "error"); }
+    });
   };
 
   const TABS = [
@@ -1935,6 +1944,7 @@ export default function Inventory() {
           </div>
         </div>
       )}
+      <ConfirmModal visible={dlg.visible} title={dlg.title} message={dlg.message} onConfirm={runConfirm} onCancel={() => setDlg(d => ({ ...d, visible: false }))} loading={confirming} />
     </div>
   );
 }
