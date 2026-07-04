@@ -392,6 +392,7 @@ function Navbar({ onClose }) {
     { path: "/bills",        label: "Bills & Payables", icon: FileMinus,     info: "Track supplier bills and record payments" },
     { path: "/suppliers",    label: "Suppliers",         icon: Building2,     info: "Supplier balances aggregated from bills" },
     { path: "/purchase-orders", label: "Purchase Orders", icon: ClipboardCheck, info: "Raise POs and convert to bills" },
+    { path: "/purchases",    label: "My Purchases",      icon: ShoppingBag,   info: "Track operational spend — domains, subscriptions, tools" },
     { path: "/debit-notes",  label: "Debit Notes",      icon: FileMinus,     info: "Reduce bill balances with debit notes" },
     { path: "/credit-notes", label: "Credit Notes",     icon: Undo2,         info: "Reduce invoice balances with credit notes" },
   ];
