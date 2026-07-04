@@ -8,6 +8,7 @@ import {
   CreditCard, Save, TrendingUp, Activity, Bell,
   PhoneCall, Mail, Search, RefreshCw, Download, Copy, Link2, MessageSquare, RotateCcw,
   BookOpen, ExternalLink, Lightbulb, Plus, Edit2, Handshake, Gift,
+  Tag, DollarSign, CheckSquare, Clock,
 } from "lucide-react";
 import Toast from "../components/Toast";
 import ConfirmModal from "../components/ConfirmModal";
@@ -270,6 +271,7 @@ const TABS = [
   { id: "bms",           label: "Managers",       icon: Handshake },
   { id: "referrals",     label: "Referrals",      icon: Gift },
   { id: "pricing",       label: "Pricing",        icon: CreditCard },
+  { id: "custom-billing", label: "Custom Billing", icon: Tag },
   { id: "tips",          label: "Tips",           icon: Lightbulb },
 ];
 
@@ -336,6 +338,18 @@ function SuperAdmin() {
   const [bmEarnings, setBmEarnings] = useState(null); // null | { bmId, data }
   const [bmDeleteTarget, setBmDeleteTarget] = useState(null);
   const [bmDeleting, setBmDeleting] = useState(false);
+
+  // ── Custom Billing ──
+  const [customBillingLoaded, setCustomBillingLoaded] = useState(false);
+  const [customUnpaid, setCustomUnpaid] = useState([]);
+  const [customEnableModal, setCustomEnableModal] = useState(null); // null | { orgId, orgName, existing? }
+  const [customForm, setCustomForm] = useState({ monthlyPrice: "", planLabel: "", clientEmail: "", clientName: "", graceDays: "7" });
+  const [customSaving, setCustomSaving] = useState(false);
+  const [customMarkingPaid, setCustomMarkingPaid] = useState(null); // recordId being marked
+  const [customSuspendTarget, setCustomSuspendTarget] = useState(null);
+  const [customSuspending, setCustomSuspending] = useState(false);
+  const [customOrgRecords, setCustomOrgRecords] = useState(null); // { orgId, orgName, records[] }
+  const [customPayRef, setCustomPayRef] = useState(""); // payment reference input
 
   const BUSINESS_TYPES = [
     { value: "Retail",        label: "🛍️ Retail / Shop" },
@@ -431,7 +445,12 @@ function SuperAdmin() {
         setReferralsLoaded(true);
       }).catch(() => {});
     }
-  }, [tab, tipsLoaded, bmsLoaded, referralsLoaded]);
+    if (tab === "custom-billing" && !customBillingLoaded) {
+      api.get("/api/superadmin/custom-pricing/unpaid")
+        .then(res => { setCustomUnpaid(res.data ?? []); setCustomBillingLoaded(true); })
+        .catch(() => {});
+    }
+  }, [tab, tipsLoaded, bmsLoaded, referralsLoaded, customBillingLoaded]);
 
   if (!isPlatformAdmin) return <Navigate to="/dashboard" replace />;
 
@@ -1898,6 +1917,294 @@ function SuperAdmin() {
           )}
         </div>
       )}
+
+      {/* ── CUSTOM BILLING TAB ──────────────────────────────────────────────── */}
+      {tab === "custom-billing" && (() => {
+        const fmtMoney = (amount, currency) => {
+          const sym = { NGN: "₦", GHS: "GH₵", ZAR: "R", KES: "KSh", USD: "$", GBP: "£", EUR: "€" }[currency] ?? currency + " ";
+          return sym + Number(amount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        };
+        const STATUS_BADGE = {
+          PENDING: "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
+          PAID:    "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300",
+          OVERDUE: "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300",
+        };
+
+        const markPaid = async (record) => {
+          setCustomMarkingPaid(record.id);
+          try {
+            await api.post(`/api/superadmin/custom-pricing/records/${record.id}/mark-paid`, { paymentReference: customPayRef || null });
+            setCustomUnpaid(prev => prev.filter(r => r.id !== record.id));
+            if (customOrgRecords?.orgId === record.orgId) {
+              setCustomOrgRecords(prev => ({
+                ...prev,
+                records: prev.records.map(r => r.id === record.id ? { ...r, status: "PAID", paidAt: new Date().toISOString() } : r),
+              }));
+            }
+            setCustomPayRef("");
+            showToast("Marked as paid.");
+          } catch { showToast("Failed to mark as paid.", "error"); }
+          finally { setCustomMarkingPaid(null); }
+        };
+
+        const loadOrgRecords = async (orgId, orgName) => {
+          try {
+            const res = await api.get(`/api/superadmin/custom-pricing/organisations/${orgId}/records`);
+            setCustomOrgRecords({ orgId, orgName, records: res.data ?? [] });
+          } catch { showToast("Failed to load records.", "error"); }
+        };
+
+        const saveCustomPricing = async () => {
+          if (!customEnableModal) return;
+          setCustomSaving(true);
+          try {
+            await api.post(`/api/superadmin/custom-pricing/organisations/${customEnableModal.orgId}/enable`, {
+              monthlyPrice: parseFloat(customForm.monthlyPrice),
+              planLabel: customForm.planLabel,
+              clientEmail: customForm.clientEmail,
+              clientName: customForm.clientName,
+              graceDays: parseInt(customForm.graceDays) || 7,
+            });
+            showToast("Custom pricing enabled.");
+            setCustomEnableModal(null);
+            setCustomBillingLoaded(false);
+          } catch (e) { showToast(e.response?.data?.message || "Failed.", "error"); }
+          finally { setCustomSaving(false); }
+        };
+
+        return (
+          <div className="space-y-6">
+            {/* Header */}
+            <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                    <Tag className="w-4 h-4 text-blue-600" /> Custom Pricing
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Exclusive deal customers — manual monthly billing via Flutterwave</p>
+                </div>
+                <button
+                  onClick={() => {
+                    const org = orgs.find(o => true); // placeholder — user picks from org list below
+                    setCustomForm({ monthlyPrice: "", planLabel: "", clientEmail: "", clientName: "", graceDays: "7" });
+                    setCustomEnableModal({ orgId: null, orgName: "" });
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition"
+                >
+                  <Plus size={15} /> Enable for Org
+                </button>
+              </div>
+            </div>
+
+            {/* Unpaid records */}
+            <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-500" />
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Pending & Overdue Invoices</h3>
+                {customUnpaid.length > 0 && (
+                  <span className="ml-auto px-2 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700">{customUnpaid.length}</span>
+                )}
+              </div>
+              {!customBillingLoaded ? (
+                <p className="px-6 py-8 text-sm text-slate-400 text-center">Loading…</p>
+              ) : customUnpaid.length === 0 ? (
+                <p className="px-6 py-8 text-sm text-slate-400 text-center">No pending or overdue invoices.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50 dark:bg-slate-800/50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Organisation</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Month</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Amount</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Due</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                      {customUnpaid.map(record => (
+                        <tr key={record.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors">
+                          <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-200">
+                            <button onClick={() => loadOrgRecords(record.orgId, record.orgName)} className="hover:underline text-blue-600 dark:text-blue-400">
+                              {record.orgName}
+                            </button>
+                          </td>
+                          <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                            {record.billingMonth ? new Date(record.billingMonth + "T00:00:00").toLocaleDateString("en-GB", { month: "long", year: "numeric" }) : "—"}
+                          </td>
+                          <td className="px-4 py-3 font-semibold text-slate-800 dark:text-slate-200">{fmtMoney(record.amount, record.currency)}</td>
+                          <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{fmtDate(record.dueDate + "T00:00:00")}</td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-0.5 rounded text-xs font-semibold ${STATUS_BADGE[record.status] ?? ""}`}>{record.status}</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center justify-end gap-2 flex-wrap">
+                              {record.flutterwavePaymentLink && (
+                                <a href={record.flutterwavePaymentLink} target="_blank" rel="noreferrer"
+                                  className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition">
+                                  <Link2 size={11} /> Pay Link
+                                </a>
+                              )}
+                              <button
+                                onClick={() => markPaid(record)}
+                                disabled={customMarkingPaid === record.id}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition disabled:opacity-50"
+                              >
+                                <CheckSquare size={12} /> Mark Paid
+                              </button>
+                              <button
+                                onClick={() => setCustomSuspendTarget(record)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-rose-600 border border-rose-200 hover:bg-rose-50 rounded-lg transition"
+                              >
+                                <XCircle size={12} /> Suspend
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Org records panel */}
+            {customOrgRecords && (
+              <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="w-4 h-4 text-blue-600" />
+                    <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                      All Records — {customOrgRecords.orgName}
+                    </h3>
+                  </div>
+                  <button onClick={() => setCustomOrgRecords(null)} className="text-slate-400 hover:text-slate-600 transition">
+                    <X size={16} />
+                  </button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50 dark:bg-slate-800/50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Month</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Amount</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Due</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Paid At</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Reference</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                      {customOrgRecords.records.map(r => (
+                        <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors">
+                          <td className="px-4 py-3 text-slate-700 dark:text-slate-200">
+                            {r.billingMonth ? new Date(r.billingMonth + "T00:00:00").toLocaleDateString("en-GB", { month: "long", year: "numeric" }) : "—"}
+                          </td>
+                          <td className="px-4 py-3 font-semibold text-slate-800 dark:text-slate-200">{fmtMoney(r.amount, r.currency)}</td>
+                          <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{fmtDate(r.dueDate + "T00:00:00")}</td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-0.5 rounded text-xs font-semibold ${STATUS_BADGE[r.status] ?? ""}`}>{r.status}</span>
+                          </td>
+                          <td className="px-4 py-3 text-slate-500">{r.paidAt ? fmtDate(r.paidAt) : "—"}</td>
+                          <td className="px-4 py-3 text-slate-500 font-mono text-xs">{r.paymentReference ?? "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Enable Custom Pricing modal */}
+            {customEnableModal !== null && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-md">
+                  <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                    <h3 className="font-semibold text-slate-800 dark:text-slate-100">Enable Custom Pricing</h3>
+                    <button onClick={() => setCustomEnableModal(null)} className="text-slate-400 hover:text-slate-600 transition"><X size={16} /></button>
+                  </div>
+                  <div className="p-6 space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">Organisation</label>
+                      <select
+                        value={customEnableModal.orgId ?? ""}
+                        onChange={e => {
+                          const org = orgs.find(o => o.id === e.target.value);
+                          setCustomEnableModal(prev => ({ ...prev, orgId: e.target.value, orgName: org?.name ?? "" }));
+                        }}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                      >
+                        <option value="">Select organisation…</option>
+                        {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">Plan Label</label>
+                      <input type="text" placeholder="e.g. Food POS" value={customForm.planLabel}
+                        onChange={e => setCustomForm(p => ({ ...p, planLabel: e.target.value }))}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">Monthly Price</label>
+                      <input type="number" min="0" step="1" placeholder="20000" value={customForm.monthlyPrice}
+                        onChange={e => setCustomForm(p => ({ ...p, monthlyPrice: e.target.value }))}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">Client Email (for invoices)</label>
+                      <input type="email" placeholder="client@example.com" value={customForm.clientEmail}
+                        onChange={e => setCustomForm(p => ({ ...p, clientEmail: e.target.value }))}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">Client Name</label>
+                      <input type="text" placeholder="Contact name" value={customForm.clientName}
+                        onChange={e => setCustomForm(p => ({ ...p, clientName: e.target.value }))}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">Grace Period (days after 1st)</label>
+                      <input type="number" min="1" max="30" value={customForm.graceDays}
+                        onChange={e => setCustomForm(p => ({ ...p, graceDays: e.target.value }))}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                    </div>
+                  </div>
+                  <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-700 flex gap-3 justify-end">
+                    <button onClick={() => setCustomEnableModal(null)} className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition">Cancel</button>
+                    <button
+                      onClick={saveCustomPricing}
+                      disabled={customSaving || !customEnableModal.orgId || !customForm.monthlyPrice}
+                      className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition disabled:opacity-50"
+                    >
+                      {customSaving ? "Saving…" : "Enable Custom Pricing"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Suspend confirm */}
+            <ConfirmModal
+              visible={!!customSuspendTarget}
+              title="Suspend for Non-Payment"
+              message={`Suspend "${customSuspendTarget?.orgName}" for unpaid ${customSuspendTarget?.billingMonth ? new Date(customSuspendTarget.billingMonth + "T00:00:00").toLocaleDateString("en-GB", { month: "long", year: "numeric" }) : ""} invoice?`}
+              onConfirm={async () => {
+                setCustomSuspending(true);
+                try {
+                  await api.post(`/api/superadmin/custom-pricing/organisations/${customSuspendTarget.orgId}/suspend`);
+                  setCustomUnpaid(prev => prev.filter(r => r.id !== customSuspendTarget.id));
+                  showToast("Organisation suspended.");
+                  setCustomSuspendTarget(null);
+                } catch { showToast("Failed to suspend.", "error"); }
+                finally { setCustomSuspending(false); }
+              }}
+              onCancel={() => setCustomSuspendTarget(null)}
+              loading={customSuspending}
+            />
+          </div>
+        );
+      })()}
 
       {/* ── TIPS TAB ─────────────────────────────────────────────────────────── */}
       {tab === "tips" && (
