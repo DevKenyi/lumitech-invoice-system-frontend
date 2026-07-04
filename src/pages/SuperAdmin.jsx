@@ -350,6 +350,8 @@ function SuperAdmin() {
   const [customSuspending, setCustomSuspending] = useState(false);
   const [customOrgRecords, setCustomOrgRecords] = useState(null); // { orgId, orgName, records[] }
   const [customPayRef, setCustomPayRef] = useState(""); // payment reference input
+  const [customDisableTarget, setCustomDisableTarget] = useState(null); // org to disable custom pricing for
+  const [customDisabling, setCustomDisabling] = useState(false);
 
   const BUSINESS_TYPES = [
     { value: "Retail",        label: "🛍️ Retail / Shop" },
@@ -1995,6 +1997,97 @@ function SuperAdmin() {
                 </button>
               </div>
             </div>
+
+            {/* Active custom-pricing orgs */}
+            {(() => {
+              const customOrgs = orgs.filter(o => o.customPricing);
+              if (customOrgs.length === 0) return null;
+
+              const disableCustomPricing = async (org) => {
+                setCustomDisabling(true);
+                try {
+                  await api.post(`/api/superadmin/custom-pricing/organisations/${org.id}/disable`);
+                  setOrgs(prev => prev.map(o => o.id === org.id ? { ...o, customPricing: false, customMonthlyPrice: null, customPlanLabel: null } : o));
+                  setCustomDisableTarget(null);
+                  showToast("Custom pricing disabled.");
+                } catch { showToast("Failed to disable.", "error"); }
+                finally { setCustomDisabling(false); }
+              };
+
+              return (
+                <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                  <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center gap-2">
+                    <CheckSquare className="w-4 h-4 text-emerald-500" />
+                    <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Active Custom Pricing Orgs</h3>
+                    <span className="ml-auto px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">{customOrgs.length}</span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50 dark:bg-slate-800/50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Organisation</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Plan Label</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Monthly Price</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Client Email</th>
+                          <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                        {customOrgs.map(org => (
+                          <tr key={org.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors">
+                            <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-200">
+                              <button onClick={() => loadOrgRecords(org.id, org.name)} className="hover:underline text-blue-600 dark:text-blue-400">
+                                {org.name}
+                              </button>
+                            </td>
+                            <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{org.customPlanLabel ?? "—"}</td>
+                            <td className="px-4 py-3 font-semibold text-slate-800 dark:text-slate-200">
+                              {fmtMoney(org.customMonthlyPrice, org.country === "GH" ? "GHS" : org.country === "ZA" ? "ZAR" : "NGN")}
+                            </td>
+                            <td className="px-4 py-3 text-slate-500 text-xs">{org.customPricingClientEmail ?? "—"}</td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => {
+                                    setCustomForm({
+                                      monthlyPrice: String(org.customMonthlyPrice ?? ""),
+                                      planLabel: org.customPlanLabel ?? "",
+                                      clientEmail: org.customPricingClientEmail ?? "",
+                                      clientName: org.customPricingClientName ?? "",
+                                      graceDays: "7",
+                                    });
+                                    setCustomEnableModal({ orgId: org.id, orgName: org.name });
+                                  }}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-blue-600 border border-blue-200 hover:bg-blue-50 rounded-lg transition"
+                                >
+                                  <Edit2 size={11} /> Edit
+                                </button>
+                                <button
+                                  onClick={() => setCustomDisableTarget(org)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-rose-600 border border-rose-200 hover:bg-rose-50 rounded-lg transition"
+                                >
+                                  <Trash2 size={11} /> Remove
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Disable confirm */}
+                  <ConfirmModal
+                    visible={!!customDisableTarget}
+                    title="Remove Custom Pricing"
+                    message={`Remove custom pricing for "${customDisableTarget?.name}"? They will need a standard subscription to access the platform.`}
+                    onConfirm={() => disableCustomPricing(customDisableTarget)}
+                    onCancel={() => setCustomDisableTarget(null)}
+                    loading={customDisabling}
+                  />
+                </div>
+              );
+            })()}
 
             {/* Unpaid records */}
             <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
