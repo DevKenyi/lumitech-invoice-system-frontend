@@ -345,7 +345,7 @@ export function printFoodOrderBrowser(order, orgName, currency = "") {
       <div class="center" style="font-size:11px">Order Receipt</div>
       <div class="divider"></div>
       <div class="center"><span class="badge">${order.orderType === "DINE_IN" ? "DINE IN" : "TAKEAWAY"}</span></div>
-      ${order.standNumber ? `<div class="big">#${order.standNumber}</div><div class="center" style="font-size:11px;margin-bottom:6px">Place this on your table</div>` : ""}
+      ${order.standNumber ? `<div class="big">Table ${order.standNumber}</div><div class="center" style="font-size:11px;margin-bottom:6px">Place this on your table</div>` : `<div class="big" style="font-size:20px">${order.orderNumber}</div><div class="center" style="font-size:11px;margin-bottom:6px">Quote this ref when collecting</div>`}
       <div class="divider"></div>
       <div style="font-size:11px;margin-bottom:4px">Order: <strong>${order.orderNumber}</strong></div>
       <div style="font-size:11px;margin-bottom:4px">Payment: <strong>${(order.paymentMethod || "").replace("_", " ")}</strong></div>
@@ -364,7 +364,7 @@ export function printFoodOrderBrowser(order, orgName, currency = "") {
     </div>
     <div class="page">
       <div class="center" style="font-size:11px;font-weight:bold">— KITCHEN TICKET —</div>
-      <div class="big">${order.standNumber ? "#" + order.standNumber : order.orderType === "TAKEAWAY" ? "TKWY" : "—"}</div>
+      <div class="big" style="${!order.standNumber ? "font-size:20px" : ""}">${order.standNumber ? "Table " + order.standNumber : order.orderNumber}</div>
       <div class="center" style="font-size:11px;margin-bottom:8px">${order.orderNumber} · ${order.orderType === "DINE_IN" ? "Dine In" : "Takeaway"}</div>
       <div class="divider"></div>
       ${kitchenItems}
@@ -435,13 +435,15 @@ function buildFoodEscPos(order, orgName, currency = "") {
   text("ORDER RECEIPT"); nl();
   push(ESC, 0x61, 0x00); hr();
 
-  // Stand number prominently
+  // Table number (dine-in) or order ref (go-to) — prominently
+  push(ESC, 0x61, 0x01); push(GS, 0x21, 0x22); push(ESC, 0x45, 0x01);
   if (isDineIn && order.standNumber) {
-    push(ESC, 0x61, 0x01); push(GS, 0x21, 0x22); push(ESC, 0x45, 0x01);
-    text("#" + order.standNumber); nl();
-    push(GS, 0x21, 0x00); push(ESC, 0x45, 0x00);
-    push(ESC, 0x61, 0x00);
+    text("TABLE " + order.standNumber); nl();
+  } else {
+    text(order.orderNumber); nl();
   }
+  push(GS, 0x21, 0x00); push(ESC, 0x45, 0x00);
+  push(ESC, 0x61, 0x00);
 
   text("Order  : " + order.orderNumber); nl();
   text("Type   : " + (isDineIn ? "Dine In" : "Takeaway")); nl();
@@ -489,9 +491,9 @@ function buildFoodEscPos(order, orgName, currency = "") {
   text("-- KITCHEN TICKET --"); nl();
   push(ESC, 0x45, 0x00);
 
-  // Stand or TKWY — big
+  // Table number (dine-in) or order ref (go-to) — big
   push(GS, 0x21, 0x22); push(ESC, 0x45, 0x01);
-  text(isDineIn && order.standNumber ? "#" + order.standNumber : "TKWY"); nl();
+  text(isDineIn && order.standNumber ? "TABLE " + order.standNumber : order.orderNumber); nl();
   push(GS, 0x21, 0x00); push(ESC, 0x45, 0x00);
 
   push(ESC, 0x61, 0x00);
