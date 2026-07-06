@@ -455,14 +455,16 @@ export default function FoodPOS() {
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 w-full max-w-xs text-center">
             {successOrder.standNumber ? (
               <>
-                <div className="w-24 h-24 rounded-full bg-blue-600 text-white flex items-center justify-center mx-auto mb-3 text-4xl font-black">
-                  #{successOrder.standNumber}
+                <div className="w-28 h-28 rounded-full bg-blue-600 text-white flex flex-col items-center justify-center mx-auto mb-3 gap-0.5">
+                  <span className="text-xs font-semibold uppercase tracking-widest opacity-80">Table</span>
+                  <span className="text-4xl font-black leading-none">{successOrder.standNumber}</span>
                 </div>
-                <p className="text-sm text-slate-500 mb-1">Give this stand to the customer</p>
+                <p className="text-sm text-slate-500 mb-1">Give this table number to the customer</p>
               </>
             ) : (
-              <div className="w-16 h-16 rounded-full bg-orange-500 text-white flex items-center justify-center mx-auto mb-3">
-                <ShoppingBag size={32} />
+              <div className="w-28 h-28 rounded-full bg-orange-500 text-white flex flex-col items-center justify-center mx-auto mb-3 gap-0.5">
+                <span className="text-xs font-semibold uppercase tracking-widest opacity-80">Ref</span>
+                <span className="text-xl font-black leading-tight text-center px-2">{successOrder.orderNumber}</span>
               </div>
             )}
             <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1">{successOrder.orderNumber}</h3>

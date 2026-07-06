@@ -159,7 +159,7 @@ function StandGrid({ onStandReturned }) {
                     key={stand.number}
                     onClick={() => stand.inUse && returnStand(stand.number)}
                     disabled={!stand.inUse || returningStand === stand.number}
-                    title={stand.inUse ? `Stand #${stand.number} — tap to return` : `Stand #${stand.number} — free`}
+                    title={stand.inUse ? `Table ${stand.number} — tap to return` : `Table ${stand.number} — free`}
                     className={`w-10 h-10 rounded-lg text-sm font-bold flex items-center justify-center transition-all
                       ${stand.inUse
                         ? "bg-red-500 hover:bg-red-600 text-white shadow-md cursor-pointer"
@@ -371,8 +371,9 @@ export default function OrdersKDS() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-start gap-2">
                     {isDineIn && order.standNumber ? (
-                      <div className="flex-shrink-0 w-10 h-10 rounded-full bg-blue-600 text-white text-sm font-bold flex items-center justify-center shadow">
-                        {order.standNumber}
+                      <div className="flex-shrink-0 w-10 h-10 rounded-full bg-blue-600 text-white flex flex-col items-center justify-center shadow leading-none">
+                        <span className="text-[8px] font-semibold uppercase opacity-80 tracking-wide">Tbl</span>
+                        <span className="text-sm font-bold">{order.standNumber}</span>
                       </div>
                     ) : !isDineIn ? (
                       <div className="flex-shrink-0 w-10 h-10 rounded-full bg-orange-500 text-white flex items-center justify-center shadow">
