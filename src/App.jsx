@@ -71,6 +71,7 @@ import CommissionPage from "./pages/CommissionPage";
 import ReferralDashboard from "./pages/ReferralDashboard";
 import ScannerPage from "./pages/ScannerPage";
 import Purchases from "./pages/Purchases";
+import MyDevices from "./pages/MyDevices";
 
 // Shown instead of the full app when the account is suspended or trial has ended.
 // Lives inside OrgProvider so <Billing /> can use OrgContext.
@@ -683,6 +684,7 @@ function App() {
           {/* PURCHASE ORDERS */}
           <Route path="/purchase-orders" element={<ProtectedRoute><Layout><PurchaseOrders /></Layout></ProtectedRoute>} />
           <Route path="/purchases" element={<ProtectedRoute><Layout><Purchases /></Layout></ProtectedRoute>} />
+          <Route path="/my-devices" element={<ProtectedRoute><Layout><MyDevices /></Layout></ProtectedRoute>} />
 
           {/* FIXED ASSETS */}
           <Route path="/fixed-assets" element={<ProtectedRoute><Layout><FixedAssets /></Layout></ProtectedRoute>} />

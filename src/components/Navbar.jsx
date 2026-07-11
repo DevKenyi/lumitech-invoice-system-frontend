@@ -8,7 +8,7 @@ import {
   Info, SlidersHorizontal, Package, ShoppingCart, BarChart2,
   FileCheck, Repeat, Undo2, FileMinus, ClipboardCheck,
   Warehouse, Target, UserCog, GitBranch, BookMarked, TrendingDown, History,
-  Tag, ShoppingBag, UtensilsCrossed, Search, Gift,
+  Tag, ShoppingBag, UtensilsCrossed, Search, Gift, Monitor,
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import api, { getUserFromToken } from "../services/api";
@@ -277,6 +277,7 @@ function Navbar({ onClose }) {
     try { return new Set((localStorage.getItem("lumi_hidden_nav_items") || "").split(",").filter(Boolean)); }
     catch { return new Set(); }
   });
+  const [posType, setPosType] = useState(() => localStorage.getItem("lumi_pos_type") || null);
   useEffect(() => {
     if (isStaffRole) {
       api.get("/api/org").then(res => {
@@ -284,6 +285,10 @@ function Navbar({ onClose }) {
         setStaffFeatures(sf);
         if (sf !== null) localStorage.setItem("staffFeatures", sf);
         else localStorage.removeItem("staffFeatures");
+        const pt = res.data.posType ?? null;
+        setPosType(pt);
+        if (pt) localStorage.setItem("lumi_pos_type", pt);
+        else localStorage.removeItem("lumi_pos_type");
       }).catch(() => {});
     } else {
       api.get("/api/org").then(res => {
@@ -292,6 +297,10 @@ function Navbar({ onClose }) {
         setHiddenNavItems(items);
         if (raw) localStorage.setItem("lumi_hidden_nav_items", raw);
         else localStorage.removeItem("lumi_hidden_nav_items");
+        const pt = res.data.posType ?? null;
+        setPosType(pt);
+        if (pt) localStorage.setItem("lumi_pos_type", pt);
+        else localStorage.removeItem("lumi_pos_type");
       }).catch(() => {});
     }
   }, [isStaffRole]);
@@ -437,8 +446,9 @@ function Navbar({ onClose }) {
     ...(navVisible("nav_orders")       ? [{ path: "/orders",       label: "Order Fulfillment", icon: ClipboardList,   info: "View and fulfil incoming orders" }] : []),
     ...(navVisible("nav_inventory")    ? [{ path: "/inventory",    label: "Inventory",         icon: Package,         info: "Manage products, stock and prices" }] : []),
     ...(navVisible("nav_sales_report") ? [{ path: "/sales/report", label: "Sales Reports",     icon: BarChart2,       info: "Revenue, transactions and performance" }] : []),
+    ...(posType ? [{ path: "/my-devices", label: "My Devices", icon: Monitor, info: "Track your Lumitech tablet and printer" }] : []),
   ];
-  const posActive = posItems.some(i => cur.startsWith(i.path));
+  const posActive = posItems.some(i => cur.startsWith(i.path)) || cur === "/my-devices";
 
   // ── Section: Settings ─────────────────────────────────────────────────────
   const settingsItems = [

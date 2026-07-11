@@ -9,6 +9,7 @@ import {
   PhoneCall, Mail, Search, RefreshCw, Download, Copy, Link2, MessageSquare, RotateCcw,
   BookOpen, ExternalLink, Lightbulb, Plus, Edit2, Handshake, Gift,
   Tag, DollarSign, CheckSquare, Clock,
+  Monitor, Printer, ChevronRight,
 } from "lucide-react";
 import Toast from "../components/Toast";
 import ConfirmModal from "../components/ConfirmModal";
@@ -272,6 +273,7 @@ const TABS = [
   { id: "referrals",     label: "Referrals",      icon: Gift },
   { id: "pricing",       label: "Pricing",        icon: CreditCard },
   { id: "custom-billing", label: "Custom Billing", icon: Tag },
+  { id: "hardware",       label: "Hardware",       icon: Monitor },
   { id: "tips",          label: "Tips",           icon: Lightbulb },
 ];
 
@@ -352,6 +354,20 @@ function SuperAdmin() {
   const [customPayRef, setCustomPayRef] = useState(""); // payment reference input
   const [customDisableTarget, setCustomDisableTarget] = useState(null); // org to disable custom pricing for
   const [customDisabling, setCustomDisabling] = useState(false);
+
+  // ── Hardware ──
+  const [hardwareLoaded, setHardwareLoaded] = useState(false);
+  const [hardwareDeployments, setHardwareDeployments] = useState([]);
+  const [hwDeployModal, setHwDeployModal] = useState(null); // null | { orgId, orgName }
+  const [hwDeployForm, setHwDeployForm] = useState({ assetType: "TABLET", serialNumber: "", agreedValue: "", initialDeposit: "", depositDate: "", deployedDate: new Date().toISOString().slice(0, 10), condition: "", notes: "" });
+  const [hwDeploySaving, setHwDeploySaving] = useState(false);
+  const [hwPaymentModal, setHwPaymentModal] = useState(null); // null | { deploymentId, orgName, assetType }
+  const [hwPaymentForm, setHwPaymentForm] = useState({ amount: "", paymentDate: new Date().toISOString().slice(0, 10), note: "" });
+  const [hwPaymentSaving, setHwPaymentSaving] = useState(false);
+  const [hwDetailModal, setHwDetailModal] = useState(null); // null | deployment object
+  const [hwPosTypeModal, setHwPosTypeModal] = useState(null); // null | { orgId, orgName, current }
+  const [hwPosTypeSaving, setHwPosTypeSaving] = useState(false);
+  const [hwOrgSearch, setHwOrgSearch] = useState("");
 
   const BUSINESS_TYPES = [
     { value: "Retail",        label: "🛍️ Retail / Shop" },
@@ -452,7 +468,12 @@ function SuperAdmin() {
         .then(res => { setCustomUnpaid(res.data ?? []); setCustomBillingLoaded(true); })
         .catch(() => {});
     }
-  }, [tab, tipsLoaded, bmsLoaded, referralsLoaded, customBillingLoaded]);
+    if (tab === "hardware" && !hardwareLoaded) {
+      api.get("/api/superadmin/hardware")
+        .then(res => { setHardwareDeployments(res.data ?? []); setHardwareLoaded(true); })
+        .catch(() => {});
+    }
+  }, [tab, tipsLoaded, bmsLoaded, referralsLoaded, customBillingLoaded, hardwareLoaded]);
 
   if (!isPlatformAdmin) return <Navigate to="/dashboard" replace />;
 
@@ -2721,6 +2742,565 @@ function SuperAdmin() {
           </div>
         </div>
       )}
+
+      {/* ── Hardware tab ─────────────────────────────────────────────────── */}
+      {tab === "hardware" && (() => {
+        const fmt = (n) => "₦" + Number(n ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        const ASSET_LABEL = { TABLET: "Tablet", THERMAL_PRINTER: "Thermal Printer" };
+        const ASSET_ICON  = { TABLET: <Monitor className="w-3.5 h-3.5" />, THERMAL_PRINTER: <Printer className="w-3.5 h-3.5" /> };
+        const STATUS_BADGE = {
+          DEPLOYED:  "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300",
+          PAID_OFF:  "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300",
+          RETURNED:  "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400",
+          LOST:      "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300",
+        };
+        const CONDITION_BADGE = {
+          NEW:     "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300",
+          GOOD:    "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300",
+          FAIR:    "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
+          DAMAGED: "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300",
+        };
+
+        const posOrgs = orgs.filter(o => o.posType);
+        const filteredOrgs = orgs.filter(o => !hwOrgSearch || o.name?.toLowerCase().includes(hwOrgSearch.toLowerCase()));
+
+        const doDeployDevice = async () => {
+          if (!hwDeployModal?.orgId || !hwDeployForm.agreedValue || !hwDeployForm.deployedDate) return;
+          setHwDeploySaving(true);
+          try {
+            const payload = {
+              assetType: hwDeployForm.assetType,
+              serialNumber: hwDeployForm.serialNumber || null,
+              agreedValue: parseFloat(hwDeployForm.agreedValue),
+              initialDeposit: hwDeployForm.initialDeposit ? parseFloat(hwDeployForm.initialDeposit) : 0,
+              depositDate: hwDeployForm.depositDate || hwDeployForm.deployedDate,
+              deployedDate: hwDeployForm.deployedDate,
+              condition: hwDeployForm.condition || null,
+              notes: hwDeployForm.notes || null,
+            };
+            const res = await api.post(`/api/superadmin/hardware/organisations/${hwDeployModal.orgId}`, payload);
+            setHardwareDeployments(prev => [res.data, ...prev]);
+            showToast("Device deployed successfully.");
+            setHwDeployModal(null);
+          } catch (e) { showToast(e.response?.data?.message || "Failed to deploy device.", "error"); }
+          finally { setHwDeploySaving(false); }
+        };
+
+        const doRecordPayment = async () => {
+          if (!hwPaymentModal?.deploymentId || !hwPaymentForm.amount) return;
+          setHwPaymentSaving(true);
+          try {
+            const res = await api.post(`/api/superadmin/hardware/${hwPaymentModal.deploymentId}/payments`, {
+              amount: parseFloat(hwPaymentForm.amount),
+              paymentDate: hwPaymentForm.paymentDate || new Date().toISOString().slice(0, 10),
+              note: hwPaymentForm.note || null,
+            });
+            setHardwareDeployments(prev => prev.map(d => d.id === hwPaymentModal.deploymentId ? res.data : d));
+            if (hwDetailModal?.id === hwPaymentModal.deploymentId) setHwDetailModal(res.data);
+            showToast("Payment recorded.");
+            setHwPaymentModal(null);
+          } catch (e) { showToast(e.response?.data?.message || "Failed to record payment.", "error"); }
+          finally { setHwPaymentSaving(false); }
+        };
+
+        const doSetPosType = async () => {
+          if (!hwPosTypeModal?.orgId) return;
+          setHwPosTypeSaving(true);
+          try {
+            await api.put(`/api/superadmin/hardware/organisations/${hwPosTypeModal.orgId}/pos-type`, { posType: hwPosTypeModal.posType || null });
+            setOrgs(prev => prev.map(o => o.id === hwPosTypeModal.orgId ? { ...o, posType: hwPosTypeModal.posType || null } : o));
+            showToast("POS type updated.");
+            setHwPosTypeModal(null);
+          } catch { showToast("Failed to update POS type.", "error"); }
+          finally { setHwPosTypeSaving(false); }
+        };
+
+        const totalOutstanding = hardwareDeployments.reduce((sum, d) => sum + (d.balanceDue ?? 0), 0);
+
+        return (
+          <div className="space-y-6">
+            {/* Header */}
+            <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                    <Monitor className="w-4 h-4 text-blue-600" /> Hardware Deployments
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Tablets and thermal printers deployed to Food POS and Retail POS customers</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setHwDeployForm({ assetType: "TABLET", serialNumber: "", agreedValue: "", initialDeposit: "", depositDate: "", deployedDate: new Date().toISOString().slice(0, 10), condition: "", notes: "" });
+                    setHwDeployModal({ orgId: null, orgName: "" });
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition"
+                >
+                  <Plus size={15} /> Deploy Device
+                </button>
+              </div>
+
+              {/* Summary stats */}
+              <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3">
+                  <p className="text-xs text-slate-400">Active Deployments</p>
+                  <p className="text-xl font-bold text-slate-800 dark:text-white mt-0.5">
+                    {hardwareDeployments.filter(d => d.status === "DEPLOYED").length}
+                  </p>
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3">
+                  <p className="text-xs text-slate-400">Paid Off</p>
+                  <p className="text-xl font-bold text-emerald-600 mt-0.5">
+                    {hardwareDeployments.filter(d => d.status === "PAID_OFF").length}
+                  </p>
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3">
+                  <p className="text-xs text-slate-400">Total Outstanding</p>
+                  <p className="text-xl font-bold text-blue-600 mt-0.5">{fmt(totalOutstanding)}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* POS Organisations */}
+            <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+              <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">POS Organisations</h3>
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    value={hwOrgSearch}
+                    onChange={e => setHwOrgSearch(e.target.value)}
+                    placeholder="Search orgs…"
+                    className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-100 dark:border-slate-700">
+                      <th className="text-left px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wide">Org</th>
+                      <th className="text-left px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wide">POS Type</th>
+                      <th className="text-left px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wide">Devices</th>
+                      <th className="px-3 py-2"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                    {filteredOrgs.slice(0, hwOrgSearch ? 50 : 20).map(org => {
+                      const orgDevices = hardwareDeployments.filter(d => d.orgId === org.id);
+                      return (
+                        <tr key={org.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/40 transition">
+                          <td className="px-3 py-2.5 font-medium text-slate-800 dark:text-slate-100">{org.name}</td>
+                          <td className="px-3 py-2.5">
+                            {org.posType ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">
+                                {org.posType === "FOOD_POS" ? "Food POS" : "Retail POS"}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-slate-400">—</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2.5 text-xs text-slate-500">{orgDevices.length > 0 ? `${orgDevices.length} device${orgDevices.length > 1 ? "s" : ""}` : "—"}</td>
+                          <td className="px-3 py-2.5">
+                            <div className="flex items-center gap-2 justify-end">
+                              <button
+                                onClick={() => setHwPosTypeModal({ orgId: org.id, orgName: org.name, posType: org.posType || "" })}
+                                className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 transition"
+                              >
+                                {org.posType ? "Change" : "Set POS Type"}
+                              </button>
+                              {org.posType && (
+                                <button
+                                  onClick={() => {
+                                    setHwDeployForm({ assetType: "TABLET", serialNumber: "", agreedValue: "", initialDeposit: "", depositDate: "", deployedDate: new Date().toISOString().slice(0, 10), condition: "", notes: "" });
+                                    setHwDeployModal({ orgId: org.id, orgName: org.name });
+                                  }}
+                                  className="text-xs text-emerald-600 hover:text-emerald-800 dark:text-emerald-400 transition flex items-center gap-0.5"
+                                >
+                                  <Plus size={11} /> Deploy
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {filteredOrgs.length === 0 && (
+                      <tr><td colSpan={4} className="px-3 py-8 text-center text-xs text-slate-400">No organisations found.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Deployments table */}
+            <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">All Deployments</h3>
+              {!hardwareLoaded ? (
+                <p className="text-xs text-slate-400 py-8 text-center">Loading…</p>
+              ) : hardwareDeployments.length === 0 ? (
+                <p className="text-xs text-slate-400 py-8 text-center">No devices deployed yet.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-100 dark:border-slate-700">
+                        <th className="text-left px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wide">Org</th>
+                        <th className="text-left px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wide">Device</th>
+                        <th className="text-left px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wide">Agreed</th>
+                        <th className="text-left px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wide">Paid</th>
+                        <th className="text-left px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wide">Balance Due</th>
+                        <th className="text-left px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wide">Status</th>
+                        <th className="text-left px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wide">Condition</th>
+                        <th className="px-3 py-2"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                      {hardwareDeployments.map(d => (
+                        <tr key={d.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/40 transition">
+                          <td className="px-3 py-2.5 font-medium text-slate-800 dark:text-slate-100">{d.orgName}</td>
+                          <td className="px-3 py-2.5">
+                            <span className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                              {ASSET_ICON[d.assetType]} {ASSET_LABEL[d.assetType] ?? d.assetType}
+                            </span>
+                            {d.serialNumber && <p className="text-xs text-slate-400 mt-0.5">S/N: {d.serialNumber}</p>}
+                          </td>
+                          <td className="px-3 py-2.5 text-xs text-slate-600 dark:text-slate-300">{fmt(d.agreedValue)}</td>
+                          <td className="px-3 py-2.5 text-xs text-emerald-600 dark:text-emerald-400">{fmt(d.totalPaid)}</td>
+                          <td className="px-3 py-2.5 text-xs font-semibold text-rose-600 dark:text-rose-400">{fmt(d.balanceDue)}</td>
+                          <td className="px-3 py-2.5">
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[d.status] ?? ""}`}>
+                              {d.status?.replace("_", " ")}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2.5">
+                            {d.condition ? (
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${CONDITION_BADGE[d.condition] ?? ""}`}>{d.condition}</span>
+                            ) : <span className="text-xs text-slate-400">—</span>}
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <div className="flex items-center gap-2 justify-end">
+                              <button
+                                onClick={() => {
+                                  setHwPaymentForm({ amount: "", paymentDate: new Date().toISOString().slice(0, 10), note: "" });
+                                  setHwPaymentModal({ deploymentId: d.id, orgName: d.orgName, assetType: d.assetType });
+                                }}
+                                disabled={d.status === "PAID_OFF"}
+                                className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                              >
+                                + Payment
+                              </button>
+                              <button
+                                onClick={() => setHwDetailModal(d)}
+                                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+                                title="View history"
+                              >
+                                <ChevronRight className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* ── Deploy Device Modal ── */}
+            {hwDeployModal && (
+              <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md">
+                  <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700">
+                    <h3 className="font-semibold text-slate-800 dark:text-slate-100">Deploy Device</h3>
+                    <button onClick={() => setHwDeployModal(null)} className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition"><X size={16} /></button>
+                  </div>
+                  <div className="p-5 space-y-3">
+                    {/* Org picker */}
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Organisation *</label>
+                      <select
+                        value={hwDeployModal.orgId ?? ""}
+                        onChange={e => {
+                          const org = orgs.find(o => o.id === e.target.value);
+                          setHwDeployModal(prev => ({ ...prev, orgId: e.target.value, orgName: org?.name ?? "" }));
+                        }}
+                        className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Select a POS organisation…</option>
+                        {orgs.filter(o => o.posType).map(o => (
+                          <option key={o.id} value={o.id}>{o.name} ({o.posType === "FOOD_POS" ? "Food POS" : "Retail POS"})</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Asset Type *</label>
+                        <select
+                          value={hwDeployForm.assetType}
+                          onChange={e => setHwDeployForm(f => ({ ...f, assetType: e.target.value }))}
+                          className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="TABLET">Tablet</option>
+                          <option value="THERMAL_PRINTER">Thermal Printer</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Condition</label>
+                        <select
+                          value={hwDeployForm.condition}
+                          onChange={e => setHwDeployForm(f => ({ ...f, condition: e.target.value }))}
+                          className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">— Select —</option>
+                          <option value="NEW">New</option>
+                          <option value="GOOD">Good</option>
+                          <option value="FAIR">Fair</option>
+                          <option value="DAMAGED">Damaged</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Serial Number</label>
+                      <input
+                        value={hwDeployForm.serialNumber}
+                        onChange={e => setHwDeployForm(f => ({ ...f, serialNumber: e.target.value }))}
+                        placeholder="e.g. SN-20240712"
+                        className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Agreed Value (₦) *</label>
+                        <input
+                          type="number" min="0" step="100"
+                          value={hwDeployForm.agreedValue}
+                          onChange={e => setHwDeployForm(f => ({ ...f, agreedValue: e.target.value }))}
+                          placeholder="0.00"
+                          className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Initial Deposit (₦)</label>
+                        <input
+                          type="number" min="0" step="100"
+                          value={hwDeployForm.initialDeposit}
+                          onChange={e => setHwDeployForm(f => ({ ...f, initialDeposit: e.target.value }))}
+                          placeholder="0.00"
+                          className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Deployed Date *</label>
+                        <input
+                          type="date"
+                          value={hwDeployForm.deployedDate}
+                          onChange={e => setHwDeployForm(f => ({ ...f, deployedDate: e.target.value }))}
+                          className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Deposit Date</label>
+                        <input
+                          type="date"
+                          value={hwDeployForm.depositDate}
+                          onChange={e => setHwDeployForm(f => ({ ...f, depositDate: e.target.value }))}
+                          className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Notes</label>
+                      <textarea
+                        value={hwDeployForm.notes}
+                        onChange={e => setHwDeployForm(f => ({ ...f, notes: e.target.value }))}
+                        rows={2}
+                        placeholder="Agreement details, terms, etc."
+                        className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 p-5 border-t border-slate-100 dark:border-slate-700">
+                    <button onClick={() => setHwDeployModal(null)} className="flex-1 px-4 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition">Cancel</button>
+                    <button
+                      onClick={doDeployDevice}
+                      disabled={hwDeploySaving || !hwDeployModal.orgId || !hwDeployForm.agreedValue || !hwDeployForm.deployedDate}
+                      className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl disabled:opacity-50 transition"
+                    >
+                      {hwDeploySaving ? "Saving…" : "Deploy Device"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── Record Payment Modal ── */}
+            {hwPaymentModal && (
+              <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm">
+                  <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700">
+                    <div>
+                      <h3 className="font-semibold text-slate-800 dark:text-slate-100">Record Payment</h3>
+                      <p className="text-xs text-slate-400 mt-0.5">{hwPaymentModal.orgName} — {ASSET_LABEL[hwPaymentModal.assetType] ?? hwPaymentModal.assetType}</p>
+                    </div>
+                    <button onClick={() => setHwPaymentModal(null)} className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition"><X size={16} /></button>
+                  </div>
+                  <div className="p-5 space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Amount (₦) *</label>
+                      <input
+                        type="number" min="0.01" step="100"
+                        value={hwPaymentForm.amount}
+                        onChange={e => setHwPaymentForm(f => ({ ...f, amount: e.target.value }))}
+                        placeholder="0.00"
+                        className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Payment Date *</label>
+                      <input
+                        type="date"
+                        value={hwPaymentForm.paymentDate}
+                        onChange={e => setHwPaymentForm(f => ({ ...f, paymentDate: e.target.value }))}
+                        className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Note</label>
+                      <input
+                        value={hwPaymentForm.note}
+                        onChange={e => setHwPaymentForm(f => ({ ...f, note: e.target.value }))}
+                        placeholder="e.g. Bank transfer, cash"
+                        className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 p-5 border-t border-slate-100 dark:border-slate-700">
+                    <button onClick={() => setHwPaymentModal(null)} className="flex-1 px-4 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition">Cancel</button>
+                    <button
+                      onClick={doRecordPayment}
+                      disabled={hwPaymentSaving || !hwPaymentForm.amount}
+                      className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl disabled:opacity-50 transition"
+                    >
+                      {hwPaymentSaving ? "Saving…" : "Record Payment"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── Set POS Type Modal ── */}
+            {hwPosTypeModal && (
+              <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm">
+                  <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700">
+                    <div>
+                      <h3 className="font-semibold text-slate-800 dark:text-slate-100">Set POS Type</h3>
+                      <p className="text-xs text-slate-400 mt-0.5">{hwPosTypeModal.orgName}</p>
+                    </div>
+                    <button onClick={() => setHwPosTypeModal(null)} className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition"><X size={16} /></button>
+                  </div>
+                  <div className="p-5">
+                    <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">POS Type</label>
+                    <select
+                      value={hwPosTypeModal.posType ?? ""}
+                      onChange={e => setHwPosTypeModal(prev => ({ ...prev, posType: e.target.value }))}
+                      className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">None (remove POS status)</option>
+                      <option value="FOOD_POS">Food POS</option>
+                      <option value="RETAIL_POS">Retail POS</option>
+                    </select>
+                  </div>
+                  <div className="flex gap-2 p-5 border-t border-slate-100 dark:border-slate-700">
+                    <button onClick={() => setHwPosTypeModal(null)} className="flex-1 px-4 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition">Cancel</button>
+                    <button
+                      onClick={doSetPosType}
+                      disabled={hwPosTypeSaving}
+                      className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl disabled:opacity-50 transition"
+                    >
+                      {hwPosTypeSaving ? "Saving…" : "Save"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── Payment History Detail Modal ── */}
+            {hwDetailModal && (
+              <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
+                  <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700 flex-shrink-0">
+                    <div>
+                      <h3 className="font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                        {ASSET_ICON[hwDetailModal.assetType]} {ASSET_LABEL[hwDetailModal.assetType] ?? hwDetailModal.assetType}
+                      </h3>
+                      <p className="text-xs text-slate-400 mt-0.5">{hwDetailModal.orgName} · Deployed {hwDetailModal.deployedDate}</p>
+                    </div>
+                    <button onClick={() => setHwDetailModal(null)} className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition"><X size={16} /></button>
+                  </div>
+                  <div className="p-5 overflow-y-auto space-y-4">
+                    {/* Summary */}
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3 text-center">
+                        <p className="text-xs text-slate-400">Agreed Value</p>
+                        <p className="text-sm font-bold text-slate-800 dark:text-white mt-0.5">{fmt(hwDetailModal.agreedValue)}</p>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3 text-center">
+                        <p className="text-xs text-slate-400">Total Paid</p>
+                        <p className="text-sm font-bold text-emerald-600 mt-0.5">{fmt(hwDetailModal.totalPaid)}</p>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3 text-center">
+                        <p className="text-xs text-slate-400">Balance Due</p>
+                        <p className="text-sm font-bold text-rose-600 mt-0.5">{fmt(hwDetailModal.balanceDue)}</p>
+                      </div>
+                    </div>
+                    {/* Meta */}
+                    <div className="text-xs text-slate-500 dark:text-slate-400 space-y-1">
+                      {hwDetailModal.serialNumber && <p>Serial: <span className="font-medium text-slate-700 dark:text-slate-300">{hwDetailModal.serialNumber}</span></p>}
+                      {hwDetailModal.condition && <p>Condition: <span className={`px-1.5 py-0.5 rounded-full font-medium ${CONDITION_BADGE[hwDetailModal.condition] ?? ""}`}>{hwDetailModal.condition}</span></p>}
+                      {hwDetailModal.notes && <p className="italic">"{hwDetailModal.notes}"</p>}
+                    </div>
+                    {/* Payment history */}
+                    <div>
+                      <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Payment History</h4>
+                      {(hwDetailModal.payments ?? []).length === 0 ? (
+                        <p className="text-xs text-slate-400">No payments recorded yet.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {[...(hwDetailModal.payments ?? [])].sort((a, b) => a.paymentDate > b.paymentDate ? -1 : 1).map(p => (
+                            <div key={p.id} className="flex items-center justify-between bg-slate-50 dark:bg-slate-700/40 rounded-xl px-3 py-2">
+                              <div>
+                                <p className="text-xs font-medium text-slate-700 dark:text-slate-200">{fmt(p.amount)}</p>
+                                {p.note && <p className="text-xs text-slate-400">{p.note}</p>}
+                              </div>
+                              <p className="text-xs text-slate-400">{p.paymentDate}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="p-5 border-t border-slate-100 dark:border-slate-700 flex-shrink-0">
+                    <button
+                      onClick={() => {
+                        setHwPaymentForm({ amount: "", paymentDate: new Date().toISOString().slice(0, 10), note: "" });
+                        setHwPaymentModal({ deploymentId: hwDetailModal.id, orgName: hwDetailModal.orgName, assetType: hwDetailModal.assetType });
+                      }}
+                      disabled={hwDetailModal.status === "PAID_OFF"}
+                      className="w-full px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition"
+                    >
+                      + Record Payment
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Modals & toasts */}
       <Toast {...toast} onClose={() => setToast({ ...toast, visible: false })} />
