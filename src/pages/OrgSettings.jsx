@@ -5,6 +5,7 @@ import {
   Building2, Mail, Phone, MapPin, Globe, Save, FileText, Sun, Moon, Monitor,
   Upload, Trash2, CreditCard, Landmark, Eye, EyeOff, SlidersHorizontal,
   Lock, CheckCircle2, Pencil, DollarSign, Palette, Users, Smartphone, Copy, Check,
+  Banknote,
 } from "lucide-react";
 import Toast from "../components/Toast";
 import { useTheme } from "../context/ThemeContext";
@@ -49,6 +50,7 @@ const EMPTY_FORM = {
   flutterwaveSecretKeyConfigured: false, flutterwaveWebhookSecretConfigured: false,
   acceptFlutterwave: false,
   acceptBankTransfer: true, acceptCash: false,
+  monnifyClientSecret: "", monnifySecretKeyConfigured: false, acceptMonnify: false, monnifyWebhookToken: null,
   baseCurrency: "NGN", country: "NG", defaultVatRate: 7.5, taxAuthorityLabel: "NRS",
   pdfHeaderColor: PDF_HEADER_DEFAULT,
   pdfAccentColor: PDF_ACCENT_DEFAULT,
@@ -403,6 +405,9 @@ function OrgSettings() {
   // Flutterwave secret fields editing
   const [editingFwSecret, setEditingFwSecret] = useState(false);
   const [editingFwWebhook, setEditingFwWebhook] = useState(false);
+  // Monnify secret editing
+  const [editingMonnifySecret, setEditingMonnifySecret] = useState(false);
+  const [copiedMonnifyUrl, setCopiedMonnifyUrl] = useState(false);
   const [pwModal, setPwModal] = useState(false);
   const [pwInput, setPwInput] = useState("");
   const [pwError, setPwError] = useState("");
@@ -465,18 +470,24 @@ function OrgSettings() {
       if (form.flutterwaveWebhookSecretConfigured && !editingFwWebhook) delete payload.flutterwaveWebhookSecret;
       delete payload.flutterwaveSecretKeyConfigured;
       delete payload.flutterwaveWebhookSecretConfigured;
+      if (form.monnifySecretKeyConfigured && !editingMonnifySecret) delete payload.monnifyClientSecret;
+      delete payload.monnifySecretKeyConfigured;
+      delete payload.monnifyWebhookToken;
       await api.put("/api/org", payload);
       setToast({ visible: true, message: "Organisation settings saved", type: "success" });
       setEditingSecret(false);
       setShowSecret(false);
       setEditingFwSecret(false);
       setEditingFwWebhook(false);
+      setEditingMonnifySecret(false);
       // Refresh configured flags
       api.get("/api/org").then(res => setForm(f => ({
         ...f,
         paystackSecretKeyConfigured: res.data.paystackSecretKeyConfigured,
         flutterwaveSecretKeyConfigured: res.data.flutterwaveSecretKeyConfigured,
         flutterwaveWebhookSecretConfigured: res.data.flutterwaveWebhookSecretConfigured,
+        monnifySecretKeyConfigured: res.data.monnifySecretKeyConfigured,
+        monnifyWebhookToken: res.data.monnifyWebhookToken,
       })));
     } catch (err) {
       setToast({ visible: true, message: err.response?.data?.message || "Failed to save settings.", type: "error" });
@@ -722,6 +733,7 @@ function OrgSettings() {
                   { key: "acceptBankTransfer",  label: "Bank Transfer",        desc: "Display your bank account details on invoices" },
                   { key: "acceptPaystack",      label: "Paystack (Online)",    desc: "Generate a Paystack payment link for card/bank payments" },
                   { key: "acceptFlutterwave",   label: "Flutterwave (Online)", desc: "Generate a Flutterwave payment link — supports NGN, GHS, ZAR, KES and more" },
+                  { key: "acceptMonnify",       label: "Monnify / Moniepoint", desc: "Auto-record payments received on your Moniepoint account" },
                   { key: "acceptCash",          label: "Cash",                 desc: "Allow clients to record cash payments" },
                 ].map(({ key, label, desc }) => (
                   <label key={key} className="flex items-start gap-3 cursor-pointer group">
@@ -887,6 +899,66 @@ function OrgSettings() {
                   />
                 )}
               </div>
+            </div>
+
+            {/* Monnify / Moniepoint */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Banknote className="w-4 h-4 text-green-600" />
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Monnify (Moniepoint) Auto-Bookkeeping</p>
+              </div>
+              <p className="text-xs text-slate-400 dark:text-slate-500 -mt-2">
+                Connect your Moniepoint account. When a customer sends money to you via Moniepoint, it is automatically recorded in your books — no manual entry needed.
+              </p>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Client Secret Key</label>
+                {form.monnifySecretKeyConfigured && !editingMonnifySecret ? (
+                  <div className="flex items-center gap-3 px-4 py-2.5 border border-emerald-200 dark:border-emerald-800 rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <span className="text-sm font-mono text-emerald-700 dark:text-emerald-400 flex-1">••••••••••••••••••••••••</span>
+                    <button type="button" onClick={() => { setEditingMonnifySecret(true); set("monnifyClientSecret", ""); }}
+                      className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-green-600 dark:hover:text-green-400 transition">
+                      <Pencil size={12} /> Change
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    type="password"
+                    value={form.monnifyClientSecret || ""}
+                    onChange={e => set("monnifyClientSecret", e.target.value)}
+                    placeholder="Your Monnify client secret key"
+                    autoFocus={editingMonnifySecret}
+                    className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition"
+                  />
+                )}
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">Found in your Monnify dashboard → Settings → API Keys. Keep it private.</p>
+              </div>
+
+              {form.monnifyWebhookToken && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Your Webhook URL</label>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mb-2">
+                    Copy this URL and paste it into your Monnify dashboard → Settings → Webhook. Monnify will send payment notifications here.
+                  </p>
+                  <div className="flex items-center gap-2 px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl bg-slate-50 dark:bg-slate-900/50">
+                    <code className="flex-1 text-xs font-mono text-slate-700 dark:text-slate-300 break-all">
+                      {`https://api.lumitechsystems.com/api/webhooks/monnify/${form.monnifyWebhookToken}`}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`https://api.lumitechsystems.com/api/webhooks/monnify/${form.monnifyWebhookToken}`);
+                        setCopiedMonnifyUrl(true);
+                        setTimeout(() => setCopiedMonnifyUrl(false), 2000);
+                      }}
+                      className="shrink-0 flex items-center gap-1 text-xs text-green-600 hover:text-green-700 font-medium border border-green-200 dark:border-green-800 px-2.5 py-1.5 rounded-lg transition"
+                    >
+                      {copiedMonnifyUrl ? <Check size={12} /> : <Copy size={12} />}
+                      {copiedMonnifyUrl ? "Copied!" : "Copy"}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
