@@ -359,7 +359,7 @@ function SuperAdmin() {
   const [hardwareLoaded, setHardwareLoaded] = useState(false);
   const [hardwareDeployments, setHardwareDeployments] = useState([]);
   const [hwDeployModal, setHwDeployModal] = useState(null); // null | { orgId, orgName }
-  const [hwDeployForm, setHwDeployForm] = useState({ assetType: "TABLET", serialNumber: "", agreedValue: "", initialDeposit: "", depositDate: "", deployedDate: new Date().toISOString().slice(0, 10), condition: "", notes: "" });
+  const [hwDeployForm, setHwDeployForm] = useState({ assetType: "TABLET", deviceModel: "", serialNumber: "", agreedValue: "", initialDeposit: "", depositDate: "", deployedDate: new Date().toISOString().slice(0, 10), condition: "", notes: "" });
   const [hwDeploySaving, setHwDeploySaving] = useState(false);
   const [hwPaymentModal, setHwPaymentModal] = useState(null); // null | { deploymentId, orgName, assetType }
   const [hwPaymentForm, setHwPaymentForm] = useState({ amount: "", paymentDate: new Date().toISOString().slice(0, 10), note: "" });
@@ -2771,6 +2771,7 @@ function SuperAdmin() {
           try {
             const payload = {
               assetType: hwDeployForm.assetType,
+              deviceModel: hwDeployForm.deviceModel || null,
               serialNumber: hwDeployForm.serialNumber || null,
               agreedValue: parseFloat(hwDeployForm.agreedValue),
               initialDeposit: hwDeployForm.initialDeposit ? parseFloat(hwDeployForm.initialDeposit) : 0,
@@ -2831,7 +2832,7 @@ function SuperAdmin() {
                 </div>
                 <button
                   onClick={() => {
-                    setHwDeployForm({ assetType: "TABLET", serialNumber: "", agreedValue: "", initialDeposit: "", depositDate: "", deployedDate: new Date().toISOString().slice(0, 10), condition: "", notes: "" });
+                    setHwDeployForm({ assetType: "TABLET", deviceModel: "", serialNumber: "", agreedValue: "", initialDeposit: "", depositDate: "", deployedDate: new Date().toISOString().slice(0, 10), condition: "", notes: "" });
                     setHwDeployModal({ orgId: null, orgName: "" });
                   }}
                   className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition"
@@ -2912,7 +2913,7 @@ function SuperAdmin() {
                               {org.posType && (
                                 <button
                                   onClick={() => {
-                                    setHwDeployForm({ assetType: "TABLET", serialNumber: "", agreedValue: "", initialDeposit: "", depositDate: "", deployedDate: new Date().toISOString().slice(0, 10), condition: "", notes: "" });
+                                    setHwDeployForm({ assetType: "TABLET", deviceModel: "", serialNumber: "", agreedValue: "", initialDeposit: "", depositDate: "", deployedDate: new Date().toISOString().slice(0, 10), condition: "", notes: "" });
                                     setHwDeployModal({ orgId: org.id, orgName: org.name });
                                   }}
                                   className="text-xs text-emerald-600 hover:text-emerald-800 dark:text-emerald-400 transition flex items-center gap-0.5"
@@ -2961,7 +2962,7 @@ function SuperAdmin() {
                           <td className="px-3 py-2.5 font-medium text-slate-800 dark:text-slate-100">{d.orgName}</td>
                           <td className="px-3 py-2.5">
                             <span className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
-                              {ASSET_ICON[d.assetType]} {ASSET_LABEL[d.assetType] ?? d.assetType}
+                              {ASSET_ICON[d.assetType]} {d.deviceModel || (ASSET_LABEL[d.assetType] ?? d.assetType)}
                             </span>
                             {d.serialNumber && <p className="text-xs text-slate-400 mt-0.5">S/N: {d.serialNumber}</p>}
                           </td>
@@ -3059,6 +3060,17 @@ function SuperAdmin() {
                           <option value="DAMAGED">Damaged</option>
                         </select>
                       </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">
+                        {hwDeployForm.assetType === "TABLET" ? "Tablet Brand / Model" : "Printer Brand / Model"}
+                      </label>
+                      <input
+                        value={hwDeployForm.deviceModel}
+                        onChange={e => setHwDeployForm(f => ({ ...f, deviceModel: e.target.value }))}
+                        placeholder={hwDeployForm.assetType === "TABLET" ? "e.g. Samsung Tab A8, Lenovo Tab M10" : "e.g. Epson TM-T82, MUNBYN ITPP047"}
+                        className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Serial Number</label>
@@ -3235,7 +3247,7 @@ function SuperAdmin() {
                   <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700 flex-shrink-0">
                     <div>
                       <h3 className="font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                        {ASSET_ICON[hwDetailModal.assetType]} {ASSET_LABEL[hwDetailModal.assetType] ?? hwDetailModal.assetType}
+                        {ASSET_ICON[hwDetailModal.assetType]} {hwDetailModal.deviceModel || (ASSET_LABEL[hwDetailModal.assetType] ?? hwDetailModal.assetType)}
                       </h3>
                       <p className="text-xs text-slate-400 mt-0.5">{hwDetailModal.orgName} · Deployed {hwDetailModal.deployedDate}</p>
                     </div>

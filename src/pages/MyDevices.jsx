@@ -48,7 +48,7 @@ function DeviceCard({ device, fmt }) {
             </div>
             <div>
               <h3 className="font-semibold text-slate-800 dark:text-slate-100">
-                {ASSET_LABEL[device.assetType] ?? device.assetType}
+                {device.deviceModel || (ASSET_LABEL[device.assetType] ?? device.assetType)}
               </h3>
               {device.serialNumber && (
                 <p className="text-xs text-slate-400 mt-0.5">S/N: {device.serialNumber}</p>
