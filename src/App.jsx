@@ -72,6 +72,8 @@ import ReferralDashboard from "./pages/ReferralDashboard";
 import ScannerPage from "./pages/ScannerPage";
 import Purchases from "./pages/Purchases";
 import MyDevices from "./pages/MyDevices";
+import QuickInvoice from "./pages/QuickInvoice";
+import EasyBuy from "./pages/EasyBuy";
 
 // Shown instead of the full app when the account is suspended or trial has ended.
 // Lives inside OrgProvider so <Billing /> can use OrgContext.
@@ -685,6 +687,8 @@ function App() {
           <Route path="/purchase-orders" element={<ProtectedRoute><Layout><PurchaseOrders /></Layout></ProtectedRoute>} />
           <Route path="/purchases" element={<ProtectedRoute><Layout><Purchases /></Layout></ProtectedRoute>} />
           <Route path="/my-devices" element={<ProtectedRoute><Layout><MyDevices /></Layout></ProtectedRoute>} />
+          <Route path="/quick-invoice" element={<ProtectedRoute><Layout><QuickInvoice /></Layout></ProtectedRoute>} />
+          <Route path="/easy-buy" element={<ProtectedRoute><Layout><EasyBuy /></Layout></ProtectedRoute>} />
 
           {/* FIXED ASSETS */}
           <Route path="/fixed-assets" element={<ProtectedRoute><Layout><FixedAssets /></Layout></ProtectedRoute>} />

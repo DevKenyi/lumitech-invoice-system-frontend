@@ -8,7 +8,7 @@ import {
   Info, SlidersHorizontal, Package, ShoppingCart, BarChart2,
   FileCheck, Repeat, Undo2, FileMinus, ClipboardCheck,
   Warehouse, Target, UserCog, GitBranch, BookMarked, TrendingDown, History,
-  Tag, ShoppingBag, UtensilsCrossed, Search, Gift, Monitor,
+  Tag, ShoppingBag, UtensilsCrossed, Search, Gift, Monitor, Zap,
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import api, { getUserFromToken } from "../services/api";
@@ -386,6 +386,8 @@ function Navbar({ onClose }) {
   const salesItems = [
     { path: "/invoices",           label: "Invoices",          icon: FileText,       info: "View and manage all invoices" },
     { path: "/create",             label: "New Invoice",       icon: PlusCircle,     info: "Create and send a new invoice" },
+    { path: "/quick-invoice",      label: "Quick Invoice",     icon: Zap,            info: "Instant sale — type customer name and mark paid immediately" },
+    { path: "/easy-buy",           label: "Easy Buy",          icon: ShoppingBag,    info: "Track items sold on payment plans — deposits and instalments" },
     { path: "/quotes",             label: "Quotes",            icon: FileCheck,      info: "Create estimates and convert to invoices" },
     { path: "/proforma",           label: "Proforma Invoices", icon: GitBranch,      info: "Preliminary invoices for customs or pre-delivery" },
     { path: "/invoices/recurring", label: "Recurring",         icon: Repeat,         info: "Auto-send invoices on a schedule" },
