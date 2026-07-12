@@ -1,141 +1,243 @@
 import { useState, useEffect } from "react";
-import { Banknote, RefreshCw, Search } from "lucide-react";
+import { Banknote, RefreshCw, Search, ArrowUpRight, TrendingUp, CheckCircle2, Settings } from "lucide-react";
+import { Link } from "react-router-dom";
 import api from "../services/api";
 import { useOrg } from "../context/OrgContext";
+import Toast from "../components/Toast";
 
 const STATUS_STYLES = {
-  PAID:         "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
-  OVERPAID:     "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  PARTIALLY_PAID: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  PAID:            "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+  OVERPAID:        "bg-blue-100   text-blue-700   dark:bg-blue-900/30   dark:text-blue-400",
+  PARTIALLY_PAID:  "bg-amber-100  text-amber-700  dark:bg-amber-900/30  dark:text-amber-400",
 };
+
+const STATUS_FILTERS = ["ALL", "PAID", "OVERPAID", "PARTIALLY_PAID"];
 
 export default function MonnifyTransactions() {
   const { fmt, fmtDate } = useOrg();
-  const [transactions, setTransactions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [transactions, setTransactions]   = useState([]);
+  const [loading, setLoading]             = useState(true);
+  const [search, setSearch]               = useState("");
+  const [statusFilter, setStatusFilter]   = useState("ALL");
+  const [refreshing, setRefreshing]       = useState(false);
+  const [toast, setToast]                 = useState({ visible: false, message: "", type: "info" });
 
-  async function load() {
-    setLoading(true);
+  async function load(showSpinner = true) {
+    if (showSpinner) setLoading(true); else setRefreshing(true);
     try {
       const res = await api.get("/api/monnify/transactions");
-      setTransactions(res.data);
+      setTransactions(res.data || []);
     } catch {
-      setTransactions([]);
+      setToast({ visible: true, message: "Failed to load transactions.", type: "error" });
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }
 
   useEffect(() => { load(); }, []);
 
   const filtered = transactions.filter(tx => {
+    const matchesStatus = statusFilter === "ALL" || tx.paymentStatus === statusFilter;
     const q = search.toLowerCase();
-    return (
-      (tx.customerName || "").toLowerCase().includes(q) ||
-      (tx.customerEmail || "").toLowerCase().includes(q) ||
+    const matchesSearch =
+      (tx.customerName    || "").toLowerCase().includes(q) ||
+      (tx.customerEmail   || "").toLowerCase().includes(q) ||
       (tx.paymentReference || "").toLowerCase().includes(q) ||
-      (tx.paymentDescription || "").toLowerCase().includes(q)
-    );
+      (tx.paymentDescription || "").toLowerCase().includes(q);
+    return matchesStatus && matchesSearch;
   });
 
-  const total = filtered.reduce((sum, tx) => sum + (tx.amountPaid || 0), 0);
+  // Stats — always computed from ALL transactions, not filtered
+  const totalReceived  = transactions.reduce((s, tx) => s + (tx.amountPaid || 0), 0);
+  const paidCount      = transactions.filter(tx => tx.paymentStatus === "PAID").length;
+  const overpaidCount  = transactions.filter(tx => tx.paymentStatus === "OVERPAID").length;
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
+
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600">
+          <div className="w-10 h-10 rounded-2xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600">
             <Banknote className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Monnify Transactions</h1>
-            <p className="text-xs text-slate-400">Payments received on your Moniepoint account — auto-recorded</p>
+            <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Monnify Payments</h1>
+            <p className="text-xs text-slate-400 dark:text-slate-500">
+              Payments received on your Moniepoint account — auto-recorded
+            </p>
           </div>
         </div>
         <button
-          onClick={load}
-          className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-600 px-3 py-1.5 rounded-xl transition"
+          onClick={() => load(false)}
+          disabled={refreshing}
+          className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-600 px-3 py-2 rounded-xl transition disabled:opacity-50"
         >
-          <RefreshCw className="w-3.5 h-3.5" /> Refresh
+          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
+          {refreshing ? "Refreshing…" : "Refresh"}
         </button>
       </div>
 
-      {/* Search + summary */}
-      <div className="flex items-center gap-3 flex-wrap">
+      {/* Stat cards */}
+      {!loading && transactions.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800/40 rounded-2xl p-5 flex items-center gap-4">
+            <div className="p-2.5 bg-green-100 dark:bg-green-900/40 rounded-xl">
+              <ArrowUpRight className="w-5 h-5 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-green-600 dark:text-green-400 mb-0.5">Total Received</p>
+              <p className="text-2xl font-bold text-green-700 dark:text-green-300">{fmt(totalReceived)}</p>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 flex items-center gap-4">
+            <div className="p-2.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-0.5">Paid</p>
+              <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{paidCount}</p>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 flex items-center gap-4">
+            <div className="p-2.5 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
+              <TrendingUp className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-0.5">Overpaid</p>
+              <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{overpaidCount}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Search + filter bar */}
+      <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search by name, email or reference…"
-            className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition"
+            className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition"
           />
         </div>
+
+        <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl p-1">
+          {STATUS_FILTERS.map(s => (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                statusFilter === s
+                  ? "bg-green-600 text-white shadow-sm"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+              }`}
+            >
+              {s === "ALL" ? "All" : s === "PARTIALLY_PAID" ? "Partial" : s.charAt(0) + s.slice(1).toLowerCase()}
+            </button>
+          ))}
+        </div>
+
         {filtered.length > 0 && (
-          <div className="text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap">
-            {filtered.length} transaction{filtered.length !== 1 ? "s" : ""} · <span className="font-semibold text-slate-700 dark:text-slate-200">{fmt(total)}</span> total
-          </div>
+          <p className="text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap">
+            {filtered.length} result{filtered.length !== 1 ? "s" : ""} ·{" "}
+            <span className="font-semibold text-slate-600 dark:text-slate-300">
+              {fmt(filtered.reduce((s, tx) => s + (tx.amountPaid || 0), 0))}
+            </span>
+          </p>
         )}
       </div>
 
-      {/* Table */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+      {/* Main table card */}
+      <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="animate-spin rounded-full h-7 w-7 border-4 border-slate-200 dark:border-slate-600 border-t-green-500" />
+          <div className="flex items-center justify-center py-24">
+            <div className="animate-spin rounded-full h-8 w-8 border-4 border-slate-200 dark:border-slate-600 border-t-green-500" />
           </div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-16 space-y-2">
-            <Banknote className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto" />
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-              {search ? "No transactions match your search." : "No Monnify transactions recorded yet."}
-            </p>
-            {!search && (
-              <p className="text-xs text-slate-400">
-                Connect your Monnify account in Settings → Payment Settings to get started.
+
+        ) : transactions.length === 0 ? (
+          /* Empty state — Monnify not connected or no payments yet */
+          <div className="flex flex-col items-center justify-center py-20 px-6 text-center space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-green-50 dark:bg-green-900/20 flex items-center justify-center">
+              <Banknote className="w-8 h-8 text-green-400 dark:text-green-500" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">No Monnify payments yet</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 max-w-xs">
+                Connect your Moniepoint account and configure your webhook URL to start recording payments automatically.
               </p>
-            )}
+            </div>
+            <Link
+              to="/settings/org"
+              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-medium text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/40 rounded-xl hover:bg-green-100 dark:hover:bg-green-900/40 transition"
+            >
+              <Settings className="w-3.5 h-3.5" />
+              Go to Payment Settings
+            </Link>
           </div>
+
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <Search className="w-8 h-8 text-slate-300 dark:text-slate-600 mb-3" />
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">No transactions match your filters.</p>
+            <button
+              onClick={() => { setSearch(""); setStatusFilter("ALL"); }}
+              className="mt-2 text-xs text-green-600 dark:text-green-400 hover:underline"
+            >
+              Clear filters
+            </button>
+          </div>
+
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Customer</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Reference</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Description</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Date</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Status</th>
-                  <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Amount</th>
+                <tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-700/30">
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Customer</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider hidden md:table-cell">Reference</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider hidden lg:table-cell">Description</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Date</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
+                  <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Amount</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
                 {filtered.map(tx => (
-                  <tr key={tx.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition">
-                    <td className="px-5 py-3.5">
-                      <p className="font-medium text-slate-800 dark:text-slate-100">{tx.customerName || "—"}</p>
+                  <tr key={tx.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-700/20 transition">
+                    <td className="px-5 py-4">
+                      <p className="font-medium text-slate-800 dark:text-slate-100 leading-tight">
+                        {tx.customerName || "Unknown"}
+                      </p>
                       {tx.customerEmail && (
-                        <p className="text-xs text-slate-400 mt-0.5">{tx.customerEmail}</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{tx.customerEmail}</p>
                       )}
                     </td>
-                    <td className="px-5 py-3.5">
-                      <code className="text-xs text-slate-500 dark:text-slate-400 font-mono">{tx.paymentReference}</code>
+                    <td className="px-5 py-4 hidden md:table-cell">
+                      <code className="text-xs text-slate-500 dark:text-slate-400 font-mono bg-slate-100 dark:bg-slate-700/50 px-1.5 py-0.5 rounded">
+                        {tx.paymentReference}
+                      </code>
                     </td>
-                    <td className="px-5 py-3.5 max-w-[200px]">
-                      <p className="text-slate-600 dark:text-slate-300 text-xs truncate">{tx.paymentDescription || "—"}</p>
+                    <td className="px-5 py-4 hidden lg:table-cell max-w-[180px]">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                        {tx.paymentDescription || "—"}
+                      </p>
                     </td>
-                    <td className="px-5 py-3.5 whitespace-nowrap text-xs text-slate-500 dark:text-slate-400">
-                      {tx.paidOn ? fmtDate(tx.paidOn) : "—"}
+                    <td className="px-5 py-4 whitespace-nowrap">
+                      <p className="text-sm text-slate-600 dark:text-slate-300">
+                        {tx.paidOn ? fmtDate(tx.paidOn) : "—"}
+                      </p>
                     </td>
-                    <td className="px-5 py-3.5">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[tx.paymentStatus] || "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300"}`}>
-                        {tx.paymentStatus}
+                    <td className="px-5 py-4">
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_STYLES[tx.paymentStatus] || "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300"}`}>
+                        {tx.paymentStatus === "PARTIALLY_PAID" ? "Partial" : tx.paymentStatus}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5 text-right">
-                      <span className="font-semibold text-slate-800 dark:text-slate-100">{fmt(tx.amountPaid)}</span>
+                    <td className="px-5 py-4 text-right">
+                      <span className="font-bold text-slate-800 dark:text-slate-100">{fmt(tx.amountPaid)}</span>
                     </td>
                   </tr>
                 ))}
@@ -144,6 +246,8 @@ export default function MonnifyTransactions() {
           </div>
         )}
       </div>
+
+      <Toast {...toast} onClose={() => setToast({ ...toast, visible: false })} />
     </div>
   );
 }
