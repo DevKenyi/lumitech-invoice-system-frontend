@@ -76,6 +76,7 @@ import MyDevices from "./pages/MyDevices";
 import QuickInvoice from "./pages/QuickInvoice";
 import EasyBuy from "./pages/EasyBuy";
 import MonnifyTransactions from "./pages/MonnifyTransactions";
+import MyFees from "./pages/MyFees";
 
 // Shown instead of the full app when the account is suspended or trial has ended.
 // Lives inside OrgProvider so <Billing /> can use OrgContext.
@@ -660,6 +661,7 @@ function App() {
           <Route path="/inventory" element={<ProtectedRoute><Layout><Inventory /></Layout></ProtectedRoute>} />
           <Route path="/pos" element={<ProtectedRoute><Layout><POS /></Layout></ProtectedRoute>} />
           <Route path="/pos/food" element={<ProtectedRoute><Layout><FoodPOS /></Layout></ProtectedRoute>} />
+          <Route path="/my-fees" element={<ProtectedRoute><Layout><MyFees /></Layout></ProtectedRoute>} />
           <Route path="/menu" element={<ProtectedRoute><Layout><MenuManagement /></Layout></ProtectedRoute>} />
           <Route path="/orders" element={<ProtectedRoute><Layout><OrdersKDS /></Layout></ProtectedRoute>} />
           <Route path="/sales/report" element={<ProtectedRoute><Layout><SalesReport /></Layout></ProtectedRoute>} />
