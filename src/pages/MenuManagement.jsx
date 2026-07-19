@@ -6,6 +6,7 @@ import ConfirmModal from "../components/ConfirmModal";
 import {
   UtensilsCrossed, Plus, Pencil, Trash2, X, Loader2,
   ToggleLeft, ToggleRight, Tag, ChevronRight, ImagePlus, Camera,
+  Upload, FileDown,
 } from "lucide-react";
 
 const fmt = (val, currency) =>
@@ -26,8 +27,45 @@ export default function MenuManagement() {
   const [itemModal, setItemModal] = useState(null);
   const [modModal, setModModal] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null); // {type, id, name}
+  const [csvUploading, setCsvUploading] = useState(false);
 
   const showToast = (msg, type = "success") => setToast({ msg, type });
+
+  async function downloadTemplate() {
+    try {
+      const res = await api.get("/api/menu/template", { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const a = document.createElement("a");
+      a.href = url;
+      a.setAttribute("download", "menu-template.csv");
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch { showToast("Failed to download template", "error"); }
+  }
+
+  async function handleCsvUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCsvUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await api.post("/api/menu/upload-csv", fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      const { categoriesCreated, itemsCreated, skipped, errors } = res.data;
+      const msg = `Imported ${itemsCreated} items${categoriesCreated > 0 ? `, ${categoriesCreated} new categories` : ""}${skipped > 0 ? `, ${skipped} skipped` : ""}.`;
+      showToast(msg, errors.length > 0 ? "error" : "success");
+      loadAll();
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to import menu", "error");
+    } finally {
+      setCsvUploading(false);
+      e.target.value = "";
+    }
+  }
 
   useEffect(() => { loadAll(); }, []);
 
@@ -145,9 +183,22 @@ export default function MenuManagement() {
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
 
-      <div className="flex items-center gap-3 mb-6">
-        <UtensilsCrossed size={24} className="text-blue-600" />
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Menu Management</h1>
+      <div className="flex items-center justify-between gap-3 mb-6">
+        <div className="flex items-center gap-3">
+          <UtensilsCrossed size={24} className="text-blue-600" />
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Menu Management</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={downloadTemplate}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-sm hover:bg-slate-50 dark:hover:bg-slate-700">
+            <FileDown size={15} /> Template
+          </button>
+          <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium cursor-pointer ${csvUploading ? "opacity-60 cursor-not-allowed" : ""}`}>
+            {csvUploading ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}
+            {csvUploading ? "Importing…" : "Upload CSV"}
+            <input type="file" accept=".csv,text/csv" className="hidden" disabled={csvUploading} onChange={handleCsvUpload} />
+          </label>
+        </div>
       </div>
 
       {/* Tabs */}
