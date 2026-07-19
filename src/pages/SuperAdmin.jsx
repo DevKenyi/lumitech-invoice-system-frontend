@@ -720,31 +720,52 @@ function SuperAdmin() {
         </button>
       </div>
 
-      {/* Tab bar */}
-      <div className="flex gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl w-fit">
-        {TABS.map(t => {
-          const Icon = t.icon;
-          const isActive = tab === t.id;
-          return (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`relative inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-                isActive
-                  ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
-                  : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-              }`}
-            >
-              <Icon size={14} />
-              {t.label}
-              {t.id === "followup" && highCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
-                  {highCount}
-                </span>
-              )}
-            </button>
-          );
-        })}
+      {/* Tab navigation */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        {/* Dropdown selector — visible on all sizes */}
+        <div className="relative w-full sm:w-56">
+          <select
+            value={tab}
+            onChange={e => setTab(e.target.value)}
+            className="w-full appearance-none pl-4 pr-10 py-2.5 text-sm font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            {TABS.map(t => (
+              <option key={t.id} value={t.id}>
+                {t.label}{t.id === "followup" && highCount > 0 ? ` (${highCount})` : ""}
+              </option>
+            ))}
+          </select>
+          <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+        </div>
+
+        {/* Scrollable pill strip — hidden on small screens */}
+        <div className="hidden lg:block flex-1 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+          <div className="flex gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl w-max">
+            {TABS.map(t => {
+              const Icon = t.icon;
+              const isActive = tab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setTab(t.id)}
+                  className={`relative inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all whitespace-nowrap ${
+                    isActive
+                      ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                  }`}
+                >
+                  <Icon size={13} />
+                  {t.label}
+                  {t.id === "followup" && highCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                      {highCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {/* ── OVERVIEW TAB ─────────────────────────────────────────────────────── */}
