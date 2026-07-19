@@ -9,7 +9,7 @@ import {
   PhoneCall, Mail, Search, RefreshCw, Download, Copy, Link2, MessageSquare, RotateCcw,
   BookOpen, ExternalLink, Lightbulb, Plus, Edit2, Handshake, Gift,
   Tag, DollarSign, CheckSquare, Clock,
-  Monitor, Printer, ChevronRight,
+  Monitor, Printer, ChevronRight, Eye,
 } from "lucide-react";
 import Toast from "../components/Toast";
 import ConfirmModal from "../components/ConfirmModal";
@@ -401,6 +401,7 @@ function SuperAdmin() {
   const [convFeesLoading, setConvFeesLoading] = useState(false);
   const [markingPaid, setMarkingPaid]     = useState(new Set());
   const [convFeeSearch, setConvFeeSearch] = useState("");
+  const [convFeeDetail, setConvFeeDetail] = useState(null); // {orgId, orgName, date, orders, loading}
   const [savingPricing, setSavingPricing] = useState(false);
   const [suspendTarget, setSuspendTarget] = useState(null);
   const [suspending, setSuspending]       = useState(false);
@@ -3357,6 +3358,17 @@ function SuperAdmin() {
         );
         const outstanding = rows.filter(r => !r.paid);
 
+        const openDetail = async (r) => {
+          setConvFeeDetail({ orgId: r.orgId, orgName: r.orgName, date: r.settlementDate, orders: [], loading: true });
+          try {
+            const res = await api.get(`/api/superadmin/convenience-fees/${r.orgId}/${r.settlementDate}/orders`);
+            setConvFeeDetail(prev => prev && ({ ...prev, orders: res.data, loading: false }));
+          } catch {
+            setConvFeeDetail(prev => prev && ({ ...prev, loading: false }));
+            showToast("Failed to load order details.", "error");
+          }
+        };
+
         const markPaid = async (orgId, date) => {
           const key = `${orgId}_${date}`;
           setMarkingPaid(prev => new Set(prev).add(key));
@@ -3453,6 +3465,7 @@ function SuperAdmin() {
                       <th className="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide text-right">Fee Owed</th>
                       <th className="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide text-center">Status</th>
                       <th className="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide text-right">Action</th>
+                      <th className="px-4 py-3"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
@@ -3495,6 +3508,13 @@ function SuperAdmin() {
                               </button>
                             )}
                           </td>
+                          <td className="px-4 py-3 text-right">
+                            <button onClick={() => openDetail(r)}
+                              className="p-1.5 rounded text-slate-400 hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                              title="View orders">
+                              <Eye size={14} />
+                            </button>
+                          </td>
                         </tr>
                       );
                     })}
@@ -3505,6 +3525,79 @@ function SuperAdmin() {
           </div>
         );
       })()}
+
+      {/* Conv Fee Order Detail Modal */}
+      {convFeeDetail && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between p-5 border-b border-slate-200 dark:border-slate-700">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">{convFeeDetail.orgName}</h3>
+                <p className="text-sm text-slate-500">{convFeeDetail.date} &mdash; Order Breakdown</p>
+              </div>
+              <button onClick={() => setConvFeeDetail(null)}
+                className="p-2 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="overflow-auto flex-1 p-2">
+              {convFeeDetail.loading ? (
+                <div className="flex justify-center items-center py-16">
+                  <RefreshCw size={24} className="animate-spin text-blue-500" />
+                </div>
+              ) : convFeeDetail.orders.length === 0 ? (
+                <p className="text-center py-12 text-slate-400 text-sm">No orders found for this date.</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs uppercase text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50">
+                      <th className="px-3 py-2 text-left">Order #</th>
+                      <th className="px-3 py-2 text-left">Time</th>
+                      <th className="px-3 py-2 text-right">Order Total</th>
+                      <th className="px-3 py-2 text-right">Conv. Fee</th>
+                      <th className="px-3 py-2 text-center">Method</th>
+                      <th className="px-3 py-2 text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                    {convFeeDetail.orders.map(o => (
+                      <tr key={o.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
+                        <td className="px-3 py-2 font-mono text-xs text-slate-700 dark:text-slate-200">{o.orderNumber}</td>
+                        <td className="px-3 py-2 text-slate-500 whitespace-nowrap">
+                          {new Date(o.createdAt).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" })}
+                        </td>
+                        <td className="px-3 py-2 text-right font-medium text-slate-800 dark:text-slate-100">
+                          ₦{Number(o.total).toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="px-3 py-2 text-right font-semibold text-blue-600">
+                          ₦{Number(o.convenienceFee).toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="px-3 py-2 text-center text-slate-500 capitalize">{o.paymentMethod || "—"}</td>
+                        <td className="px-3 py-2 text-center">
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                            o.status === "completed" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                            : o.status === "cancelled" ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
+                            : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                          }`}>{o.status}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 font-semibold">
+                      <td colSpan={3} className="px-3 py-2 text-slate-700 dark:text-slate-200">Total ({convFeeDetail.orders.length} orders)</td>
+                      <td className="px-3 py-2 text-right text-blue-700 dark:text-blue-400">
+                        ₦{convFeeDetail.orders.reduce((s, o) => s + Number(o.convenienceFee), 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+                      </td>
+                      <td colSpan={2}></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modals & toasts */}
       <Toast {...toast} onClose={() => setToast({ ...toast, visible: false })} />
