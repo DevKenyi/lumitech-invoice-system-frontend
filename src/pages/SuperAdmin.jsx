@@ -275,6 +275,7 @@ const TABS = [
   { id: "custom-billing", label: "Custom Billing", icon: Tag },
   { id: "hardware",       label: "Hardware",       icon: Monitor },
   { id: "tips",          label: "Tips",           icon: Lightbulb },
+  { id: "conv-fees",     label: "Conv. Fees",     icon: DollarSign },
 ];
 
 const FOLLOWUP_STATUS_LABEL = {
@@ -395,6 +396,11 @@ function SuperAdmin() {
   const [sendingOutreach, setSendingOutreach] = useState(new Set());
   const [bulkOutreachLoading, setBulkOutreachLoading] = useState(false);
   const [loading, setLoading]   = useState(true);
+  const [convFees, setConvFees]           = useState(null);
+  const [convFeesLoaded, setConvFeesLoaded] = useState(false);
+  const [convFeesLoading, setConvFeesLoading] = useState(false);
+  const [markingPaid, setMarkingPaid]     = useState(new Set());
+  const [convFeeSearch, setConvFeeSearch] = useState("");
   const [savingPricing, setSavingPricing] = useState(false);
   const [suspendTarget, setSuspendTarget] = useState(null);
   const [suspending, setSuspending]       = useState(false);
@@ -472,6 +478,13 @@ function SuperAdmin() {
       api.get("/api/superadmin/hardware")
         .then(res => { setHardwareDeployments(res.data ?? []); setHardwareLoaded(true); })
         .catch(() => {});
+    }
+    if (tab === "conv-fees" && !convFeesLoaded) {
+      setConvFeesLoading(true);
+      api.get("/api/superadmin/convenience-fees")
+        .then(res => { setConvFees(res.data); setConvFeesLoaded(true); })
+        .catch(() => {})
+        .finally(() => setConvFeesLoading(false));
     }
   }, [tab, tipsLoaded, bmsLoaded, referralsLoaded, customBillingLoaded, hardwareLoaded]);
 
@@ -3308,6 +3321,164 @@ function SuperAdmin() {
                     </button>
                   </div>
                 </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* ── CONVENIENCE FEES TAB ────────────────────────────────────────────── */}
+      {tab === "conv-fees" && (() => {
+        const fmtMoney = (v) => v == null ? "—" : Number(v).toLocaleString("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const rows = convFees?.rows ?? [];
+        const filtered = rows.filter(r =>
+          !convFeeSearch || r.orgName?.toLowerCase().includes(convFeeSearch.toLowerCase())
+        );
+        const outstanding = rows.filter(r => !r.paid);
+
+        const markPaid = async (orgId, date) => {
+          const key = `${orgId}_${date}`;
+          setMarkingPaid(prev => new Set(prev).add(key));
+          try {
+            await api.post(`/api/superadmin/convenience-fees/${orgId}/${date}/mark-paid`, {});
+            setConvFees(prev => ({
+              ...prev,
+              rows: prev.rows.map(r =>
+                r.orgId === orgId && r.settlementDate === date
+                  ? { ...r, paid: true, paidAt: new Date().toISOString() }
+                  : r
+              ),
+              totalPaid: (parseFloat(prev.totalPaid) + parseFloat(rows.find(r => r.orgId === orgId && r.settlementDate === date)?.totalFees ?? 0)).toFixed(4),
+              totalOutstanding: (parseFloat(prev.totalOutstanding) - parseFloat(rows.find(r => r.orgId === orgId && r.settlementDate === date)?.totalFees ?? 0)).toFixed(4),
+            }));
+            showToast("Marked as paid.");
+          } catch (e) {
+            showToast(e.response?.data?.message || "Failed to mark as paid.", "error");
+          } finally {
+            setMarkingPaid(prev => { const s = new Set(prev); s.delete(key); return s; });
+          }
+        };
+
+        const unmarkPaid = async (orgId, date) => {
+          const key = `${orgId}_${date}`;
+          setMarkingPaid(prev => new Set(prev).add(key));
+          try {
+            await api.delete(`/api/superadmin/convenience-fees/${orgId}/${date}/mark-paid`);
+            setConvFees(prev => ({
+              ...prev,
+              rows: prev.rows.map(r =>
+                r.orgId === orgId && r.settlementDate === date
+                  ? { ...r, paid: false, paidAt: null }
+                  : r
+              ),
+            }));
+            showToast("Unmarked.");
+          } catch { showToast("Failed to unmark.", "error"); }
+          finally {
+            setMarkingPaid(prev => { const s = new Set(prev); s.delete(key); return s; });
+          }
+        };
+
+        return (
+          <div className="space-y-5">
+            {/* Summary cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Total Earned (all time)</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white">₦{fmtMoney(convFees?.totalEarned)}</p>
+              </div>
+              <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl border border-emerald-200 dark:border-emerald-800 p-5">
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Total Received</p>
+                <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">₦{fmtMoney(convFees?.totalPaid)}</p>
+              </div>
+              <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl border border-amber-200 dark:border-amber-800 p-5">
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Outstanding ({outstanding.length} days)</p>
+                <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">₦{fmtMoney(convFees?.totalOutstanding)}</p>
+              </div>
+            </div>
+
+            {/* Search + refresh */}
+            <div className="flex items-center gap-3">
+              <div className="relative flex-1 max-w-xs">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={convFeeSearch}
+                  onChange={e => setConvFeeSearch(e.target.value)}
+                  placeholder="Search org…"
+                  className="w-full pl-8 pr-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+                />
+              </div>
+              <button
+                onClick={() => { setConvFeesLoaded(false); setConvFeesLoading(true); api.get("/api/superadmin/convenience-fees").then(r => { setConvFees(r.data); setConvFeesLoaded(true); }).catch(() => {}).finally(() => setConvFeesLoading(false)); }}
+                className="p-2 rounded-xl border border-slate-200 dark:border-slate-600 text-slate-500 hover:text-blue-600"
+              >
+                <RefreshCw size={14} className={convFeesLoading ? "animate-spin" : ""} />
+              </button>
+            </div>
+
+            {/* Table */}
+            {convFeesLoading ? (
+              <div className="flex justify-center py-16"><Spinner /></div>
+            ) : filtered.length === 0 ? (
+              <div className="text-center py-16 text-slate-400 text-sm">No convenience fee records found.</div>
+            ) : (
+              <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-100 dark:border-slate-700 text-left">
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Date</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Organisation</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide text-center">Orders</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide text-right">Fee Owed</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide text-center">Status</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                    {filtered.map(r => {
+                      const key = `${r.orgId}_${r.settlementDate}`;
+                      const busy = markingPaid.has(key);
+                      return (
+                        <tr key={key} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                          <td className="px-4 py-3 text-slate-600 dark:text-slate-300 whitespace-nowrap">{fmtDate(r.settlementDate)}</td>
+                          <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-100">{r.orgName}</td>
+                          <td className="px-4 py-3 text-center text-slate-600 dark:text-slate-300">{r.orderCount}</td>
+                          <td className="px-4 py-3 text-right font-semibold text-slate-800 dark:text-slate-100">₦{fmtMoney(r.totalFees)}</td>
+                          <td className="px-4 py-3 text-center">
+                            {r.paid ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 rounded-full">
+                                <CheckCircle size={11} /> Paid
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 rounded-full">
+                                <Clock size={11} /> Pending
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            {r.paid ? (
+                              <button
+                                onClick={() => unmarkPaid(r.orgId, r.settlementDate)}
+                                disabled={busy}
+                                className="text-xs text-slate-400 hover:text-rose-500 disabled:opacity-40 transition"
+                              >
+                                {busy ? "…" : "Unmark"}
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => markPaid(r.orgId, r.settlementDate)}
+                                disabled={busy}
+                                className="px-3 py-1 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg disabled:opacity-40 transition"
+                              >
+                                {busy ? "…" : "Mark Paid"}
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
