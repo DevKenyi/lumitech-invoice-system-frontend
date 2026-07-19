@@ -402,6 +402,8 @@ function SuperAdmin() {
   const [markingPaid, setMarkingPaid]     = useState(new Set());
   const [convFeeSearch, setConvFeeSearch] = useState("");
   const [convFeeDetail, setConvFeeDetail] = useState(null); // {orgId, orgName, date, orders, loading}
+  const [pendingNotifs, setPendingNotifs] = useState([]);
+  const [confirmingNotif, setConfirmingNotif] = useState(null);
   const [savingPricing, setSavingPricing] = useState(false);
   const [suspendTarget, setSuspendTarget] = useState(null);
   const [suspending, setSuspending]       = useState(false);
@@ -482,8 +484,15 @@ function SuperAdmin() {
     }
     if (tab === "conv-fees" && !convFeesLoaded) {
       setConvFeesLoading(true);
-      api.get("/api/superadmin/convenience-fees")
-        .then(res => { setConvFees(res.data); setConvFeesLoaded(true); })
+      Promise.all([
+        api.get("/api/superadmin/convenience-fees"),
+        api.get("/api/superadmin/fee-notifications"),
+      ])
+        .then(([feesRes, notifRes]) => {
+          setConvFees(feesRes.data);
+          setPendingNotifs(notifRes.data);
+          setConvFeesLoaded(true);
+        })
         .catch(() => showToast("Failed to load convenience fee data.", "error"))
         .finally(() => setConvFeesLoading(false));
     }
@@ -3358,6 +3367,26 @@ function SuperAdmin() {
         );
         const outstanding = rows.filter(r => !r.paid);
 
+        const getPortalLink = async (orgId) => {
+          try {
+            const res = await api.post(`/api/superadmin/organisations/${orgId}/fee-portal`);
+            await navigator.clipboard.writeText(res.data.portalUrl);
+            showToast("Portal link copied to clipboard!");
+          } catch { showToast("Failed to generate portal link.", "error"); }
+        };
+
+        const confirmNotif = async (notifId, orgName) => {
+          setConfirmingNotif(notifId);
+          try {
+            await api.post(`/api/superadmin/fee-notifications/${notifId}/confirm`);
+            setPendingNotifs(prev => prev.filter(n => n.id !== notifId));
+            setConvFeesLoaded(false); // force reload
+            showToast(`${orgName} UBA payment confirmed & settled.`);
+          } catch (e) {
+            showToast(e.response?.data?.message || "Failed to confirm payment.", "error");
+          } finally { setConfirmingNotif(null); }
+        };
+
         const openDetail = async (r) => {
           setConvFeeDetail({ orgId: r.orgId, orgName: r.orgName, date: r.settlementDate, orders: [], loading: true });
           try {
@@ -3449,6 +3478,29 @@ function SuperAdmin() {
               </button>
             </div>
 
+            {/* Pending UBA confirmations */}
+            {pendingNotifs.length > 0 && (
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-4 space-y-2">
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-2">
+                  <Clock size={14} /> {pendingNotifs.length} Pending UBA Confirmation{pendingNotifs.length > 1 ? "s" : ""}
+                </p>
+                {pendingNotifs.map(n => (
+                  <div key={n.id} className="flex items-center justify-between bg-white dark:bg-slate-800 rounded-lg px-3 py-2 text-sm">
+                    <div>
+                      <p className="font-medium text-slate-800 dark:text-slate-100">{n.organisation?.name || "Organisation"}</p>
+                      <p className="text-xs text-slate-400">₦{Number(n.totalAmount).toLocaleString("en-NG", { minimumFractionDigits: 2 })} · {new Date(n.notifiedAt).toLocaleString("en-NG", { dateStyle: "short", timeStyle: "short" })}</p>
+                    </div>
+                    <button
+                      onClick={() => confirmNotif(n.id, n.organisation?.name)}
+                      disabled={confirmingNotif === n.id}
+                      className="px-3 py-1 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg disabled:opacity-50 transition">
+                      {confirmingNotif === n.id ? "Confirming…" : "Confirm Received"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Table */}
             {convFeesLoading ? (
               <div className="flex justify-center py-16"><Spinner /></div>
@@ -3465,6 +3517,7 @@ function SuperAdmin() {
                       <th className="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide text-right">Fee Owed</th>
                       <th className="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide text-center">Status</th>
                       <th className="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide text-right">Action</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide text-center">Portal</th>
                       <th className="px-4 py-3"></th>
                     </tr>
                   </thead>
@@ -3507,6 +3560,13 @@ function SuperAdmin() {
                                 {busy ? "…" : "Mark Paid"}
                               </button>
                             )}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <button onClick={() => getPortalLink(r.orgId)}
+                              className="text-xs text-blue-600 hover:text-blue-800 underline underline-offset-2 font-medium"
+                              title="Copy portal link for this org">
+                              Copy Link
+                            </button>
                           </td>
                           <td className="px-4 py-3 text-right">
                             <button onClick={() => openDetail(r)}

@@ -14,6 +14,7 @@ import Layout from "./components/Layout";
 import ClientList from "./pages/ClientList";
 import ClientDetail from "./pages/ClientDetail";
 import ClientPortal from "./pages/ClientPortal";
+import FeePortal from "./pages/FeePortal";
 import POResponse from "./pages/POResponse";
 import Landing from "./pages/Landing";
 import ForAccountants from "./pages/ForAccountants";
@@ -715,6 +716,7 @@ function App() {
 
           {/* CLIENT PORTAL — public, no auth */}
           <Route path="/portal/:token" element={<ClientPortal />} />
+          <Route path="/fees-portal/:token" element={<FeePortal />} />
           <Route path="/po-response/:token" element={<POResponse />} />
           <Route path="/followup/:token" element={<FollowupPage />} />
           <Route path="/followup-board/:boardToken" element={<FollowupBoard />} />
