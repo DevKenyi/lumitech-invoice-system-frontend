@@ -169,7 +169,7 @@ function Layout({ children }) {
         </main>
       </div>
 
-      {location.pathname !== "/food-pos" && <WhatsAppChat context="dashboard" />}
+      {location.pathname !== "/pos/food" && <WhatsAppChat context="dashboard" />}
     </div>
   );
 }
