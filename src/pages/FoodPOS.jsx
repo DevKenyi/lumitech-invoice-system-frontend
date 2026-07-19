@@ -210,35 +210,35 @@ export default function FoodPOS() {
       {/* Left: Menu */}
       <div className="flex-1 flex flex-col overflow-hidden border-r border-slate-200 dark:border-slate-700">
         {/* Category tabs */}
-        <div className="flex gap-2 p-3 overflow-x-auto shrink-0 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+        <div className="flex gap-2 p-3 md:p-4 overflow-x-auto shrink-0 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
           <button onClick={() => setActiveCat(null)}
-            className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+            className={`shrink-0 px-3 py-2 rounded-full text-sm font-medium transition-colors ${
               !activeCat ? "bg-blue-600 text-white" : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
             }`}>
             All
           </button>
           {categories.map(c => (
             <button key={c.id} onClick={() => setActiveCat(c.id)}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              className={`shrink-0 px-3 py-2 rounded-full text-sm font-medium transition-colors ${
                 activeCat === c.id ? "bg-blue-600 text-white" : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
               }`}>
               {c.name}
             </button>
           ))}
-          <button onClick={loadMenu} className="ml-auto shrink-0 p-1.5 text-slate-400 hover:text-blue-600">
+          <button onClick={loadMenu} className="ml-auto shrink-0 p-2 text-slate-400 hover:text-blue-600">
             <RefreshCw size={16} />
           </button>
         </div>
 
         {/* Items grid */}
-        <div className="flex-1 overflow-y-auto p-3 pb-24 md:pb-3 bg-slate-50 dark:bg-slate-900">
+        <div className="flex-1 overflow-y-auto p-3 md:p-4 pb-24 md:pb-4 bg-slate-50 dark:bg-slate-900">
           {visibleItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-slate-400">
               <UtensilsCrossed size={40} className="mb-2 opacity-30" />
               <p>No items in this category</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
               {visibleItems.map(item => (
                 <div key={item.id} onClick={() => clickItem(item)}
                   className={`relative bg-white dark:bg-slate-800 rounded-xl border shadow-sm cursor-pointer transition-all select-none overflow-hidden flex flex-col ${
@@ -247,21 +247,21 @@ export default function FoodPOS() {
                       : "border-slate-100 dark:border-slate-800 opacity-50 cursor-not-allowed"
                   }`}>
                   {item.imageUrl ? (
-                    <img src={item.imageUrl} alt={item.name} className="w-full h-28 object-cover" />
+                    <img src={item.imageUrl} alt={item.name} className="w-full h-28 md:h-36 object-cover" />
                   ) : (
-                    <div className="w-full h-28 bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+                    <div className="w-full h-28 md:h-36 bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
                       <UtensilsCrossed size={24} className="text-slate-300 dark:text-slate-600" />
                     </div>
                   )}
                   <button onClick={(e) => toggleAvail(item, e)}
-                    className="absolute top-2 right-2 z-10 bg-white/80 dark:bg-slate-800/80 rounded-full p-0.5 shadow">
+                    className="absolute top-2 right-2 z-10 bg-white/80 dark:bg-slate-800/80 rounded-full p-1 shadow">
                     {item.available
                       ? <ToggleRight size={16} className="text-green-500" />
                       : <ToggleLeft size={16} className="text-slate-400" />}
                   </button>
-                  <div className="p-2.5">
-                    <p className="font-semibold text-slate-800 dark:text-slate-100 text-sm leading-tight mb-1">{item.name}</p>
-                    <p className="text-blue-600 font-bold text-sm">{fmt(item.price, currency)}</p>
+                  <div className="p-2.5 md:p-3">
+                    <p className="font-semibold text-slate-800 dark:text-slate-100 text-sm md:text-base leading-tight mb-1">{item.name}</p>
+                    <p className="text-blue-600 font-bold text-sm md:text-base">{fmt(item.price, currency)}</p>
                     {!item.available && <span className="text-xs text-red-500 font-medium">Sold Out</span>}
                   </div>
                 </div>
@@ -289,9 +289,9 @@ export default function FoodPOS() {
         <div className="fixed inset-0 bg-black/40 z-30 md:hidden" onClick={() => setShowCartSheet(false)} />
       )}
 
-      {/* Right: Order panel — sidebar on desktop, bottom sheet on mobile */}
+      {/* Right: Order panel — sidebar on tablet/desktop, bottom sheet on mobile */}
       <div className={`
-        md:relative md:flex md:w-72 xl:md:w-80 md:flex-col md:bg-white md:dark:bg-slate-800 md:shrink-0
+        md:relative md:flex md:w-72 lg:w-80 xl:w-96 md:flex-col md:bg-white md:dark:bg-slate-800 md:shrink-0
         ${showCartSheet
           ? "fixed bottom-0 left-0 right-0 z-40 flex flex-col bg-white dark:bg-slate-800 rounded-t-2xl max-h-[92dvh] overflow-hidden"
           : "hidden md:flex"
@@ -307,34 +307,34 @@ export default function FoodPOS() {
         </div>
 
         {/* Order type toggle + printer setup */}
-        <div className="p-3 border-b border-slate-200 dark:border-slate-700 space-y-2">
+        <div className="p-3 md:p-4 border-b border-slate-200 dark:border-slate-700 space-y-2 md:space-y-3">
           <div className="flex items-center justify-between">
             <button onClick={() => setShowPrinterSetup(true)}
-              className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border transition-colors ${
+              className={`flex items-center gap-1.5 text-xs md:text-sm px-2.5 md:px-3 py-2 rounded-lg border transition-colors ${
                 usbDevice || btConn
                   ? "border-emerald-300 bg-emerald-50 text-emerald-700"
                   : "border-slate-200 dark:border-slate-600 text-slate-500 hover:text-blue-600"
               }`}>
-              <Printer size={12} />
+              <Printer size={14} />
               {usbDevice ? "USB Printer" : btConn ? "BT Printer" : "Setup Printer"}
             </button>
           </div>
           <div className="flex rounded-xl overflow-hidden border border-slate-200 dark:border-slate-600">
             <button onClick={() => setOrderType("DINE_IN")}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-sm font-medium transition-colors ${
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 md:py-3 text-sm md:text-base font-medium transition-colors ${
                 orderType === "DINE_IN"
                   ? "bg-blue-600 text-white"
                   : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
               }`}>
-              <Users size={14} /> Dine In
+              <Users size={15} /> Dine In
             </button>
             <button onClick={() => setOrderType("TAKEAWAY")}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-sm font-medium transition-colors ${
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 md:py-3 text-sm md:text-base font-medium transition-colors ${
                 orderType === "TAKEAWAY"
                   ? "bg-orange-500 text-white"
                   : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
               }`}>
-              <ShoppingBag size={14} /> Takeaway
+              <ShoppingBag size={15} /> Takeaway
             </button>
           </div>
           {orderType === "DINE_IN" && (
@@ -356,41 +356,41 @@ export default function FoodPOS() {
         </div>
 
         {/* Cart items */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-2 overscroll-contain">
+        <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-2 md:space-y-3 overscroll-contain">
           {cart.length === 0 ? (
             <p className="text-center text-slate-400 text-sm mt-8">
               {orderType === "DINE_IN" ? "Select items for the order" : "Select items + packaging"}
             </p>
           ) : (
             cart.map(ci => (
-              <div key={ci.cartId} className={`rounded-lg p-2.5 border ${
+              <div key={ci.cartId} className={`rounded-lg p-2.5 md:p-3 border ${
                 ci.toGo
                   ? "bg-orange-50 dark:bg-orange-900/10 border-orange-200 dark:border-orange-800"
                   : "bg-slate-50 dark:bg-slate-700 border-transparent"
               }`}>
                 <div className="flex items-start justify-between gap-1">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{ci.name}</p>
+                    <p className="text-sm md:text-base font-medium text-slate-800 dark:text-slate-100 truncate">{ci.name}</p>
                     {ci.modifiers.length > 0 && (
                       <p className="text-xs text-slate-400 truncate">
                         {ci.modifiers.map(m => m.qty > 1 ? `${m.name} ×${m.qty}` : m.name).join(", ")}
                       </p>
                     )}
                   </div>
-                  <button onClick={() => removeItem(ci.cartId)} className="text-slate-400 hover:text-red-500 shrink-0">
-                    <X size={14} />
+                  <button onClick={() => removeItem(ci.cartId)} className="text-slate-400 hover:text-red-500 shrink-0 p-1">
+                    <X size={15} />
                   </button>
                 </div>
-                <div className="flex items-center justify-between mt-1.5">
-                  <div className="flex items-center gap-1">
+                <div className="flex items-center justify-between mt-2">
+                  <div className="flex items-center gap-1.5">
                     <button onClick={() => changeQty(ci.cartId, -1)}
-                      className="w-6 h-6 rounded bg-slate-200 dark:bg-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-300">
-                      <Minus size={12} />
+                      className="w-7 h-7 md:w-8 md:h-8 rounded bg-slate-200 dark:bg-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-300">
+                      <Minus size={13} />
                     </button>
-                    <span className="text-sm font-medium text-slate-800 dark:text-slate-100 w-5 text-center">{ci.qty}</span>
+                    <span className="text-sm md:text-base font-medium text-slate-800 dark:text-slate-100 w-6 text-center">{ci.qty}</span>
                     <button onClick={() => changeQty(ci.cartId, 1)}
-                      className="w-6 h-6 rounded bg-slate-200 dark:bg-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-300">
-                      <Plus size={12} />
+                      className="w-7 h-7 md:w-8 md:h-8 rounded bg-slate-200 dark:bg-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-300">
+                      <Plus size={13} />
                     </button>
                   </div>
                   <div className="flex items-center gap-2">
@@ -398,16 +398,16 @@ export default function FoodPOS() {
                     {orderType === "DINE_IN" && (
                       <button onClick={() => toggleToGo(ci.cartId)}
                         title={ci.toGo ? "Mark as Dine In" : "Mark as To Go"}
-                        className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border-2 transition-colors ${
+                        className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-bold border-2 transition-colors ${
                           ci.toGo
                             ? "bg-orange-500 text-white border-orange-500"
                             : "bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-500 text-slate-500 dark:text-slate-400 hover:border-orange-400 hover:text-orange-500"
                         }`}>
-                        <Package size={11} />
+                        <Package size={12} />
                         {ci.toGo ? "TO GO" : "SERVE"}
                       </button>
                     )}
-                    <span className="text-sm font-bold text-blue-600">{fmt(ci.unitPrice * ci.qty, currency)}</span>
+                    <span className="text-sm md:text-base font-bold text-blue-600">{fmt(ci.unitPrice * ci.qty, currency)}</span>
                   </div>
                 </div>
               </div>
@@ -416,7 +416,7 @@ export default function FoodPOS() {
         </div>
 
         {/* Footer */}
-        <div className="p-3 border-t border-slate-200 dark:border-slate-700 space-y-3">
+        <div className="p-3 md:p-4 border-t border-slate-200 dark:border-slate-700 space-y-3">
           {cart.length > 0 && (
             <div className="flex justify-between items-center text-sm text-slate-500 dark:text-slate-400">
               <span>Subtotal</span>
@@ -430,8 +430,8 @@ export default function FoodPOS() {
             </div>
           )}
           <div className="flex justify-between items-center">
-            <span className="font-semibold text-slate-700 dark:text-slate-200">Total</span>
-            <span className="text-xl font-bold text-slate-800 dark:text-slate-100">{fmt(total, currency)}</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200 md:text-base">Total</span>
+            <span className="text-xl md:text-2xl font-bold text-slate-800 dark:text-slate-100">{fmt(total, currency)}</span>
           </div>
 
           {/* Payment method */}
@@ -456,8 +456,8 @@ export default function FoodPOS() {
             className="w-full px-2 py-1.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 resize-none" />
 
           <button onClick={charge} disabled={cart.length === 0 || charging}
-            className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-bold text-sm flex items-center justify-center gap-2">
-            {charging ? <Loader2 size={16} className="animate-spin" /> : <Printer size={16} />}
+            className="w-full py-3 md:py-4 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-bold text-sm md:text-base flex items-center justify-center gap-2">
+            {charging ? <Loader2 size={18} className="animate-spin" /> : <Printer size={18} />}
             {charging ? "Processing..." : "Charge & Print"}
           </button>
         </div>
