@@ -131,6 +131,16 @@ export default function FoodPOS() {
   async function charge() {
     if (cart.length === 0) return;
     setCharging(true);
+
+    // Pre-open the print window NOW, while we're still inside the user-gesture.
+    // Calling window.open() after an await breaks the gesture chain on mobile
+    // browsers, causing Android to show the native share sheet (WhatsApp etc.)
+    // instead of a print preview.
+    let printWin = null;
+    if (!usbDevice && !btConn) {
+      printWin = window.open("", "_blank", "width=380,height=600");
+    }
+
     try {
       const res = await api.post("/api/orders", {
         orderType,
@@ -158,10 +168,33 @@ export default function FoodPOS() {
       setCart([]);
       setNotes("");
       setShowCartSheet(false);
-      handlePrint(order);
+
+      if (usbDevice) {
+        try {
+          if (printWin && !printWin.closed) printWin.close();
+          printWin = null;
+          await printFoodOrderUSB(usbDevice, order, orgName || "Restaurant", currency);
+          return;
+        } catch { showToast("USB print failed, using browser print", "info"); }
+      }
+      if (btConn) {
+        try {
+          if (printWin && !printWin.closed) printWin.close();
+          printWin = null;
+          await printFoodOrderBluetooth(btConn, order, orgName || "Restaurant", currency);
+          return;
+        } catch { showToast("Bluetooth print failed, using browser print", "info"); }
+      }
+
+      printFoodOrderBrowser(order, orgName || "Restaurant", currency, printWin);
+      printWin = null;
     } catch (e) {
+      if (printWin && !printWin.closed) printWin.close();
       showToast(e.response?.data?.message || "Failed to place order", "error");
-    } finally { setCharging(false); }
+    } finally {
+      if (printWin && !printWin.closed) printWin.close();
+      setCharging(false);
+    }
   }
 
   if (loading) return (

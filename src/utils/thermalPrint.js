@@ -296,7 +296,7 @@ function makeFmtShort(sym) {
 
 // ── Food Order Print — Browser (HTML) ────────────────────────────────────────
 
-export function printFoodOrderBrowser(order, orgName, currency = "") {
+export function printFoodOrderBrowser(order, orgName, currency = "", existingWin = null) {
   const hasMixed = (order.items || []).some(i => i.toGo);
   const fmtAmt = (v) => currency + new Intl.NumberFormat("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v ?? 0);
 
@@ -323,7 +323,7 @@ export function printFoodOrderBrowser(order, orgName, currency = "") {
     return `<div style="font-size:14px;margin:4px 0"><strong>${i.qty}x</strong> ${i.name}${badge}${modLine}</div>`;
   }).join("");
 
-  const win = window.open("", "_blank", "width=380,height=600");
+  const win = existingWin || window.open("", "_blank", "width=380,height=600");
   if (!win) { alert("Please allow popups to print receipts."); return; }
   win.document.write(`<!DOCTYPE html><html><head><title>Food Order</title>
     <style>
