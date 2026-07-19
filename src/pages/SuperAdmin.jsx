@@ -483,7 +483,7 @@ function SuperAdmin() {
       setConvFeesLoading(true);
       api.get("/api/superadmin/convenience-fees")
         .then(res => { setConvFees(res.data); setConvFeesLoaded(true); })
-        .catch(() => {})
+        .catch(() => showToast("Failed to load convenience fee data.", "error"))
         .finally(() => setConvFeesLoading(false));
     }
   }, [tab, tipsLoaded, bmsLoaded, referralsLoaded, customBillingLoaded, hardwareLoaded]);
