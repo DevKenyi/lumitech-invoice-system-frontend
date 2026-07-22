@@ -60,7 +60,7 @@ export default function AiChat() {
 
   return (
     <>
-      {/* Floating button — bottom-left */}
+      {/* Floating button — bottom-left on desktop, hidden on mobile when sheet is open */}
       <button
         onClick={() => setOpen((v) => !v)}
         aria-label="Open LumiLedger AI"
@@ -81,25 +81,37 @@ export default function AiChat() {
         )}
       </button>
 
-      {/* Chat panel */}
+      {/* Chat panel — full-width bottom sheet on mobile, fixed panel on desktop */}
       {open && (
         <div
           className="
-            fixed bottom-24 left-5 z-50
-            w-80 max-h-96
+            fixed z-50
+            bottom-0 left-0 right-0
+            sm:bottom-24 sm:left-5 sm:right-auto sm:w-80
             bg-white dark:bg-slate-900
-            rounded-2xl shadow-2xl shadow-black/20
-            border border-slate-200 dark:border-slate-700
+            rounded-t-2xl sm:rounded-2xl
+            shadow-2xl shadow-black/20
+            border-t border-slate-200 dark:border-slate-700
+            sm:border
             flex flex-col overflow-hidden
+            max-h-[75dvh] sm:max-h-96
           "
         >
+          {/* Mobile drag handle */}
+          <div className="sm:hidden flex justify-center pt-2 pb-1">
+            <div className="w-10 h-1 bg-slate-300 dark:bg-slate-600 rounded-full" />
+          </div>
+
           {/* Header */}
           <div className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-indigo-500 to-violet-600">
             <Bot className="w-5 h-5 text-white shrink-0" />
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-white leading-tight">LumiLedger AI</p>
               <p className="text-[10px] text-indigo-200">Your accounting co-pilot</p>
             </div>
+            <button onClick={() => setOpen(false)} className="sm:hidden text-indigo-200 hover:text-white p-1">
+              <X className="w-4 h-4" />
+            </button>
           </div>
 
           {/* Messages */}
