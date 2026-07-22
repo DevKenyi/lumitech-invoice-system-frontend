@@ -291,7 +291,7 @@ export default function FoodPOS() {
 
       {/* Right: Order panel — sidebar on desktop, bottom sheet on mobile */}
       <div className={`
-        md:relative md:flex md:w-72 xl:md:w-80 md:flex-col md:bg-white md:dark:bg-slate-800 md:shrink-0
+        md:relative md:flex md:w-72 xl:md:w-80 md:flex-col md:bg-white md:dark:bg-slate-800 md:shrink-0 md:overflow-hidden
         ${showCartSheet
           ? "fixed bottom-0 left-0 right-0 z-40 flex flex-col bg-white dark:bg-slate-800 rounded-t-2xl max-h-[92dvh] overflow-hidden"
           : "hidden md:flex"
@@ -416,7 +416,7 @@ export default function FoodPOS() {
         </div>
 
         {/* Footer */}
-        <div className="p-3 border-t border-slate-200 dark:border-slate-700 space-y-3">
+        <div className="shrink-0 p-3 border-t border-slate-200 dark:border-slate-700 space-y-3">
           {cart.length > 0 && (
             <div className="flex justify-between items-center text-sm text-slate-500 dark:text-slate-400">
               <span>Subtotal</span>
