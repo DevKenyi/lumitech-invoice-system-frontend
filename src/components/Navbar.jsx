@@ -387,7 +387,6 @@ function Navbar({ onClose }) {
     { path: "/invoices",           label: "Invoices",          icon: FileText,       info: "View and manage all invoices" },
     { path: "/create",             label: "New Invoice",       icon: PlusCircle,     info: "Create and send a new invoice" },
     { path: "/quick-invoice",      label: "Quick Invoice",     icon: Zap,            info: "Instant sale — type customer name and mark paid immediately" },
-    { path: "/easy-buy",           label: "Easy Buy",          icon: ShoppingBag,    info: "Track items sold on payment plans — deposits and instalments" },
     { path: "/monnify/transactions", label: "Monnify Payments",  icon: Banknote,       info: "Payments received on your Moniepoint account — auto-recorded" },
     { path: "/quotes",             label: "Quotes",            icon: FileCheck,      info: "Create estimates and convert to invoices" },
     { path: "/proforma",           label: "Proforma Invoices", icon: GitBranch,      info: "Preliminary invoices for customs or pre-delivery" },
