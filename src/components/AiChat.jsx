@@ -276,13 +276,16 @@ export default function AiChat() {
       // Guard: reject invoice actions with placeholder/zero values
       if (proposedAction?.type === "create_invoice") {
         const name = proposedAction.customerName || proposedAction.clientName || "";
+        const reason = proposedAction.reason || "";
         const total = (proposedAction.items || []).reduce(
           (s, i) => s + Number(i.unitPrice || 0) * Number(i.quantity || 1), 0
         );
-        const PLACEHOLDERS = ["customer name", "client name", "your customer", "[customer]", "[client]"];
-        const isPlaceholder = PLACEHOLDERS.some((p) => name.toLowerCase().includes(p));
-        if (isPlaceholder || total === 0) {
-          proposedAction = null; // discard — AI will ask for details via text
+        const NAME_PLACEHOLDERS = ["customer name", "client name", "your customer", "[customer]", "[client]", "actual customer"];
+        const REASON_PLACEHOLDERS = ["one sentence", "brief reason", "[reason]", "reason here"];
+        const badName = NAME_PLACEHOLDERS.some((p) => name.toLowerCase().includes(p));
+        const badReason = REASON_PLACEHOLDERS.some((p) => reason.toLowerCase().includes(p));
+        if (badName || badReason || total === 0) {
+          proposedAction = null;
         }
       }
 
