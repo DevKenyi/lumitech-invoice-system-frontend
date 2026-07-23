@@ -249,11 +249,35 @@ export default function AiChat() {
     setLoading(true);
     try {
       const res = await api.post("/api/ai/chat", { message, history });
+      let reply = res.data.reply || "";
+      let proposedAction = res.data.proposedAction || null;
+
+      // Fallback: strip action block if backend parser missed it
+      if (!proposedAction) {
+        const VALID_TYPES = ["record_payment", "send_reminder", "create_journal_entry", "create_invoice"];
+        for (const tag of ["```action", "```json"]) {
+          const blockStart = reply.indexOf(tag);
+          if (blockStart < 0) continue;
+          const nlPos = reply.indexOf("\n", blockStart);
+          if (nlPos < 0) continue;
+          const blockEnd = reply.indexOf("```", nlPos + 1);
+          if (blockEnd <= nlPos) continue;
+          try {
+            const parsed = JSON.parse(reply.substring(nlPos + 1, blockEnd).trim());
+            if (parsed.type && VALID_TYPES.includes(parsed.type)) {
+              proposedAction = parsed;
+              reply = (reply.substring(0, blockStart) + reply.substring(blockEnd + 3)).trim();
+            }
+          } catch (_) {}
+          break;
+        }
+      }
+
       setMessages((prev) => [...prev, {
         role: "ai",
-        content: res.data.reply,
-        proposedAction: res.data.proposedAction || null,
-        actionStatus: res.data.proposedAction ? null : undefined,
+        content: reply,
+        proposedAction,
+        actionStatus: proposedAction ? null : undefined,
       }]);
     } catch (err) {
       setMessages((prev) => [...prev, {
