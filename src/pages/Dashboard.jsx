@@ -21,7 +21,7 @@ const Dashboard = () => {
   const { fmt, currencySymbol } = useOrg();
   const user = getUserFromToken();
   const role = user?.role || (Array.isArray(user?.roles) ? user.roles[0] : null);
-  if (role === "STAFF" || role === "ADMIN") return <Navigate to="/invoices" replace />;
+  if (role === "STAFF") return <Navigate to="/invoices" replace />;
 
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
