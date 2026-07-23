@@ -273,6 +273,19 @@ export default function AiChat() {
         }
       }
 
+      // Guard: reject invoice actions with placeholder/zero values
+      if (proposedAction?.type === "create_invoice") {
+        const name = proposedAction.customerName || proposedAction.clientName || "";
+        const total = (proposedAction.items || []).reduce(
+          (s, i) => s + Number(i.unitPrice || 0) * Number(i.quantity || 1), 0
+        );
+        const PLACEHOLDERS = ["customer name", "client name", "your customer", "[customer]", "[client]"];
+        const isPlaceholder = PLACEHOLDERS.some((p) => name.toLowerCase().includes(p));
+        if (isPlaceholder || total === 0) {
+          proposedAction = null; // discard — AI will ask for details via text
+        }
+      }
+
       setMessages((prev) => [...prev, {
         role: "ai",
         content: reply,
