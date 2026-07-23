@@ -64,11 +64,20 @@ export default function AiChat() {
 
       {/* Chat window — full screen on mobile, floating panel on desktop */}
       {open && (
-        <div className="
-          fixed inset-0 z-50 flex flex-col bg-white dark:bg-slate-900
-          sm:inset-auto sm:bottom-6 sm:left-5 sm:w-96 sm:h-[600px]
-          sm:rounded-2xl sm:shadow-2xl sm:border sm:border-slate-200 sm:dark:border-slate-700
-        ">
+        <div
+          className="
+            fixed z-50 flex flex-col bg-white dark:bg-slate-900
+            sm:inset-auto sm:bottom-6 sm:left-5 sm:w-96 sm:h-[600px]
+            sm:rounded-2xl sm:shadow-2xl sm:border sm:border-slate-200 sm:dark:border-slate-700
+          "
+          style={{
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: "100%",
+          }}
+        >
 
           {/* Header */}
           <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-indigo-500 to-violet-600 sm:rounded-t-2xl shrink-0">
@@ -170,8 +179,8 @@ export default function AiChat() {
                 placeholder="Ask your AI accountant..."
                 disabled={loading}
                 rows={1}
-                className="flex-1 text-sm bg-transparent text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 outline-none resize-none leading-relaxed py-1 disabled:opacity-50"
-                style={{ maxHeight: "120px" }}
+                className="flex-1 bg-transparent text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 outline-none resize-none leading-relaxed py-1 disabled:opacity-50"
+                style={{ maxHeight: "120px", fontSize: "16px" }}
               />
               <button
                 onClick={() => send()}
