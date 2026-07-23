@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Sparkles, X, Send, Loader2, Bot, ArrowLeft } from "lucide-react";
+import { Sparkles, X, Send, Loader2, Bot, ArrowLeft, CheckCircle, XCircle } from "lucide-react";
 import api from "../services/api";
 
 const STARTERS = [
@@ -8,6 +8,68 @@ const STARTERS = [
   "Show my overdue invoices",
   "What are my expenses this month?",
 ];
+
+function ActionCard({ action, onConfirm, onCancel, status, actionResult }) {
+  if (status === "cancelled") {
+    return (
+      <div className="mt-2 px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 text-xs italic">
+        Action cancelled.
+      </div>
+    );
+  }
+
+  if (status === "done") {
+    return (
+      <div className="mt-2 px-4 py-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700 flex items-start gap-2">
+        <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+        <p className="text-xs text-emerald-700 dark:text-emerald-300">{actionResult}</p>
+      </div>
+    );
+  }
+
+  if (status === "error") {
+    return (
+      <div className="mt-2 px-4 py-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 flex items-start gap-2">
+        <XCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+        <p className="text-xs text-red-600 dark:text-red-400">{actionResult}</p>
+      </div>
+    );
+  }
+
+  const confirming = status === "confirming";
+
+  return (
+    <div className="mt-2 rounded-xl border border-emerald-200 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 overflow-hidden">
+      <div className="flex items-start gap-2 px-4 py-3">
+        <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+        <p className="text-xs text-emerald-800 dark:text-emerald-200 leading-relaxed">{action.summary}</p>
+      </div>
+      <div className="flex gap-2 px-4 pb-3">
+        <button
+          onClick={onConfirm}
+          disabled={confirming}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 disabled:cursor-not-allowed text-white text-xs font-medium transition-colors"
+        >
+          {confirming ? (
+            <>
+              <Loader2 className="w-3 h-3 animate-spin" />
+              Confirming…
+            </>
+          ) : (
+            "Confirm"
+          )}
+        </button>
+        <button
+          onClick={onCancel}
+          disabled={confirming}
+          className="px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 disabled:opacity-60 disabled:cursor-not-allowed text-slate-600 dark:text-slate-300 text-xs font-medium transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function AiChat() {
   const [open, setOpen] = useState(false);
@@ -33,7 +95,12 @@ export default function AiChat() {
     setLoading(true);
     try {
       const res = await api.post("/api/ai/chat", { message });
-      setMessages((prev) => [...prev, { role: "ai", content: res.data.reply }]);
+      setMessages((prev) => [...prev, {
+        role: "ai",
+        content: res.data.reply,
+        proposedAction: res.data.proposedAction || null,
+        actionStatus: res.data.proposedAction ? null : undefined,
+      }]);
     } catch (err) {
       setMessages((prev) => [...prev, {
         role: "ai",
@@ -43,6 +110,34 @@ export default function AiChat() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function confirmAction(action, msgIndex) {
+    setMessages((prev) =>
+      prev.map((m, i) => i === msgIndex ? { ...m, actionStatus: "confirming" } : m)
+    );
+    try {
+      const res = await api.post("/api/ai/action/confirm", action);
+      setMessages((prev) =>
+        prev.map((m, i) =>
+          i === msgIndex ? { ...m, actionStatus: "done", actionResult: res.data.result } : m
+        )
+      );
+    } catch (err) {
+      setMessages((prev) =>
+        prev.map((m, i) =>
+          i === msgIndex
+            ? { ...m, actionStatus: "error", actionResult: err.response?.data?.message || "Action failed" }
+            : m
+        )
+      );
+    }
+  }
+
+  function cancelAction(msgIndex) {
+    setMessages((prev) =>
+      prev.map((m, i) => i === msgIndex ? { ...m, actionStatus: "cancelled" } : m)
+    );
   }
 
   function handleKeyDown(e) {
@@ -137,16 +232,27 @@ export default function AiChat() {
                     <Bot className="w-3.5 h-3.5 text-white" />
                   </div>
                 )}
-                <div className={`
-                  max-w-[78%] text-sm px-4 py-2.5 rounded-2xl leading-relaxed whitespace-pre-wrap
-                  ${msg.role === "user"
-                    ? "bg-indigo-500 text-white rounded-br-sm"
-                    : msg.error
-                    ? "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-bl-sm"
-                    : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-sm"
-                  }
-                `}>
-                  {msg.content}
+                <div className="max-w-[78%] flex flex-col">
+                  <div className={`
+                    text-sm px-4 py-2.5 rounded-2xl leading-relaxed whitespace-pre-wrap
+                    ${msg.role === "user"
+                      ? "bg-indigo-500 text-white rounded-br-sm"
+                      : msg.error
+                      ? "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-bl-sm"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-sm"
+                    }
+                  `}>
+                    {msg.content}
+                  </div>
+                  {msg.proposedAction && (
+                    <ActionCard
+                      action={msg.proposedAction}
+                      onConfirm={() => confirmAction(msg.proposedAction, i)}
+                      onCancel={() => cancelAction(i)}
+                      status={msg.actionStatus}
+                      actionResult={msg.actionResult}
+                    />
+                  )}
                 </div>
               </div>
             ))}
