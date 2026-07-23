@@ -252,25 +252,27 @@ export default function AiChat() {
       let reply = res.data.reply || "";
       let proposedAction = res.data.proposedAction || null;
 
-      // Fallback: strip action block if backend parser missed it
+      // Fallback: strip action blocks the backend parser missed (regex — more robust than indexOf)
+      const BLOCK_RE = /```(?:action|json)\s*\n([\s\S]*?)\n?```/g;
+      const VALID_TYPES = ["record_payment", "send_reminder", "create_journal_entry", "create_invoice"];
       if (!proposedAction) {
-        const VALID_TYPES = ["record_payment", "send_reminder", "create_journal_entry", "create_invoice"];
-        for (const tag of ["```action", "```json"]) {
-          const blockStart = reply.indexOf(tag);
-          if (blockStart < 0) continue;
-          const nlPos = reply.indexOf("\n", blockStart);
-          if (nlPos < 0) continue;
-          const blockEnd = reply.indexOf("```", nlPos + 1);
-          if (blockEnd <= nlPos) continue;
+        reply = reply.replace(BLOCK_RE, (match, json) => {
+          if (proposedAction) return ""; // already found one
+          const trimmed = json.trim();
+          if (!trimmed) return ""; // empty block — just strip it
           try {
-            const parsed = JSON.parse(reply.substring(nlPos + 1, blockEnd).trim());
+            const parsed = JSON.parse(trimmed);
             if (parsed.type && VALID_TYPES.includes(parsed.type)) {
               proposedAction = parsed;
-              reply = (reply.substring(0, blockStart) + reply.substring(blockEnd + 3)).trim();
+              return "";
             }
           } catch (_) {}
-          break;
-        }
+          return ""; // malformed block — strip it silently rather than show raw JSON
+        });
+        reply = reply.trim();
+      } else {
+        // Backend already parsed the action — still strip any leftover code fences
+        reply = reply.replace(BLOCK_RE, "").trim();
       }
 
       // Guard: reject invoice actions with placeholder/zero values
