@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Sparkles, X, Send, Loader2, Bot, ArrowLeft, CheckCircle, XCircle, Banknote, BookOpen, Bell } from "lucide-react";
+import { Sparkles, X, Send, Loader2, Bot, ArrowLeft, CheckCircle, XCircle, Banknote, BookOpen, Bell, FileText } from "lucide-react";
 import api from "../services/api";
 
 const STARTERS = [
@@ -13,7 +13,6 @@ const ACTION_META = {
   record_payment: {
     label: "Record Payment",
     Icon: Banknote,
-    color: "blue",
     border: "border-blue-200 dark:border-blue-700",
     bg: "bg-blue-50 dark:bg-blue-900/20",
     badge: "text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/40",
@@ -22,7 +21,6 @@ const ACTION_META = {
   send_reminder: {
     label: "Send Reminder",
     Icon: Bell,
-    color: "amber",
     border: "border-amber-200 dark:border-amber-700",
     bg: "bg-amber-50 dark:bg-amber-900/20",
     badge: "text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/40",
@@ -31,11 +29,18 @@ const ACTION_META = {
   create_journal_entry: {
     label: "Journal Entry",
     Icon: BookOpen,
-    color: "violet",
     border: "border-violet-200 dark:border-violet-700",
     bg: "bg-violet-50 dark:bg-violet-900/20",
     badge: "text-violet-700 dark:text-violet-400 bg-violet-100 dark:bg-violet-900/40",
     dot: "bg-violet-400",
+  },
+  create_invoice: {
+    label: "Create Invoice",
+    Icon: FileText,
+    border: "border-teal-200 dark:border-teal-700",
+    bg: "bg-teal-50 dark:bg-teal-900/20",
+    badge: "text-teal-700 dark:text-teal-400 bg-teal-100 dark:bg-teal-900/40",
+    dot: "bg-teal-400",
   },
 };
 
@@ -77,7 +82,11 @@ function ActionCard({ action, onConfirm, onCancel, status, actionResult }) {
   const meta = ACTION_META[action.type] || ACTION_META.record_payment;
   const { Icon } = meta;
   const hasLines = action.lines && action.lines.length > 0;
+  const hasItems = action.items && action.items.length > 0;
   const hasImpact = action.impact && action.impact.length > 0;
+  const invoiceTotal = hasItems
+    ? action.items.reduce((s, i) => s + Number(i.unitPrice || 0) * Number(i.quantity || 1), 0)
+    : 0;
 
   return (
     <div className={`mt-2 rounded-xl border ${meta.border} ${meta.bg} overflow-hidden`}>
@@ -118,6 +127,49 @@ function ActionCard({ action, onConfirm, onCancel, status, actionResult }) {
                 </tr>
               ))}
             </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Invoice items preview */}
+      {hasItems && (
+        <div className="mx-4 mb-3 rounded-lg bg-white/70 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <div className="px-3 py-1.5 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Invoice Preview</p>
+            {action.mode === "quick" && (
+              <span className="text-[10px] text-teal-600 dark:text-teal-400 font-medium">Quick</span>
+            )}
+            {action.mode === "full" && (
+              <span className="text-[10px] text-teal-600 dark:text-teal-400 font-medium">Full · due {action.dueDate}</span>
+            )}
+          </div>
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-slate-100 dark:border-slate-800">
+                <th className="px-3 py-1.5 text-left text-slate-400 font-medium">Description</th>
+                <th className="px-3 py-1.5 text-right text-slate-400 font-medium">Qty</th>
+                <th className="px-3 py-1.5 text-right text-slate-400 font-medium">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {action.items.map((item, i) => (
+                <tr key={i} className="border-t border-slate-100 dark:border-slate-800 first:border-0">
+                  <td className="px-3 py-2 text-slate-700 dark:text-slate-300">{item.description}</td>
+                  <td className="px-3 py-2 text-right text-slate-500 dark:text-slate-400">{item.quantity}</td>
+                  <td className="px-3 py-2 text-right font-mono text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                    ₦{fmt(Number(item.unitPrice) * Number(item.quantity || 1))}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-slate-200 dark:border-slate-700">
+                <td colSpan={2} className="px-3 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300">Total</td>
+                <td className="px-3 py-2 text-right font-mono font-semibold text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                  ₦{fmt(invoiceTotal)}
+                </td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       )}
@@ -188,10 +240,15 @@ export default function AiChat() {
     const message = (text ?? input).trim();
     if (!message || loading) return;
     setInput("");
+    // Build conversation history from existing messages (last 10, text only)
+    const history = messages.slice(-10).map((m) => ({
+      role: m.role === "ai" ? "assistant" : "user",
+      content: m.content || "",
+    })).filter((m) => m.content);
     setMessages((prev) => [...prev, { role: "user", content: message }]);
     setLoading(true);
     try {
-      const res = await api.post("/api/ai/chat", { message });
+      const res = await api.post("/api/ai/chat", { message, history });
       setMessages((prev) => [...prev, {
         role: "ai",
         content: res.data.reply,
