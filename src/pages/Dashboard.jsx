@@ -13,6 +13,7 @@ import {
 import { getUserType, capitalLabel, USER_TYPES } from "../utils/userType";
 import TourOverlay from "../components/TourOverlay";
 import OnboardingBanner from "../components/OnboardingBanner";
+import DailyBrief from "../components/DailyBrief";
 import NumericInput from "../components/NumericInput";
 import { useOrg } from "../context/OrgContext";
 
@@ -131,6 +132,7 @@ const Dashboard = () => {
     <div className="space-y-6 sm:space-y-8">
       <TourOverlay />
       {!isAccountant && <OnboardingBanner />}
+      {!isAccountant && <DailyBrief />}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
