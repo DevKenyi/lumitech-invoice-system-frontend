@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Sparkles, X, Send, Loader2, Bot, ArrowLeft, CheckCircle, XCircle } from "lucide-react";
+import { Sparkles, X, Send, Loader2, Bot, ArrowLeft, CheckCircle, XCircle, Banknote, BookOpen, Bell } from "lucide-react";
 import api from "../services/api";
 
 const STARTERS = [
@@ -8,6 +8,40 @@ const STARTERS = [
   "Show my overdue invoices",
   "What are my expenses this month?",
 ];
+
+const ACTION_META = {
+  record_payment: {
+    label: "Record Payment",
+    Icon: Banknote,
+    color: "blue",
+    border: "border-blue-200 dark:border-blue-700",
+    bg: "bg-blue-50 dark:bg-blue-900/20",
+    badge: "text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/40",
+    dot: "bg-blue-400",
+  },
+  send_reminder: {
+    label: "Send Reminder",
+    Icon: Bell,
+    color: "amber",
+    border: "border-amber-200 dark:border-amber-700",
+    bg: "bg-amber-50 dark:bg-amber-900/20",
+    badge: "text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/40",
+    dot: "bg-amber-400",
+  },
+  create_journal_entry: {
+    label: "Journal Entry",
+    Icon: BookOpen,
+    color: "violet",
+    border: "border-violet-200 dark:border-violet-700",
+    bg: "bg-violet-50 dark:bg-violet-900/20",
+    badge: "text-violet-700 dark:text-violet-400 bg-violet-100 dark:bg-violet-900/40",
+    dot: "bg-violet-400",
+  },
+};
+
+function fmt(n) {
+  return Number(n).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
 
 function ActionCard({ action, onConfirm, onCancel, status, actionResult }) {
   if (status === "cancelled") {
@@ -20,9 +54,12 @@ function ActionCard({ action, onConfirm, onCancel, status, actionResult }) {
 
   if (status === "done") {
     return (
-      <div className="mt-2 px-4 py-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700 flex items-start gap-2">
+      <div className="mt-2 px-4 py-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700 flex items-start gap-2.5">
         <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-        <p className="text-xs text-emerald-700 dark:text-emerald-300">{actionResult}</p>
+        <div>
+          <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 mb-0.5">Done!</p>
+          <p className="text-xs text-emerald-600 dark:text-emerald-400 leading-relaxed">{actionResult}</p>
+        </div>
       </div>
     );
   }
@@ -31,20 +68,77 @@ function ActionCard({ action, onConfirm, onCancel, status, actionResult }) {
     return (
       <div className="mt-2 px-4 py-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 flex items-start gap-2">
         <XCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
-        <p className="text-xs text-red-600 dark:text-red-400">{actionResult}</p>
+        <p className="text-xs text-red-600 dark:text-red-400 leading-relaxed">{actionResult}</p>
       </div>
     );
   }
 
   const confirming = status === "confirming";
+  const meta = ACTION_META[action.type] || ACTION_META.record_payment;
+  const { Icon } = meta;
+  const hasLines = action.lines && action.lines.length > 0;
+  const hasImpact = action.impact && action.impact.length > 0;
 
   return (
-    <div className="mt-2 rounded-xl border border-emerald-200 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 overflow-hidden">
-      <div className="flex items-start gap-2 px-4 py-3">
-        <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-        <p className="text-xs text-emerald-800 dark:text-emerald-200 leading-relaxed">{action.summary}</p>
+    <div className={`mt-2 rounded-xl border ${meta.border} ${meta.bg} overflow-hidden`}>
+
+      {/* Header badge */}
+      <div className="flex items-center gap-2 px-4 pt-3 pb-2">
+        <span className={`inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full ${meta.badge}`}>
+          <Icon className="w-3 h-3" />
+          {meta.label}
+        </span>
       </div>
-      <div className="flex gap-2 px-4 pb-3">
+
+      {/* Summary */}
+      <div className="px-4 pb-2">
+        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 leading-snug">{action.summary}</p>
+        {action.reason && (
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed italic">{action.reason}</p>
+        )}
+      </div>
+
+      {/* Journal lines preview */}
+      {hasLines && (
+        <div className="mx-4 mb-3 rounded-lg bg-white/70 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <div className="px-3 py-1.5 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Journal Preview</p>
+          </div>
+          <table className="w-full text-xs">
+            <tbody>
+              {action.lines.map((line, i) => (
+                <tr key={i} className="border-t border-slate-100 dark:border-slate-800 first:border-0">
+                  <td className="px-3 py-2 text-slate-700 dark:text-slate-300 font-medium">{line.accountName}</td>
+                  <td className="px-3 py-2 text-right font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                    {Number(line.debit) > 0 ? `Dr ₦${fmt(line.debit)}` : ""}
+                  </td>
+                  <td className="px-3 py-2 text-right font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                    {Number(line.credit) > 0 ? `Cr ₦${fmt(line.credit)}` : ""}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Impact */}
+      {hasImpact && (
+        <div className="px-4 pb-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">This action will</p>
+          <ul className="space-y-1">
+            {action.impact.map((item, i) => (
+              <li key={i} className="flex items-start gap-2 text-xs text-slate-600 dark:text-slate-400">
+                <span className={`w-1.5 h-1.5 rounded-full ${meta.dot} shrink-0 mt-1`} />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="flex gap-2 px-4 pb-3 pt-1 border-t border-white/50 dark:border-slate-700/50">
         <button
           onClick={onConfirm}
           disabled={confirming}
@@ -53,16 +147,19 @@ function ActionCard({ action, onConfirm, onCancel, status, actionResult }) {
           {confirming ? (
             <>
               <Loader2 className="w-3 h-3 animate-spin" />
-              Confirming…
+              Posting…
             </>
           ) : (
-            "Confirm"
+            <>
+              <CheckCircle className="w-3 h-3" />
+              Confirm
+            </>
           )}
         </button>
         <button
           onClick={onCancel}
           disabled={confirming}
-          className="px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 disabled:opacity-60 disabled:cursor-not-allowed text-slate-600 dark:text-slate-300 text-xs font-medium transition-colors"
+          className="px-3 py-1.5 rounded-lg bg-white/60 dark:bg-slate-700 hover:bg-white dark:hover:bg-slate-600 disabled:opacity-60 disabled:cursor-not-allowed text-slate-600 dark:text-slate-300 text-xs font-medium transition-colors border border-slate-200 dark:border-slate-600"
         >
           Cancel
         </button>
@@ -127,7 +224,7 @@ export default function AiChat() {
       setMessages((prev) =>
         prev.map((m, i) =>
           i === msgIndex
-            ? { ...m, actionStatus: "error", actionResult: err.response?.data?.message || "Action failed" }
+            ? { ...m, actionStatus: "error", actionResult: err.response?.data?.message || "Action failed. Please try again." }
             : m
         )
       );
@@ -233,17 +330,19 @@ export default function AiChat() {
                   </div>
                 )}
                 <div className="max-w-[78%] flex flex-col">
-                  <div className={`
-                    text-sm px-4 py-2.5 rounded-2xl leading-relaxed whitespace-pre-wrap
-                    ${msg.role === "user"
-                      ? "bg-indigo-500 text-white rounded-br-sm"
-                      : msg.error
-                      ? "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-bl-sm"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-sm"
-                    }
-                  `}>
-                    {msg.content}
-                  </div>
+                  {msg.content && (
+                    <div className={`
+                      text-sm px-4 py-2.5 rounded-2xl leading-relaxed whitespace-pre-wrap
+                      ${msg.role === "user"
+                        ? "bg-indigo-500 text-white rounded-br-sm"
+                        : msg.error
+                        ? "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-bl-sm"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-sm"
+                      }
+                    `}>
+                      {msg.content}
+                    </div>
+                  )}
                   {msg.proposedAction && (
                     <ActionCard
                       action={msg.proposedAction}
