@@ -337,7 +337,7 @@ export default function AiChat() {
   }
 
   function handleKeyDown(e) {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+    // Enter key adds a new line — only the send button submits the message
   }
 
   return (
