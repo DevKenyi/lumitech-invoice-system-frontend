@@ -298,6 +298,7 @@ export default function AiChat() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [pendingMsg, setPendingMsg] = useState(null);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -308,6 +309,25 @@ export default function AiChat() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  // Listen for programmatic open-and-send from other parts of the app
+  useEffect(() => {
+    const handler = (e) => {
+      setOpen(true);
+      if (e.detail?.message) setPendingMsg(e.detail.message);
+    };
+    window.addEventListener("open-ai-chat", handler);
+    return () => window.removeEventListener("open-ai-chat", handler);
+  }, []);
+
+  // Auto-send once the chat is open and idle
+  useEffect(() => {
+    if (open && pendingMsg && !loading) {
+      const msg = pendingMsg;
+      setPendingMsg(null);
+      setTimeout(() => send(msg), 200);
+    }
+  }, [open, pendingMsg, loading]);
 
   async function send(text) {
     const message = (text ?? input).trim();
