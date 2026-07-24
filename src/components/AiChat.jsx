@@ -9,6 +9,79 @@ const STARTERS = [
   "What are my expenses this month?",
 ];
 
+const SUGGESTION_RULES = [
+  { keywords: ["overdue", "days overdue", "late payment", "follow up"], chips: ["Send reminders now", "Who owes me money?", "Show overdue invoices"] },
+  { keywords: ["payment", "paid", "received", "record payment"], chips: ["Record a payment", "Show outstanding invoices"] },
+  { keywords: ["invoice", "bill", "create invoice"], chips: ["Create an invoice", "Show my invoices"] },
+  { keywords: ["expense", "spent", "cost", "purchase"], chips: ["What are my expenses?", "Show expense summary"] },
+  { keywords: ["profit", "loss", "revenue", "income", "net profit"], chips: ["Show P&L this month", "How is my business doing?"] },
+  { keywords: ["cash flow", "forecast", "expected"], chips: ["Show cash flow forecast", "What do I owe?"] },
+  { keywords: ["quote", "proposal", "estimate"], chips: ["Show pending quotes", "Create an invoice"] },
+  { keywords: ["tax", "vat", "wht", "withholding"], chips: ["Show tax summary", "What's my VAT?"] },
+  { keywords: ["payroll", "salary", "employee", "staff"], chips: ["Show employees", "Show payroll runs"] },
+  { keywords: ["balance sheet", "assets", "liabilities", "equity"], chips: ["Show balance sheet", "Show trial balance"] },
+];
+
+function getSuggestions(text) {
+  if (!text) return [];
+  const lower = text.toLowerCase();
+  const matched = [];
+  for (const rule of SUGGESTION_RULES) {
+    if (rule.keywords.some((k) => lower.includes(k))) {
+      for (const chip of rule.chips) {
+        if (!matched.includes(chip)) matched.push(chip);
+        if (matched.length >= 3) return matched;
+      }
+    }
+  }
+  return matched.slice(0, 3);
+}
+
+function renderInline(text) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={i} className="font-semibold">{part.slice(2, -2)}</strong>;
+    }
+    return part;
+  });
+}
+
+function renderMarkdown(text) {
+  if (!text) return null;
+  const lines = text.split("\n");
+  const result = [];
+  let listItems = [];
+  let key = 0;
+
+  const flushList = () => {
+    if (listItems.length === 0) return;
+    result.push(
+      <ul key={key++} className="list-disc pl-4 my-1 space-y-0.5">
+        {listItems.map((item, j) => (
+          <li key={j} className="leading-relaxed">{renderInline(item)}</li>
+        ))}
+      </ul>
+    );
+    listItems = [];
+  };
+
+  for (const line of lines) {
+    if (line.startsWith("- ") || line.startsWith("* ")) {
+      listItems.push(line.slice(2));
+    } else {
+      flushList();
+      if (line.trim() === "") {
+        result.push(<div key={key++} className="h-1.5" />);
+      } else {
+        result.push(<p key={key++} className="leading-relaxed">{renderInline(line)}</p>);
+      }
+    }
+  }
+  flushList();
+  return <>{result}</>;
+}
+
 const ACTION_META = {
   record_payment: {
     label: "Record Payment",
@@ -431,15 +504,15 @@ export default function AiChat() {
                 <div className="max-w-[78%] flex flex-col">
                   {msg.content && (
                     <div className={`
-                      text-sm px-4 py-2.5 rounded-2xl leading-relaxed whitespace-pre-wrap
+                      text-sm px-4 py-2.5 rounded-2xl
                       ${msg.role === "user"
-                        ? "bg-indigo-500 text-white rounded-br-sm"
+                        ? "bg-indigo-500 text-white rounded-br-sm whitespace-pre-wrap leading-relaxed"
                         : msg.error
-                        ? "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-bl-sm"
+                        ? "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-bl-sm leading-relaxed"
                         : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-sm"
                       }
                     `}>
-                      {msg.content}
+                      {msg.role === "ai" ? renderMarkdown(msg.content) : msg.content}
                     </div>
                   )}
                   {msg.proposedAction && (
@@ -451,6 +524,23 @@ export default function AiChat() {
                       actionResult={msg.actionResult}
                     />
                   )}
+                  {msg.role === "ai" && !msg.error && msg.content && (() => {
+                    const chips = getSuggestions(msg.content);
+                    return chips.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5 mt-2 ml-0.5">
+                        {chips.map((chip) => (
+                          <button
+                            key={chip}
+                            onClick={() => send(chip)}
+                            disabled={loading}
+                            className="text-[11px] px-3 py-1 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:border-indigo-200 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            {chip}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null;
+                  })()}
                 </div>
               </div>
             ))}
