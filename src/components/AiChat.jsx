@@ -419,10 +419,11 @@ export default function AiChat() {
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          aria-label="Open LumiLedger AI"
-          className="fixed bottom-6 left-5 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 shadow-xl shadow-indigo-500/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-transform duration-150"
+          aria-label="Ask Lumi AI"
+          className="fixed bottom-6 left-5 z-50 flex items-center gap-2 px-4 py-3 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 shadow-xl shadow-indigo-500/40 hover:shadow-2xl hover:shadow-indigo-500/50 hover:scale-105 active:scale-95 transition-all duration-150"
         >
-          <Sparkles className="w-6 h-6 text-white" />
+          <Sparkles className="w-4 h-4 text-white shrink-0" />
+          <span className="text-sm font-semibold text-white pr-0.5">Ask Lumi</span>
         </button>
       )}
 
@@ -456,7 +457,7 @@ export default function AiChat() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-white leading-tight">LumiLedger AI</p>
-              <p className="text-[10px] text-indigo-200">Your AI accountant</p>
+              <p className="text-[10px] text-indigo-200">Connected to your live accounting data</p>
             </div>
             <button
               onClick={() => setOpen(false)}
