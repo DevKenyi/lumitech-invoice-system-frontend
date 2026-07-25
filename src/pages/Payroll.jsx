@@ -5,7 +5,7 @@ import {
   Users, CheckCircle, DollarSign, TrendingUp,
   PlayCircle, ClipboardList, Pencil, Upload, Download,
   AlertCircle, CheckCircle2, Briefcase, Milestone,
-  CreditCard, FileText,
+  CreditCard, FileText, Trash2,
 } from "lucide-react";
 import Toast from "../components/Toast";
 import { useOrg } from "../context/OrgContext";
@@ -113,6 +113,9 @@ export default function Payroll() {
   const [empSaving, setEmpSaving] = useState(false);
   const [empError, setEmpError] = useState("");
 
+  const [deleteTarget, setDeleteTarget] = useState(null); // { id, name }
+  const [deleting, setDeleting] = useState(false);
+
   // CSV import state
   const [showImport, setShowImport] = useState(false);
   const [importFile, setImportFile] = useState(null);
@@ -219,6 +222,22 @@ export default function Payroll() {
       setEmpError(err.response?.data?.message || "Failed to save employee");
     } finally {
       setEmpSaving(false);
+    }
+  };
+
+  const handleDeleteEmployee = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/api/payroll/employees/${deleteTarget.id}`);
+      notify("Employee deleted");
+      setDeleteTarget(null);
+      loadEmployees();
+    } catch (err) {
+      notify(err.response?.data?.message || "Failed to delete employee", "error");
+      setDeleteTarget(null);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -563,12 +582,21 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
                               </div>
                             </td>
                             <td className="px-5 py-3.5">
-                              <button
-                                onClick={() => openEditEmp(emp)}
-                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition"
-                              >
-                                <Pencil size={12} /> Edit
-                              </button>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => openEditEmp(emp)}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition"
+                                >
+                                  <Pencil size={12} /> Edit
+                                </button>
+                                <button
+                                  onClick={() => setDeleteTarget({ id: emp.id, name: `${emp.firstName} ${emp.lastName}` })}
+                                  className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition"
+                                  title="Delete employee"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -613,12 +641,20 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
                               {fmt(emp.basicSalary)} / {fmt(totalPkg)}
                             </p>
                           </div>
-                          <button
-                            onClick={() => openEditEmp(emp)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition"
-                          >
-                            <Pencil size={12} /> Edit
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => openEditEmp(emp)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition"
+                            >
+                              <Pencil size={12} /> Edit
+                            </button>
+                            <button
+                              onClick={() => setDeleteTarget({ id: emp.id, name: `${emp.firstName} ${emp.lastName}` })}
+                              className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
@@ -1583,6 +1619,42 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
         type={toast.type}
         onClose={() => setToast((t) => ({ ...t, visible: false }))}
       />
+
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2.5 bg-rose-100 dark:bg-rose-900/30 rounded-xl">
+                <Trash2 className="w-5 h-5 text-rose-500" />
+              </div>
+              <div>
+                <p className="font-semibold text-slate-900 dark:text-white text-sm">Delete employee?</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{deleteTarget.name}</p>
+              </div>
+            </div>
+            <p className="text-sm text-slate-600 dark:text-slate-300 mb-5">
+              This will permanently remove the employee record. If they have payroll history, use <span className="font-semibold">Terminated</span> status instead.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+                className="flex-1 px-4 py-2 text-sm font-medium border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteEmployee}
+                disabled={deleting}
+                className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-rose-500 hover:bg-rose-600 rounded-xl transition disabled:opacity-50"
+              >
+                {deleting ? "Deleting…" : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
