@@ -125,6 +125,7 @@ export default function Payroll() {
   const [walletLoading, setWalletLoading] = useState(false);
   const [disburseRunId, setDisburseRunId] = useState(null);
   const [disbursing, setDisbursing] = useState(false);
+  const [payingEntryId, setPayingEntryId] = useState(null);
 
   // CSV import state
   const [showImport, setShowImport] = useState(false);
@@ -465,6 +466,22 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
       setDisburseRunId(null);
     } finally {
       setDisbursing(false);
+    }
+  };
+
+  const handlePayEntry = async (runId, entryId) => {
+    setPayingEntryId(entryId);
+    try {
+      const res = await api.post(`/api/payroll/runs/${runId}/entries/${entryId}/disburse`);
+      notify(`Payment queued for ${res.data.employee}`);
+      // Optimistically update the entry status in runs state
+      setRuns(prev => prev.map(r => r.id === runId
+        ? { ...r, entries: r.entries.map(e => e.id === entryId ? { ...e, disburseStatus: "QUEUED", flwTransferId: res.data.transferId } : e) }
+        : r));
+    } catch (err) {
+      notify(err.response?.data?.message || "Payment failed", "error");
+    } finally {
+      setPayingEntryId(null);
     }
   };
 
@@ -908,6 +925,7 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
                             <p className="py-6 text-center text-sm text-slate-400">No entries in this run</p>
                           ) : (() => {
                             const lbl = payrollLabels(run.countryCode);
+                            const canPay = run.status === "APPROVED" || run.status === "PAID";
                             const cols = [
                               { key: "employee", label: "Employee" },
                               { key: "grossSalary", label: "Gross" },
@@ -917,6 +935,7 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
                               { key: "taxableIncome", label: "Taxable" },
                               { key: "paye", label: "PAYE" },
                               { key: "netSalary", label: "Net Pay" },
+                              ...(canPay ? [{ key: "action", label: "" }] : []),
                             ];
                             return (
                               <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
@@ -931,7 +950,9 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
                                     </tr>
                                   </thead>
                                   <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
-                                    {run.entries.map((entry) => (
+                                    {run.entries.map((entry) => {
+                                      const isPaid = entry.disburseStatus === "QUEUED" || entry.disburseStatus === "SUCCESSFUL";
+                                      return (
                                       <tr key={entry.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition">
                                         <td className="px-3 py-2.5 text-slate-900 dark:text-white font-medium whitespace-nowrap">
                                           {entry.employeeName}
@@ -944,8 +965,29 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
                                         <td className="px-3 py-2.5 text-slate-700 dark:text-slate-300 whitespace-nowrap">{fmt(entry.taxableIncome)}</td>
                                         <td className="px-3 py-2.5 text-rose-600 dark:text-rose-400 font-medium whitespace-nowrap">{fmt(entry.paye)}</td>
                                         <td className="px-3 py-2.5 text-emerald-600 dark:text-emerald-400 font-semibold whitespace-nowrap">{fmt(entry.netSalary)}</td>
+                                        {canPay && (
+                                          <td className="px-3 py-2.5 whitespace-nowrap">
+                                            {isPaid ? (
+                                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
+                                                Sent
+                                              </span>
+                                            ) : (
+                                              <button
+                                                onClick={() => handlePayEntry(run.id, entry.id)}
+                                                disabled={payingEntryId === entry.id}
+                                                className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-white bg-indigo-500 hover:bg-indigo-600 rounded-lg disabled:opacity-50 transition"
+                                              >
+                                                {payingEntryId === entry.id
+                                                  ? <Loader2 className="w-3 h-3 animate-spin" />
+                                                  : <Wallet className="w-3 h-3" />}
+                                                Pay
+                                              </button>
+                                            )}
+                                          </td>
+                                        )}
                                       </tr>
-                                    ))}
+                                      );
+                                    })}
                                   </tbody>
                                   <tfoot>
                                     <tr className="bg-slate-100 dark:bg-slate-700/60 border-t-2 border-slate-300 dark:border-slate-600">
