@@ -51,6 +51,7 @@ import Bills from "./pages/Bills";
 import Suppliers from "./pages/Suppliers";
 import CreditNotes from "./pages/CreditNotes";
 import RecurringInvoices from "./pages/RecurringInvoices";
+import PaymentFollowup from "./pages/PaymentFollowup";
 import OpeningBalances from "./pages/OpeningBalances";
 import DebitNotes from "./pages/DebitNotes";
 import PurchaseOrders from "./pages/PurchaseOrders";
@@ -680,6 +681,7 @@ function App() {
 
           {/* RECURRING INVOICES */}
           <Route path="/invoices/recurring" element={<ProtectedRoute><Layout><RecurringInvoices /></Layout></ProtectedRoute>} />
+          <Route path="/invoices/follow-up" element={<ProtectedRoute><Layout><PaymentFollowup /></Layout></ProtectedRoute>} />
 
           {/* OPENING BALANCES */}
           <Route path="/accounting/opening-balances" element={<ProtectedRoute><Layout><OpeningBalances /></Layout></ProtectedRoute>} />

@@ -89,6 +89,7 @@ const PAGE_TITLES = {
   "/suppliers":                          "Suppliers",
   "/credit-notes":                       "Credit Notes",
   "/invoices/recurring":                 "Recurring Invoices",
+  "/invoices/follow-up":                 "Follow-up Board",
   "/accounting/opening-balances":        "Opening Balances",
   "/debit-notes":                        "Debit Notes",
   "/purchase-orders":                    "Purchase Orders",
