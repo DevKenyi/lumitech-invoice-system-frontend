@@ -8,7 +8,7 @@ import {
   Info, SlidersHorizontal, Package, ShoppingCart, BarChart2,
   FileCheck, Repeat, Undo2, FileMinus, ClipboardCheck,
   Warehouse, Target, UserCog, GitBranch, BookMarked, TrendingDown, History,
-  Tag, ShoppingBag, UtensilsCrossed, Search, Gift, Monitor, Zap,
+  Tag, ShoppingBag, UtensilsCrossed, Search, Gift, Monitor, Zap, KanbanSquare,
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import api, { getUserFromToken } from "../services/api";
@@ -391,6 +391,7 @@ function Navbar({ onClose }) {
     { path: "/quotes",             label: "Quotes",            icon: FileCheck,      info: "Create estimates and convert to invoices" },
     { path: "/proforma",           label: "Proforma Invoices", icon: GitBranch,      info: "Preliminary invoices for customs or pre-delivery" },
     { path: "/invoices/recurring", label: "Recurring",         icon: Repeat,         info: "Auto-send invoices on a schedule" },
+    { path: "/invoices/follow-up", label: "Follow-up Board",   icon: KanbanSquare,   info: "Track overdue invoice chasing by stage" },
     { path: "/clients",            label: "Customers",         icon: Users,          info: "Manage clients and payment history" },
     { path: "/projects",           label: "Projects",          icon: FolderOpen,     info: "Track billable projects and link to invoices" },
     { path: "/finance",            label: paymentLabel("module"), icon: Banknote,    info: "Track incoming payments and collections" },
