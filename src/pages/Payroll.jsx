@@ -5,7 +5,7 @@ import {
   Users, CheckCircle, DollarSign, TrendingUp,
   PlayCircle, ClipboardList, Pencil, Upload, Download,
   AlertCircle, CheckCircle2, Briefcase, Milestone,
-  CreditCard, FileText, Trash2,
+  CreditCard, FileText, Trash2, Loader2, Wallet, ShieldCheck, BadgeAlert,
 } from "lucide-react";
 import Toast from "../components/Toast";
 import { useOrg } from "../context/OrgContext";
@@ -70,7 +70,7 @@ const DEPARTMENTS = [
 const emptyEmpForm = () => ({
   firstName: "", lastName: "", email: "", phone: "",
   department: "", departmentOther: "", jobTitle: "", kraPin: "", idNumber: "",
-  bankName: "", bankAccount: "",
+  bankName: "", bankAccount: "", bankCode: "",
   basicSalary: "", houseAllowance: "", transportAllowance: "", otherAllowances: "",
   status: "ACTIVE", employeeType: "SALARIED",
 });
@@ -115,6 +115,16 @@ export default function Payroll() {
 
   const [deleteTarget, setDeleteTarget] = useState(null); // { id, name }
   const [deleting, setDeleting] = useState(false);
+
+  // Flutterwave state
+  const [banks, setBanks] = useState([]);
+  const [banksLoading, setBanksLoading] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [verifiedName, setVerifiedName] = useState("");
+  const [walletBalance, setWalletBalance] = useState(null);
+  const [walletLoading, setWalletLoading] = useState(false);
+  const [disburseRunId, setDisburseRunId] = useState(null);
+  const [disbursing, setDisbursing] = useState(false);
 
   // CSV import state
   const [showImport, setShowImport] = useState(false);
@@ -187,11 +197,39 @@ export default function Payroll() {
     }
   }, []);
 
+  // ── Load banks ──────────────────────────────────────────────────────────
+  const loadBanks = useCallback(async () => {
+    setBanksLoading(true);
+    try {
+      const res = await api.get("/api/payroll/flutterwave/banks");
+      setBanks(res.data ?? []);
+    } catch {
+      // silently fail — bank list is optional
+    } finally {
+      setBanksLoading(false);
+    }
+  }, []);
+
+  // ── Load wallet balance ─────────────────────────────────────────────────
+  const loadWalletBalance = useCallback(async () => {
+    setWalletLoading(true);
+    try {
+      const res = await api.get("/api/payroll/flutterwave/balance");
+      setWalletBalance(res.data);
+    } catch {
+      setWalletBalance(null);
+    } finally {
+      setWalletLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadEmployees();
     loadRuns();
     loadContracts();
-  }, [loadEmployees, loadRuns, loadContracts]);
+    loadBanks();
+    loadWalletBalance();
+  }, [loadEmployees, loadRuns, loadContracts, loadBanks, loadWalletBalance]);
 
   // ── Employee submit ─────────────────────────────────────────────────────
   const handleEmpSubmit = async (e) => {
@@ -255,6 +293,7 @@ export default function Payroll() {
       idNumber: emp.idNumber ?? "",
       bankName: emp.bankName ?? "",
       bankAccount: emp.bankAccount ?? "",
+      bankCode: emp.bankCode ?? "",
       basicSalary: emp.basicSalary ?? "",
       houseAllowance: emp.houseAllowance ?? "",
       transportAllowance: emp.transportAllowance ?? "",
@@ -263,6 +302,7 @@ export default function Payroll() {
       employeeType: emp.employeeType ?? "SALARIED",
     });
     setEmpError("");
+    setVerifiedName("");
     setShowEmpForm(true);
   };
 
@@ -390,6 +430,41 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
       notify(err.response?.data?.message || "Failed to pay milestone", "error");
     } finally {
       setPayingMilestoneId(null);
+    }
+  };
+
+  const verifyAccount = async () => {
+    if (!empForm.bankCode || !empForm.bankAccount) return;
+    setVerifying(true);
+    setVerifiedName("");
+    try {
+      const res = await api.post("/api/payroll/flutterwave/resolve-account", {
+        accountNumber: empForm.bankAccount,
+        bankCode: empForm.bankCode,
+      });
+      setVerifiedName(res.data.account_name);
+      setEmpForm(f => ({ ...f, bankName: banks.find(b => b.code === empForm.bankCode)?.name ?? f.bankName }));
+    } catch (err) {
+      notify(err.response?.data?.message || "Could not verify account. Check the number and bank.", "error");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const handleDisburse = async () => {
+    if (!disburseRunId) return;
+    setDisbursing(true);
+    try {
+      const res = await api.post(`/api/payroll/runs/${disburseRunId}/disburse`);
+      notify(`${res.data.count} salaries queued for payment (batch ${res.data.batchId})`);
+      setDisburseRunId(null);
+      loadRuns();
+      loadWalletBalance();
+    } catch (err) {
+      notify(err.response?.data?.message || "Disbursement failed", "error");
+      setDisburseRunId(null);
+    } finally {
+      setDisbursing(false);
     }
   };
 
@@ -669,6 +744,27 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
       {/* ═══════════════════ PAYROLL RUNS TAB ═══════════════════ */}
       {activeTab === "runs" && (
         <div className="space-y-6">
+          {/* Flutterwave wallet card */}
+          <div className="bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl p-5 text-white flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <p className="text-xs font-semibold text-indigo-100 uppercase tracking-wide mb-1">Flutterwave Wallet Balance</p>
+              {walletLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin text-white/70" />
+              ) : walletBalance ? (
+                <p className="text-3xl font-extrabold">{fmt(walletBalance.balance)}</p>
+              ) : (
+                <p className="text-sm text-indigo-200">Add your Flutterwave secret key in Settings → Payments</p>
+              )}
+            </div>
+            <button
+              onClick={loadWalletBalance}
+              disabled={walletLoading}
+              className="flex items-center gap-1.5 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-sm font-medium transition disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${walletLoading ? "animate-spin" : ""}`} /> Refresh
+            </button>
+          </div>
+
           {/* Stat Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
@@ -780,12 +876,20 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
                               </>
                             )}
                             {run.status === "APPROVED" && (
-                              <button
-                                onClick={() => runAction(run.id, "paid")}
-                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition"
-                              >
-                                Mark as Paid
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => { setDisburseRunId(run.id); loadWalletBalance(); }}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-indigo-500 to-violet-600 rounded-lg hover:shadow-md transition"
+                                >
+                                  <Wallet className="w-3.5 h-3.5" /> Pay Staff
+                                </button>
+                                <button
+                                  onClick={() => runAction(run.id, "paid")}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition"
+                                >
+                                  Mark as Paid
+                                </button>
+                              </>
                             )}
                           </div>
 
@@ -1090,25 +1194,60 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
                 </div>
               </div>
 
-              {/* Row 5: Bank Name / Account */}
+              {/* Row 5: Bank / Account */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Bank Name</label>
-                  <input
-                    value={empForm.bankName}
-                    onChange={(e) => setEmpForm((f) => ({ ...f, bankName: e.target.value }))}
-                    placeholder="First Bank"
-                    className={inputCls}
-                  />
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Bank</label>
+                  {banksLoading ? (
+                    <div className="flex items-center gap-2 text-xs text-slate-400 py-2"><Loader2 className="w-4 h-4 animate-spin" /> Loading banks…</div>
+                  ) : banks.length > 0 ? (
+                    <select
+                      value={empForm.bankCode}
+                      onChange={(e) => {
+                        const selected = banks.find(b => b.code === e.target.value);
+                        setEmpForm(f => ({ ...f, bankCode: e.target.value, bankName: selected?.name ?? "" }));
+                        setVerifiedName("");
+                      }}
+                      className={inputCls}
+                    >
+                      <option value="">Select bank…</option>
+                      {banks.map(b => <option key={b.code} value={b.code}>{b.name}</option>)}
+                    </select>
+                  ) : (
+                    <input
+                      value={empForm.bankName}
+                      onChange={(e) => setEmpForm((f) => ({ ...f, bankName: e.target.value }))}
+                      placeholder="First Bank"
+                      className={inputCls}
+                    />
+                  )}
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Bank Account Number</label>
-                  <input
-                    value={empForm.bankAccount}
-                    onChange={(e) => setEmpForm((f) => ({ ...f, bankAccount: e.target.value }))}
-                    placeholder="0123456789"
-                    className={inputCls}
-                  />
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Account Number</label>
+                  <div className="flex gap-2">
+                    <input
+                      value={empForm.bankAccount}
+                      onChange={(e) => { setEmpForm((f) => ({ ...f, bankAccount: e.target.value })); setVerifiedName(""); }}
+                      placeholder="0123456789"
+                      className={`${inputCls} flex-1`}
+                      maxLength={10}
+                    />
+                    {banks.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={verifyAccount}
+                        disabled={verifying || !empForm.bankCode || empForm.bankAccount.length < 10}
+                        className="px-3 py-2 text-xs font-medium bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl disabled:opacity-40 transition shrink-0"
+                      >
+                        {verifying ? <Loader2 className="w-4 h-4 animate-spin" /> : "Verify"}
+                      </button>
+                    )}
+                  </div>
+                  {verifiedName && (
+                    <p className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 mt-1">
+                      <ShieldCheck className="w-3.5 h-3.5" /> {verifiedName}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -1609,6 +1748,58 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Disburse confirmation modal */}
+      {disburseRunId && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2.5 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl">
+                <Wallet className="w-5 h-5 text-indigo-500" />
+              </div>
+              <div>
+                <p className="font-semibold text-slate-900 dark:text-white text-sm">Pay staff via Flutterwave</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Bulk transfer to all employee accounts</p>
+              </div>
+            </div>
+
+            {walletBalance && (
+              <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-3 mb-4 text-sm space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Wallet balance</span>
+                  <span className="font-semibold text-slate-900 dark:text-white">{fmt(walletBalance.balance)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Total net payroll</span>
+                  <span className="font-semibold text-slate-900 dark:text-white">
+                    {fmt(runs.find(r => r.id === disburseRunId)?.totalNet ?? 0)}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-5">
+              Each employee will receive their net salary directly to their bank account. This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDisburseRunId(null)}
+                disabled={disbursing}
+                className="flex-1 px-4 py-2 text-sm font-medium border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDisburse}
+                disabled={disbursing}
+                className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 to-violet-600 rounded-xl hover:shadow-md transition disabled:opacity-50"
+              >
+                {disbursing ? <><Loader2 className="w-4 h-4 animate-spin inline mr-1" />Sending…</> : "Confirm & Pay"}
+              </button>
+            </div>
           </div>
         </div>
       )}
