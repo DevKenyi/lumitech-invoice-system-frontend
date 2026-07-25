@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import api from "../services/api";
 import { useOrg } from "../context/OrgContext";
 import {
   Phone, MessageSquare, CheckCircle, Ghost, X, Send,
-  AlertCircle, Clock, ChevronRight, Loader2, RefreshCw,
+  AlertCircle, Clock, ChevronRight, Loader2, RefreshCw, Mail, ChevronDown,
 } from "lucide-react";
 
 const COLUMNS = [
@@ -251,12 +251,23 @@ function CardModal({ item, onClose, onStatusChange, onNoteAdded }) {
   );
 }
 
+const REMINDER_OPTIONS = [
+  { label: "All outstanding", statuses: null },
+  { label: "Not contacted", statuses: ["NOT_CONTACTED"] },
+  { label: "Ghosting only", statuses: ["GHOSTING"] },
+  { label: "Not contacted + Ghosting", statuses: ["NOT_CONTACTED", "GHOSTING"] },
+];
+
 export default function PaymentFollowup() {
   const { fmt } = useOrg();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [reminderMenu, setReminderMenu] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [reminderResult, setReminderResult] = useState(null);
+  const menuRef = useRef(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -272,6 +283,28 @@ export default function PaymentFollowup() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!reminderMenu) return;
+    const handler = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setReminderMenu(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [reminderMenu]);
+
+  const sendReminders = async (statuses) => {
+    setReminderMenu(false);
+    setSending(true);
+    setReminderResult(null);
+    try {
+      const res = await api.post("/api/payment-followup/send-reminders", statuses ? { statuses } : {});
+      setReminderResult(res.data);
+    } catch {
+      setReminderResult({ error: true });
+    } finally {
+      setSending(false);
+      setTimeout(() => setReminderResult(null), 5000);
+    }
+  };
 
   const handleStatusChange = (invoiceId, newStatus) => {
     setItems(prev => prev.map(i => i.invoiceId === invoiceId ? { ...i, status: newStatus } : i));
@@ -315,19 +348,62 @@ export default function PaymentFollowup() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-xl font-semibold text-slate-900 dark:text-white">Follow-up Board</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             {items.length} outstanding invoice{items.length !== 1 ? "s" : ""} · {fmt(totalOutstanding)} total
           </p>
         </div>
-        <button
-          onClick={load}
-          className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 transition"
-        >
-          <RefreshCw className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Reminder result toast */}
+          {reminderResult && !reminderResult.error && (
+            <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-3 py-1.5 rounded-full">
+              {reminderResult.sent} reminder{reminderResult.sent !== 1 ? "s" : ""} sent
+              {reminderResult.failed > 0 ? `, ${reminderResult.failed} failed` : ""}
+            </span>
+          )}
+          {reminderResult?.error && (
+            <span className="text-xs font-medium text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/30 px-3 py-1.5 rounded-full">
+              Failed to send
+            </span>
+          )}
+
+          {/* Send Reminders dropdown */}
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setReminderMenu(v => !v)}
+              disabled={sending || items.length === 0}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white text-sm font-medium transition"
+            >
+              {sending
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : <Mail className="w-4 h-4" />}
+              Send Reminders
+              <ChevronDown className="w-3.5 h-3.5" />
+            </button>
+            {reminderMenu && (
+              <div className="absolute right-0 top-full mt-1.5 w-52 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-20 overflow-hidden">
+                {REMINDER_OPTIONS.map(opt => (
+                  <button
+                    key={opt.label}
+                    onClick={() => sendReminders(opt.statuses)}
+                    className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition"
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={load}
+            className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 transition"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {items.length === 0 ? (
