@@ -31,8 +31,10 @@ import {
   ChevronRight,
   Trash2,
   AlertTriangle,
+  KanbanSquare,
 } from "lucide-react";
 import { useOrg } from "../context/OrgContext";
+import PaymentFollowup from "./PaymentFollowup";
 
 function InvoiceList() {
   const { fmt } = useOrg();
@@ -47,6 +49,7 @@ function InvoiceList() {
   const [totalElements, setTotalElements] = useState(0);
   const [page, setPage] = useState(0);
   const [orgName, setOrgName] = useState("");
+  const [activeTab, setActiveTab] = useState("invoices");
   const PAGE_SIZE = 5;
   const navigate = useNavigate();
   const user = getUserFromToken();
@@ -291,6 +294,34 @@ function InvoiceList() {
           />
         </div>
 
+        {/* Tab bar */}
+        <div className="flex gap-1 mb-6 bg-slate-100 dark:bg-slate-800 rounded-xl p-1 w-fit">
+          <button
+            onClick={() => setActiveTab("invoices")}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+              activeTab === "invoices"
+                ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+            }`}
+          >
+            All Invoices
+          </button>
+          <button
+            onClick={() => setActiveTab("followup")}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+              activeTab === "followup"
+                ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+            }`}
+          >
+            <KanbanSquare className="w-4 h-4" />
+            Follow-up Board
+          </button>
+        </div>
+
+        {activeTab === "followup" && <PaymentFollowup />}
+
+        {activeTab === "invoices" && <>
         {/* Search & Filter Bar */}
         <div className="mb-6 flex flex-col sm:flex-row gap-4 items-center justify-between">
           <div className="relative w-full sm:w-96">
@@ -571,6 +602,7 @@ function InvoiceList() {
           </div>
         </div>
       )}
+        </>}
     </div>
   );
 }
