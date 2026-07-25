@@ -552,6 +552,7 @@ function InvoiceList() {
             </div>
           )}
         </div>
+        </>}
       </main>
 
       {/* Bulk Delete Warning Modal */}
@@ -602,7 +603,6 @@ function InvoiceList() {
           </div>
         </div>
       )}
-        </>}
     </div>
   );
 }
