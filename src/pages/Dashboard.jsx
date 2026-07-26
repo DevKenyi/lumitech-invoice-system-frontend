@@ -6,6 +6,7 @@ import api from "../services/api";
 import {
   TrendingUp, CheckCircle, AlertCircle, Clock, DollarSign,
   BarChart3, X, Wallet, Plus, BookOpenCheck, LayoutList, Scale, Sparkles, ArrowRight,
+  FileText, ChevronRight,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
@@ -33,6 +34,7 @@ const Dashboard = () => {
   const [loanNote, setLoanNote] = useState("");
   const [isSubmittingLoan, setIsSubmittingLoan] = useState(false);
   const [aiInput, setAiInput] = useState("");
+  const [pendingQuotes, setPendingQuotes] = useState([]);
 
   const isAccountant = userType === USER_TYPES.ACCOUNTANT;
 
@@ -46,6 +48,12 @@ const Dashboard = () => {
   useEffect(() => {
     fetchDashboard();
     api.get("/api/org").then(res => setOrgName(res.data.name || "")).catch(() => {});
+    api.get("/api/quotes?size=50&sort=createdAt,desc")
+      .then(res => {
+        const all = res.data.content || [];
+        setPendingQuotes(all.filter(q => q.status === "DRAFT" || q.status === "SENT"));
+      })
+      .catch(() => {});
   }, []);
 
   const fetchDashboard = async () => {
@@ -74,6 +82,24 @@ const Dashboard = () => {
     }
   };
 
+
+  const quoteAgeDays = (createdAt) =>
+    Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000);
+
+  const QUOTE_BUCKETS = [
+    { label: "Fresh",           min: 0,  max: 3,   color: "bg-teal-50 dark:bg-teal-900/20 border-teal-200 dark:border-teal-700",   badge: "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300",   dot: "bg-teal-400" },
+    { label: "Follow Up",       min: 4,  max: 7,   color: "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700", badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300", dot: "bg-amber-400" },
+    { label: "Needs Attention", min: 8,  max: 14,  color: "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-700", badge: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300", dot: "bg-orange-400" },
+    { label: "At Risk",         min: 15, max: Infinity, color: "bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-700", badge: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300", dot: "bg-rose-400" },
+  ];
+
+  const bucketedQuotes = QUOTE_BUCKETS.map(b => ({
+    ...b,
+    quotes: pendingQuotes.filter(q => {
+      const age = quoteAgeDays(q.createdAt);
+      return age >= b.min && age <= b.max;
+    }),
+  })).filter(b => b.quotes.length > 0);
 
   const formatDate = (dateString) => {
     if (!dateString) return "";
@@ -183,6 +209,90 @@ const Dashboard = () => {
           ))}
         </div>
       </div>
+
+      {/* Quote Intelligence Widget */}
+      {pendingQuotes.length > 0 && (
+        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shrink-0">
+              <FileText className="w-3 h-3 text-white" />
+            </div>
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+              Unconfirmed Quotes
+            </p>
+            <span className="ml-1 px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-[11px] font-semibold">
+              {pendingQuotes.length}
+            </span>
+            <span className="ml-auto text-[10px] text-slate-400 dark:text-slate-500 hidden sm:block">
+              Tap a quote to ask Lumi for advice
+            </span>
+          </div>
+
+          {/* Proactive AI alert for at-risk quotes */}
+          {bucketedQuotes.some(b => b.label === "At Risk" || b.label === "Needs Attention") && (
+            <button
+              onClick={() => {
+                const atRisk = pendingQuotes.filter(q => quoteAgeDays(q.createdAt) >= 8);
+                const msg = `I have ${atRisk.length} quote(s) that are ${atRisk.length === 1 ? `${quoteAgeDays(atRisk[0].createdAt)} days` : "8+ days"} old and still unconfirmed. What should I do?`;
+                window.dispatchEvent(new CustomEvent("open-ai-chat", { detail: { message: msg } }));
+              }}
+              className="w-full mb-3 flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 text-left hover:bg-amber-100 dark:hover:bg-amber-900/30 transition group"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+              <p className="text-xs text-amber-700 dark:text-amber-300 flex-1">
+                {(() => {
+                  const atRisk = pendingQuotes.filter(q => quoteAgeDays(q.createdAt) >= 15);
+                  const needsAttn = pendingQuotes.filter(q => { const d = quoteAgeDays(q.createdAt); return d >= 8 && d < 15; });
+                  if (atRisk.length > 0) return `${atRisk.length} quote(s) are 15+ days old and at risk of being lost — ask Lumi what to do.`;
+                  return `${needsAttn.length} quote(s) need attention — ${needsAttn[0].clientName} has been waiting ${quoteAgeDays(needsAttn[0].createdAt)} days.`;
+                })()}
+              </p>
+              <ChevronRight className="w-3.5 h-3.5 text-amber-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+            </button>
+          )}
+
+          {/* Aging buckets */}
+          <div className="space-y-3">
+            {bucketedQuotes.map(bucket => (
+              <div key={bucket.label}>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className={`w-1.5 h-1.5 rounded-full ${bucket.dot} shrink-0`} />
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    {bucket.label} · {bucket.quotes.length} quote{bucket.quotes.length !== 1 ? "s" : ""}
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  {bucket.quotes.map(q => (
+                    <div key={q.id} className={`flex items-center gap-3 px-3 py-2 rounded-xl border ${bucket.color}`}>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-200">{q.quoteNumber}</span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${bucket.badge}`}>{quoteAgeDays(q.createdAt)}d old</span>
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">{q.clientName} — {fmt(q.total)}</p>
+                      </div>
+                      <div className="flex gap-1.5 shrink-0">
+                        <button
+                          onClick={() => window.dispatchEvent(new CustomEvent("open-ai-chat", { detail: { message: `What should I do about ${q.quoteNumber} for ${q.clientName}? It's been ${quoteAgeDays(q.createdAt)} days.` } }))}
+                          className="text-[10px] px-2 py-1 rounded-lg bg-white/60 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-200 transition whitespace-nowrap"
+                        >
+                          Ask Lumi
+                        </button>
+                        <button
+                          onClick={() => window.dispatchEvent(new CustomEvent("open-ai-chat", { detail: { message: `Convert ${q.quoteNumber} for ${q.clientName} (${fmt(q.total)}) to an invoice.` } }))}
+                          className="text-[10px] px-2 py-1 rounded-lg bg-white/60 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 hover:text-teal-600 dark:hover:text-teal-400 hover:border-teal-200 transition whitespace-nowrap"
+                        >
+                          Convert
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

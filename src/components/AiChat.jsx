@@ -9,33 +9,6 @@ const STARTERS = [
   "What are my expenses this month?",
 ];
 
-const SUGGESTION_RULES = [
-  { keywords: ["overdue", "days overdue", "late payment", "follow up"], chips: ["Send reminders now", "Who owes me money?", "Show overdue invoices"] },
-  { keywords: ["payment", "paid", "received", "record payment"], chips: ["Record a payment", "Show outstanding invoices"] },
-  { keywords: ["invoice", "bill", "create invoice"], chips: ["Create an invoice", "Show my invoices"] },
-  { keywords: ["expense", "spent", "cost", "purchase"], chips: ["What are my expenses?", "Show expense summary"] },
-  { keywords: ["profit", "loss", "revenue", "income", "net profit"], chips: ["Show P&L this month", "How is my business doing?"] },
-  { keywords: ["cash flow", "forecast", "expected"], chips: ["Show cash flow forecast", "What do I owe?"] },
-  { keywords: ["quote", "proposal", "estimate"], chips: ["Show pending quotes", "Create an invoice"] },
-  { keywords: ["tax", "vat", "wht", "withholding"], chips: ["Show tax summary", "What's my VAT?"] },
-  { keywords: ["payroll", "salary", "employee", "staff"], chips: ["Show employees", "Show payroll runs"] },
-  { keywords: ["balance sheet", "assets", "liabilities", "equity"], chips: ["Show balance sheet", "Show trial balance"] },
-];
-
-function getSuggestions(text) {
-  if (!text) return [];
-  const lower = text.toLowerCase();
-  const matched = [];
-  for (const rule of SUGGESTION_RULES) {
-    if (rule.keywords.some((k) => lower.includes(k))) {
-      for (const chip of rule.chips) {
-        if (!matched.includes(chip)) matched.push(chip);
-        if (matched.length >= 3) return matched;
-      }
-    }
-  }
-  return matched.slice(0, 3);
-}
 
 function renderInline(text) {
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
@@ -344,6 +317,7 @@ export default function AiChat() {
       const res = await api.post("/api/ai/chat", { message, history });
       let reply = res.data.reply || "";
       let proposedAction = res.data.proposedAction || null;
+      let suggestions = res.data.suggestions || [];
 
       // Fallback: strip action blocks the backend parser missed (regex — more robust than indexOf)
       const BLOCK_RE = /```(?:action|json)\s*\n([\s\S]*?)\n?```/g;
@@ -389,6 +363,7 @@ export default function AiChat() {
         content: reply,
         proposedAction,
         actionStatus: proposedAction ? null : undefined,
+        suggestions,
       }]);
     } catch (err) {
       setMessages((prev) => [...prev, {
@@ -545,23 +520,20 @@ export default function AiChat() {
                       actionResult={msg.actionResult}
                     />
                   )}
-                  {msg.role === "ai" && !msg.error && msg.content && (() => {
-                    const chips = getSuggestions(msg.content);
-                    return chips.length > 0 ? (
-                      <div className="flex flex-wrap gap-1.5 mt-2 ml-0.5">
-                        {chips.map((chip) => (
-                          <button
-                            key={chip}
-                            onClick={() => send(chip)}
-                            disabled={loading}
-                            className="text-[11px] px-3 py-1 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:border-indigo-200 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                          >
-                            {chip}
-                          </button>
-                        ))}
-                      </div>
-                    ) : null;
-                  })()}
+                  {msg.role === "ai" && !msg.error && (msg.suggestions || []).length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2 ml-0.5">
+                      {(msg.suggestions || []).map((chip) => (
+                        <button
+                          key={chip}
+                          onClick={() => send(chip)}
+                          disabled={loading}
+                          className="text-[11px] px-3 py-1 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:border-indigo-200 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {chip}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
