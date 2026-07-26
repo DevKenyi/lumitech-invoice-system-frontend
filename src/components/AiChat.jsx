@@ -415,7 +415,7 @@ export default function AiChat() {
         <button
           onClick={() => setOpen(true)}
           aria-label="Ask Lumi AI"
-          className="fixed bottom-6 left-5 z-50 flex items-center gap-2 px-4 py-3 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 shadow-xl shadow-indigo-500/40 hover:shadow-2xl hover:shadow-indigo-500/50 hover:scale-105 active:scale-95 transition-all duration-150"
+          className="fixed bottom-6 right-5 z-50 flex items-center gap-2 px-4 py-3 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 shadow-xl shadow-indigo-500/40 hover:shadow-2xl hover:shadow-indigo-500/50 hover:scale-105 active:scale-95 transition-all duration-150"
         >
           <Sparkles className="w-4 h-4 text-white shrink-0" />
           <span className="text-sm font-semibold text-white pr-0.5">Ask Lumi</span>
@@ -427,7 +427,7 @@ export default function AiChat() {
         <div
           className="
             fixed z-50 flex flex-col bg-white dark:bg-slate-900
-            sm:inset-auto sm:bottom-6 sm:left-5 sm:w-96 sm:h-[600px]
+            sm:inset-auto sm:bottom-6 sm:right-5 sm:w-96 sm:h-[600px]
             sm:rounded-2xl sm:shadow-2xl sm:border sm:border-slate-200 sm:dark:border-slate-700
           "
           style={{
