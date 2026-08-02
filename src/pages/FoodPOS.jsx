@@ -197,7 +197,7 @@ export default function FoodPOS() {
         convenienceFee,
         items: cart.map(ci => ({
           itemType: ci.itemType,
-          refId: ci.refId,
+          refId: movaraSlug ? null : ci.refId,
           name: ci.name,
           qty: ci.qty,
           unitPrice: ci.unitPrice,
