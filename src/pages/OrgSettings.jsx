@@ -165,20 +165,59 @@ function MovaraCard() {
           )}
         </div>
 
-        {/* API key — shown when online ordering enabled */}
+        {/* Webhook integration — shown when online ordering enabled */}
         {enabled && apiKey && (
-          <div className="rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/50 p-4 space-y-2">
-            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">API Key</p>
-            <div className="flex items-center gap-2">
-              <code className="flex-1 text-xs font-mono text-slate-800 dark:text-slate-200 break-all">{apiKey}</code>
-              <button type="button" onClick={copyKey}
-                className="shrink-0 flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium border border-blue-200 dark:border-blue-800 px-2.5 py-1.5 rounded-lg transition">
-                {copied ? <Check size={12} /> : <Copy size={12} />}
-                {copied ? "Copied" : "Copy"}
-              </button>
+          <div className="rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/50 p-4 space-y-4">
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Webhook Integration</p>
+
+            {/* Webhook URL */}
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-slate-600 dark:text-slate-300">Endpoint URL</p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 text-xs font-mono text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 px-2.5 py-1.5 rounded-lg break-all">
+                  POST https://api.lumitechsystems.com/api/webhooks/food-orders
+                </code>
+                <button type="button"
+                  onClick={() => { navigator.clipboard.writeText("https://api.lumitechsystems.com/api/webhooks/food-orders"); }}
+                  className="shrink-0 flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium border border-blue-200 dark:border-blue-800 px-2.5 py-1.5 rounded-lg transition">
+                  <Copy size={12} /> Copy
+                </button>
+              </div>
             </div>
+
+            {/* API Key */}
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-slate-600 dark:text-slate-300">Header: <span className="font-mono font-normal">X-Api-Key</span></p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 text-xs font-mono text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 px-2.5 py-1.5 rounded-lg break-all">{apiKey}</code>
+                <button type="button" onClick={copyKey}
+                  className="shrink-0 flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium border border-blue-200 dark:border-blue-800 px-2.5 py-1.5 rounded-lg transition">
+                  {copied ? <Check size={12} /> : <Copy size={12} />}
+                  {copied ? "Copied" : "Copy"}
+                </button>
+              </div>
+            </div>
+
+            {/* Sample payload */}
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-slate-600 dark:text-slate-300">Sample Request Body</p>
+              <pre className="text-[10px] font-mono text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg p-3 overflow-x-auto leading-relaxed">{`{
+  "orderRef": "MOV-12345",
+  "customerName": "John Doe",
+  "customerPhone": "+2348012345678",
+  "orderType": "DINE_IN",
+  "paymentMethod": "CARD",
+  "notes": "Extra spicy",
+  "convenienceFee": 0,
+  "items": [
+    { "name": "Jollof Rice", "qty": 2, "unitPrice": 2500 },
+    { "name": "Chicken",     "qty": 1, "unitPrice": 1500 }
+  ]
+}`}</pre>
+            </div>
+
             <p className="text-xs text-slate-400">
-              Share this key with the Movara team — it authorises all requests on behalf of your restaurant.
+              LumiLedger returns <code className="font-mono text-[10px]">{"{ orderNumber, status, total }"}</code> on success (HTTP 201).
             </p>
           </div>
         )}
