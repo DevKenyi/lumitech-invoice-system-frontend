@@ -5,7 +5,7 @@ import {
   Building2, Mail, Phone, MapPin, Globe, Save, FileText, Sun, Moon, Monitor,
   Upload, Trash2, CreditCard, Landmark, Eye, EyeOff, SlidersHorizontal,
   Lock, CheckCircle2, Pencil, DollarSign, Palette, Users, Smartphone, Copy, Check,
-  Banknote,
+  Banknote, Loader2,
 } from "lucide-react";
 import Toast from "../components/Toast";
 import { useTheme } from "../context/ThemeContext";
@@ -60,15 +60,19 @@ const EMPTY_FORM = {
 };
 
 function MovaraCard() {
-  const [enabled, setEnabled] = useState(false);
-  const [apiKey, setApiKey]   = useState(null);
-  const [saving, setSaving]   = useState(false);
-  const [copied, setCopied]   = useState(false);
+  const [enabled, setEnabled]   = useState(false);
+  const [apiKey, setApiKey]     = useState(null);
+  const [slug, setSlug]         = useState("");
+  const [saving, setSaving]     = useState(false);
+  const [savingSlug, setSavingSlug] = useState(false);
+  const [copied, setCopied]     = useState(false);
+  const [slugSaved, setSlugSaved] = useState(false);
 
   useEffect(() => {
     api.get("/api/org").then(res => {
       setEnabled(res.data.movaraEnabled ?? false);
       setApiKey(res.data.movaraApiKey ?? null);
+      setSlug(res.data.movaraVendorSlug ?? "");
     }).catch(() => {});
   }, []);
 
@@ -79,8 +83,18 @@ function MovaraCard() {
       const res = await api.put("/api/org", { movaraEnabled: next });
       setEnabled(res.data.movaraEnabled);
       setApiKey(res.data.movaraApiKey ?? null);
-    } catch { /* revert */ setEnabled(enabled); }
+    } catch { setEnabled(enabled); }
     finally { setSaving(false); }
+  }
+
+  async function saveSlug() {
+    setSavingSlug(true);
+    try {
+      await api.put("/api/org", { movaraVendorSlug: slug.trim() });
+      setSlugSaved(true);
+      setTimeout(() => setSlugSaved(false), 2000);
+    } catch {}
+    finally { setSavingSlug(false); }
   }
 
   function copyKey() {
@@ -95,17 +109,19 @@ function MovaraCard() {
       <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
         <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
           <Smartphone className="w-4 h-4 text-blue-500" />
-          Movara Online Ordering
+          Movara Integration
         </h2>
         <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-          Enable to expose your menu to the Movara app and accept online orders.
+          Connect to Movara for online ordering and sync your menu to the Food POS.
         </p>
       </div>
-      <div className="p-6 space-y-4">
+      <div className="p-6 space-y-5">
+
+        {/* Online ordering toggle */}
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Enable Movara integration</p>
-            <p className="text-xs text-slate-400">Your menu and orders will be accessible via the Movara API.</p>
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Enable online ordering</p>
+            <p className="text-xs text-slate-400">Expose your menu to the Movara delivery app.</p>
           </div>
           <button type="button" onClick={toggle} disabled={saving}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 disabled:opacity-60 ${
@@ -117,6 +133,39 @@ function MovaraCard() {
           </button>
         </div>
 
+        {/* Vendor slug — Food POS menu sync */}
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Movara Vendor Slug</p>
+          <p className="text-xs text-slate-400">
+            When set, your Food POS will pull the menu directly from Movara.
+            Leave blank to use your own LumiLedger menu.
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={slug}
+              onChange={e => setSlug(e.target.value)}
+              placeholder="e.g. chy-dec"
+              className="flex-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition"
+            />
+            <button
+              type="button"
+              onClick={saveSlug}
+              disabled={savingSlug}
+              className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition flex items-center gap-1.5"
+            >
+              {savingSlug ? <Loader2 size={13} className="animate-spin" /> : slugSaved ? <Check size={13} /> : null}
+              {slugSaved ? "Saved" : "Save"}
+            </button>
+          </div>
+          {slug && (
+            <p className="text-xs text-slate-400 font-mono">
+              Menu URL: https://api.movara.ng/http/menu/public?slug={slug}
+            </p>
+          )}
+        </div>
+
+        {/* API key — shown when online ordering enabled */}
         {enabled && apiKey && (
           <div className="rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/50 p-4 space-y-2">
             <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">API Key</p>
@@ -129,13 +178,8 @@ function MovaraCard() {
               </button>
             </div>
             <p className="text-xs text-slate-400">
-              Share this key with the Movara team. Keep it secret — it authorises all requests on behalf of your restaurant.
+              Share this key with the Movara team — it authorises all requests on behalf of your restaurant.
             </p>
-            <div className="pt-1 space-y-1">
-              <p className="text-xs font-medium text-slate-500">API endpoints:</p>
-              <p className="text-xs font-mono text-slate-500">GET  /api/public/movara/{"{apiKey}"}/menu</p>
-              <p className="text-xs font-mono text-slate-500">POST /api/public/movara/{"{apiKey}"}/orders</p>
-            </div>
           </div>
         )}
       </div>

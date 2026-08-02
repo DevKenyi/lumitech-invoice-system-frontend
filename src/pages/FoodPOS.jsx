@@ -39,6 +39,7 @@ export default function FoodPOS() {
   const [usbDevice, setUsbDevice] = useState(null);
   const [btConn, setBtConn] = useState(null);
   const [showCartSheet, setShowCartSheet] = useState(false);
+  const [movaraSlug, setMovaraSlug] = useState(null);
 
   const showToast = (msg, type = "success") => setToast({ msg, type });
 
@@ -59,14 +60,60 @@ export default function FoodPOS() {
   async function loadMenu() {
     setLoading(true);
     try {
-      const [cRes, iRes] = await Promise.all([
-        api.get("/api/menu/categories"),
-        api.get("/api/menu/items"),
-      ]);
-      setCategories(cRes.data);
-      setItems(iRes.data);
-    } catch { showToast("Failed to load menu", "error"); }
-    finally { setLoading(false); }
+      // Check if this org has a Movara vendor slug configured
+      const orgRes = await api.get("/api/org");
+      const vendorSlug = orgRes.data.movaraVendorSlug || null;
+      setMovaraSlug(vendorSlug);
+
+      if (vendorSlug) {
+        await loadMovaraMenu(vendorSlug);
+      } else {
+        await loadLocalMenu();
+      }
+    } catch {
+      // Fallback to local menu if org check fails
+      await loadLocalMenu();
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadMovaraMenu(slug) {
+    try {
+      const res = await fetch(
+        `https://api.movara.ng/http/menu/public?slug=${encodeURIComponent(slug)}`
+      );
+      if (!res.ok) throw new Error("Movara fetch failed");
+      const data = await res.json();
+
+      // Map Movara categories → local format
+      setCategories((data.categories || []).map(c => ({ id: c.id, name: c.name })));
+
+      // Map Movara dishes → local format
+      setItems((data.dishes || []).map(d => ({
+        id: d.id,
+        name: d.name,
+        price: d.price,
+        imageUrl: d.image_url || null,
+        available: d.is_available,
+        categoryId: d.category_id || null,
+        modifiers: [],
+      })));
+    } catch {
+      // Movara is down — fall back to local menu silently
+      showToast("Using local menu (Movara unavailable)", "info");
+      setMovaraSlug(null);
+      await loadLocalMenu();
+    }
+  }
+
+  async function loadLocalMenu() {
+    const [cRes, iRes] = await Promise.all([
+      api.get("/api/menu/categories"),
+      api.get("/api/menu/items"),
+    ]);
+    setCategories(cRes.data);
+    setItems(iRes.data);
   }
 
   const visibleItems = activeCat
@@ -225,9 +272,16 @@ export default function FoodPOS() {
               {c.name}
             </button>
           ))}
-          <button onClick={loadMenu} className="ml-auto shrink-0 p-1.5 text-slate-400 hover:text-blue-600">
-            <RefreshCw size={16} />
-          </button>
+          <div className="ml-auto flex items-center gap-2 shrink-0">
+            {movaraSlug && (
+              <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-[10px] font-semibold uppercase tracking-wide">
+                Movara
+              </span>
+            )}
+            <button onClick={loadMenu} className="p-1.5 text-slate-400 hover:text-blue-600">
+              <RefreshCw size={16} />
+            </button>
+          </div>
         </div>
 
         {/* Items grid */}
@@ -253,12 +307,14 @@ export default function FoodPOS() {
                       <UtensilsCrossed size={24} className="text-slate-300 dark:text-slate-600" />
                     </div>
                   )}
-                  <button onClick={(e) => toggleAvail(item, e)}
-                    className="absolute top-2 right-2 z-10 bg-white/80 dark:bg-slate-800/80 rounded-full p-0.5 shadow">
-                    {item.available
-                      ? <ToggleRight size={16} className="text-green-500" />
-                      : <ToggleLeft size={16} className="text-slate-400" />}
-                  </button>
+                  {!movaraSlug && (
+                    <button onClick={(e) => toggleAvail(item, e)}
+                      className="absolute top-2 right-2 z-10 bg-white/80 dark:bg-slate-800/80 rounded-full p-0.5 shadow">
+                      {item.available
+                        ? <ToggleRight size={16} className="text-green-500" />
+                        : <ToggleLeft size={16} className="text-slate-400" />}
+                    </button>
+                  )}
                   <div className="p-2.5">
                     <p className="font-semibold text-slate-800 dark:text-slate-100 text-sm leading-tight mb-1">{item.name}</p>
                     <p className="text-blue-600 font-bold text-sm">{fmt(item.price, currency)}</p>
