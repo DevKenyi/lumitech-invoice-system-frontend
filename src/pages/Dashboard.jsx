@@ -9,8 +9,10 @@ import {
   FileText, ChevronRight,
 } from "lucide-react";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  AreaChart, Area, LineChart, Line,
 } from "recharts";
+import { TrendingDown, ShoppingBag, Utensils } from "lucide-react";
 import { getUserType, capitalLabel, USER_TYPES } from "../utils/userType";
 import TourOverlay from "../components/TourOverlay";
 import OnboardingBanner from "../components/OnboardingBanner";
@@ -35,6 +37,7 @@ const Dashboard = () => {
   const [isSubmittingLoan, setIsSubmittingLoan] = useState(false);
   const [aiInput, setAiInput] = useState("");
   const [pendingQuotes, setPendingQuotes] = useState([]);
+  const [foodStats, setFoodStats] = useState(null);
 
   const isAccountant = userType === USER_TYPES.ACCOUNTANT;
 
@@ -54,6 +57,7 @@ const Dashboard = () => {
         setPendingQuotes(all.filter(q => q.status === "DRAFT" || q.status === "SENT"));
       })
       .catch(() => {});
+    api.get("/api/dashboard/food").then(res => setFoodStats(res.data)).catch(() => {});
   }, []);
 
   const fetchDashboard = async () => {
@@ -291,6 +295,113 @@ const Dashboard = () => {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Food POS Intelligence Widget */}
+      {foodStats && foodStats.thisMonthOrders > 0 && (
+        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-2xl p-4 shadow-sm space-y-4">
+          {/* Header row */}
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center shrink-0">
+              <Utensils className="w-3 h-3 text-white" />
+            </div>
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Food POS</p>
+            {foodStats.monthGrowthPct !== 0 && (
+              <span className={`ml-1 inline-flex items-center gap-0.5 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                foodStats.monthGrowthPct > 0
+                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+                  : "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300"
+              }`}>
+                {foodStats.monthGrowthPct > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                {Math.abs(foodStats.monthGrowthPct).toFixed(1)}% vs last month
+              </span>
+            )}
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent("open-ai-chat", { detail: { message: "Give me a full food POS performance summary with recommendations and next month prediction." } }))}
+              className="ml-auto flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-indigo-900/20 dark:to-violet-900/20 border border-indigo-200 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400 hover:from-indigo-100 hover:to-violet-100 transition"
+            >
+              <Sparkles className="w-3 h-3" /> Ask Lumi
+            </button>
+          </div>
+
+          {/* Stat cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: "Today", value: fmt(foodStats.todayRevenue), sub: `${foodStats.todayOrders} orders` },
+              { label: "This Month", value: fmt(foodStats.thisMonthRevenue), sub: `${foodStats.thisMonthOrders} orders` },
+              { label: "Last Month", value: fmt(foodStats.lastMonthRevenue), sub: `${foodStats.lastMonthOrders} orders` },
+              { label: "Avg Order", value: fmt(foodStats.avgOrderValue), sub: "per order" },
+            ].map(s => (
+              <div key={s.label} className="bg-slate-50 dark:bg-slate-700/40 rounded-xl p-3 border border-slate-100 dark:border-slate-700">
+                <p className="text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500 font-medium">{s.label}</p>
+                <p className="text-lg font-bold text-slate-900 dark:text-white leading-tight mt-0.5">{s.value}</p>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{s.sub}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Daily revenue area chart */}
+          {foodStats.daily && foodStats.daily.length > 1 && (
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">Daily Revenue — This Month</p>
+              <ResponsiveContainer width="100%" height={140}>
+                <AreaChart data={foodStats.daily.map(d => ({ date: d.date.slice(5), revenue: Number(d.revenue), orders: d.orders }))}
+                  margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="foodGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f97316" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="#94a3b8" tickLine={false} />
+                  <YAxis hide />
+                  <Tooltip
+                    formatter={(v, name) => name === "revenue" ? [fmt(v), "Revenue"] : [v, "Orders"]}
+                    contentStyle={{ fontSize: 11, borderRadius: "0.5rem", border: "1px solid #e2e8f0" }}
+                  />
+                  <Area type="monotone" dataKey="revenue" stroke="#f97316" strokeWidth={2} fill="url(#foodGrad)" dot={false} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {/* Top items bar chart */}
+          {foodStats.topItems && foodStats.topItems.length > 0 && (
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">Top Items — This Month</p>
+              <ResponsiveContainer width="100%" height={Math.min(foodStats.topItems.length * 36, 180)}>
+                <BarChart
+                  data={foodStats.topItems.map(i => ({ name: i.name, qty: i.qty, revenue: Number(i.revenue) }))}
+                  layout="vertical"
+                  margin={{ top: 0, right: 40, left: 0, bottom: 0 }}
+                >
+                  <XAxis type="number" hide />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} stroke="#94a3b8" tickLine={false} width={110} />
+                  <Tooltip
+                    formatter={(v, name) => name === "qty" ? [v, "Qty sold"] : [fmt(v), "Revenue"]}
+                    contentStyle={{ fontSize: 11, borderRadius: "0.5rem", border: "1px solid #e2e8f0" }}
+                  />
+                  <Bar dataKey="qty" fill="#f97316" radius={[0, 4, 4, 0]} label={{ position: "right", fontSize: 10, fill: "#94a3b8", formatter: v => `${v} sold` }} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {/* Prediction nudge */}
+          {foodStats.thisMonthOrders > 0 && (
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent("open-ai-chat", { detail: { message: "Predict my food POS revenue for next month and give me recommendations to increase it." } }))}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-indigo-50 to-violet-50 dark:from-indigo-900/20 dark:to-violet-900/20 border border-indigo-100 dark:border-indigo-800 hover:border-indigo-300 dark:hover:border-indigo-600 transition group text-left"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+              <p className="text-xs text-indigo-600 dark:text-indigo-400 flex-1">
+                Ask Lumi to predict next month's revenue and recommend how to grow it
+              </p>
+              <ChevronRight className="w-3.5 h-3.5 text-indigo-300 group-hover:translate-x-0.5 transition-transform shrink-0" />
+            </button>
+          )}
         </div>
       )}
 
