@@ -232,6 +232,7 @@ const ALL_STAFF_FEATURES = [
   { key: "orders_kds",      label: "Order Fulfillment", desc: "View and fulfil incoming orders" },
   { key: "expenses",        label: "Expenses",       desc: "Submit and track expense claims" },
   { key: "manage_expenses", label: "Manage Expenses",desc: "Review and approve expense reports" },
+  { key: "activity_report", label: "Activity Report",desc: "Submit weekly activity reports" },
 ];
 
 const ADMIN_NAV_SECTIONS = [

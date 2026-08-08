@@ -463,6 +463,7 @@ function Navbar({ onClose }) {
     // Expenses & Audit Trail — Accountant Pro + free trial only
     ...(isAccountantPro || !plan || plan === "FREE" ? [{ path: "/expenses", label: "Expenses",    icon: Receipt,    info: "Manage staff expense claims" }] : []),
     ...(isAccountantPro || !plan || plan === "FREE" ? [{ path: "/audit",    label: "Audit Trail", icon: ShieldCheck, info: "Full log of every action in your account" }] : []),
+    ...(canAccessGrowthFeatures ? [{ path: "/activity-reports/manage", label: "Team Reports", icon: ClipboardList, info: "Review weekly activity reports from your team" }] : []),
     ...(isPlatformAdmin ? [{ path: "/admin", label: "Platform Admin", icon: ShieldCheck, info: "System-wide administration" }] : []),
     { path: "/referrals", label: "Referral Programme", icon: Gift, info: "Earn ₦ by referring businesses to LumiLedger" },
   ];
@@ -483,6 +484,7 @@ function Navbar({ onClose }) {
     ...(staffFeatureAllowed("orders_kds")      ? [{ path: "/orders",          label: "Order Fulfillment", icon: ClipboardList,   info: "View and fulfil incoming orders" }] : []),
     ...(staffFeatureAllowed("expenses")        ? [{ path: "/expenses",        label: "Expenses",        icon: Receipt,           info: "Submit and track expense claims" }] : []),
     ...(staffFeatureAllowed("manage_expenses") ? [{ path: "/expenses/manage", label: "Manage Expenses", icon: FolderOpen,        info: "Review and approve expense reports" }] : []),
+    ...(staffFeatureAllowed("activity_report") ? [{ path: "/activity-reports", label: "Weekly Report",  icon: ClipboardList,     info: "Submit your weekly activity report" }] : []),
     { path: "/settings/org",    label: "Preferences",     icon: SlidersHorizontal, info: "Change your display preferences" },
   ];
 

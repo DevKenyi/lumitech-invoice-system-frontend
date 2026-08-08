@@ -38,6 +38,7 @@ import BalanceSheet from "./pages/BalanceSheet";
 import BankStatementImport from "./pages/BankStatementImport";
 import AgingReport from "./pages/AgingReport";
 import Expenses from "./pages/Expenses";
+import ActivityReports from "./pages/ActivityReports";
 import StaffHome from "./pages/StaffHome";
 import ClaimDetail from "./pages/ClaimDetail";
 import AuditLogPage from "./pages/AuditLog";
@@ -630,6 +631,14 @@ function App() {
           } />
           <Route path="/expenses/claims/:id" element={
             <ProtectedRoute><Layout><ClaimDetail /></Layout></ProtectedRoute>
+          } />
+
+          {/* ACTIVITY REPORTS — /activity-reports = staff submit, /activity-reports/manage = admin review */}
+          <Route path="/activity-reports" element={
+            <ProtectedRoute><Layout><ActivityReports view="submit" /></Layout></ProtectedRoute>
+          } />
+          <Route path="/activity-reports/manage" element={
+            <ProtectedRoute><Layout><ActivityReports view="manage" /></Layout></ProtectedRoute>
           } />
           <Route path="/audit" element={
             <ProtectedRoute><Layout><AuditLogPage /></Layout></ProtectedRoute>

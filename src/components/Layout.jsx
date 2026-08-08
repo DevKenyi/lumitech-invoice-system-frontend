@@ -69,6 +69,8 @@ const PAGE_TITLES = {
   "/staff-home":                         "Home",
   "/expenses":                           "Expenses",
   "/expenses/manage":                    "Manage Expenses",
+  "/activity-reports":                   "Weekly Activity Report",
+  "/activity-reports/manage":            "Team Activity Reports",
   "/team":                               "Team",
   "/settings/org":                       "Settings",
   "/settings/billing":                   "Billing",
