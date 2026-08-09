@@ -71,6 +71,7 @@ const PAGE_TITLES = {
   "/expenses/manage":                    "Manage Expenses",
   "/activity-reports":                   "Weekly Activity Report",
   "/activity-reports/manage":            "Team Activity Reports",
+  "/moniepoint-pos/transactions":        "Moniepoint POS Sales",
   "/team":                               "Team",
   "/settings/org":                       "Settings",
   "/settings/billing":                   "Billing",

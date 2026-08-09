@@ -388,6 +388,7 @@ function Navbar({ onClose }) {
     { path: "/create",             label: "New Invoice",       icon: PlusCircle,     info: "Create and send a new invoice" },
     { path: "/quick-invoice",      label: "Quick Invoice",     icon: Zap,            info: "Instant sale — type customer name and mark paid immediately" },
     { path: "/monnify/transactions", label: "Monnify Payments",  icon: Banknote,       info: "Payments received on your Moniepoint account — auto-recorded" },
+    { path: "/moniepoint-pos/transactions", label: "Moniepoint POS Sales", icon: CreditCard, info: "Sales taken on your Moniepoint POS terminal — auto-recorded" },
     { path: "/quotes",             label: "Quotes",            icon: FileCheck,      info: "Create estimates and convert to invoices" },
     { path: "/proforma",           label: "Proforma Invoices", icon: GitBranch,      info: "Preliminary invoices for customs or pre-delivery" },
     { path: "/invoices/recurring", label: "Recurring",         icon: Repeat,         info: "Auto-send invoices on a schedule" },

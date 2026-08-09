@@ -77,6 +77,7 @@ import MyDevices from "./pages/MyDevices";
 import QuickInvoice from "./pages/QuickInvoice";
 import EasyBuy from "./pages/EasyBuy";
 import MonnifyTransactions from "./pages/MonnifyTransactions";
+import MoniepointPosTransactions from "./pages/MoniepointPosTransactions";
 import MyFees from "./pages/MyFees";
 
 // Shown instead of the full app when the account is suspended or trial has ended.
@@ -703,6 +704,7 @@ function App() {
           <Route path="/quick-invoice" element={<ProtectedRoute><Layout><QuickInvoice /></Layout></ProtectedRoute>} />
           <Route path="/easy-buy" element={<ProtectedRoute><Layout><EasyBuy /></Layout></ProtectedRoute>} />
           <Route path="/monnify/transactions" element={<ProtectedRoute><Layout><MonnifyTransactions /></Layout></ProtectedRoute>} />
+          <Route path="/moniepoint-pos/transactions" element={<ProtectedRoute><Layout><MoniepointPosTransactions /></Layout></ProtectedRoute>} />
 
           {/* FIXED ASSETS */}
           <Route path="/fixed-assets" element={<ProtectedRoute><Layout><FixedAssets /></Layout></ProtectedRoute>} />

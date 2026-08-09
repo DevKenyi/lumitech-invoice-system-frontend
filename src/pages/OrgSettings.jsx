@@ -53,6 +53,8 @@ const EMPTY_FORM = {
   monnifyApiKey: "", monnifyApiKeyConfigured: false,
   monnifyClientSecret: "", monnifySecretKeyConfigured: false,
   monnifyContractCode: "", acceptMonnify: false, monnifyWebhookToken: null,
+  moniepointWebhookSecret: "", moniepointWebhookSecretConfigured: false,
+  acceptMoniepoint: false, moniepointWebhookToken: null,
   baseCurrency: "NGN", country: "NG", defaultVatRate: 7.5, taxAuthorityLabel: "NRS",
   pdfHeaderColor: PDF_HEADER_DEFAULT,
   pdfAccentColor: PDF_ACCENT_DEFAULT,
@@ -495,6 +497,9 @@ function OrgSettings() {
   const [editingMonnifyApiKey, setEditingMonnifyApiKey] = useState(false);
   const [editingMonnifySecret, setEditingMonnifySecret] = useState(false);
   const [copiedMonnifyUrl, setCopiedMonnifyUrl] = useState(false);
+  // Moniepoint POS fields editing
+  const [editingMoniepointSecret, setEditingMoniepointSecret] = useState(false);
+  const [copiedMoniepointUrl, setCopiedMoniepointUrl] = useState(false);
   const [pwModal, setPwModal] = useState(false);
   const [pwInput, setPwInput] = useState("");
   const [pwError, setPwError] = useState("");
@@ -562,6 +567,9 @@ function OrgSettings() {
       delete payload.monnifyApiKeyConfigured;
       delete payload.monnifySecretKeyConfigured;
       delete payload.monnifyWebhookToken;
+      if (form.moniepointWebhookSecretConfigured && !editingMoniepointSecret) delete payload.moniepointWebhookSecret;
+      delete payload.moniepointWebhookSecretConfigured;
+      delete payload.moniepointWebhookToken;
       await api.put("/api/org", payload);
       setToast({ visible: true, message: "Organisation settings saved", type: "success" });
       setEditingSecret(false);
@@ -570,6 +578,7 @@ function OrgSettings() {
       setEditingFwWebhook(false);
       setEditingMonnifyApiKey(false);
       setEditingMonnifySecret(false);
+      setEditingMoniepointSecret(false);
       // Refresh configured flags
       api.get("/api/org").then(res => setForm(f => ({
         ...f,
@@ -580,6 +589,8 @@ function OrgSettings() {
         monnifySecretKeyConfigured: res.data.monnifySecretKeyConfigured,
         monnifyContractCode: res.data.monnifyContractCode,
         monnifyWebhookToken: res.data.monnifyWebhookToken,
+        moniepointWebhookSecretConfigured: res.data.moniepointWebhookSecretConfigured,
+        moniepointWebhookToken: res.data.moniepointWebhookToken,
       })));
     } catch (err) {
       setToast({ visible: true, message: err.response?.data?.message || "Failed to save settings.", type: "error" });
@@ -826,6 +837,7 @@ function OrgSettings() {
                   { key: "acceptPaystack",      label: "Paystack (Online)",    desc: "Generate a Paystack payment link for card/bank payments" },
                   { key: "acceptFlutterwave",   label: "Flutterwave (Online)", desc: "Generate a Flutterwave payment link — supports NGN, GHS, ZAR, KES and more" },
                   { key: "acceptMonnify",       label: "Monnify / Moniepoint", desc: "Auto-record payments received on your Moniepoint account" },
+                  { key: "acceptMoniepoint",    label: "Moniepoint POS",       desc: "Auto-record sales made on your Moniepoint POS terminal" },
                   { key: "acceptCash",          label: "Cash",                 desc: "Allow clients to record cash payments" },
                 ].map(({ key, label, desc }) => (
                   <label key={key} className="flex items-start gap-3 cursor-pointer group">
@@ -1114,6 +1126,88 @@ function OrgSettings() {
                   </p>
                 </div>
               )}
+            </div>
+
+            {/* Moniepoint POS */}
+            <div className="space-y-5">
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-green-600" />
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Connect your Moniepoint POS Terminal</p>
+              </div>
+
+              {/* Step-by-step instruction banner */}
+              <div className="rounded-xl border border-green-200 dark:border-green-800/50 bg-green-50 dark:bg-green-900/10 p-4 space-y-2">
+                <p className="text-xs font-semibold text-green-700 dark:text-green-400">
+                  Record every POS terminal sale automatically:
+                </p>
+                <ol className="space-y-1">
+                  {[
+                    <>Tick <span className="font-medium">Moniepoint POS</span> above and hit Save — this generates your Webhook URL below</>,
+                    <>In your Moniepoint dashboard, go to <span className="font-medium">Settings → POS Apps Developer → Webhooks</span></>,
+                    <>Add a new webhook subscription with that URL, for the <span className="font-medium">V1_POS_TRANSACTION</span> event</>,
+                    <>Moniepoint will give you a secret — paste it below and Save</>,
+                  ].map((step, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-green-700 dark:text-green-400">
+                      <span className="mt-0.5 flex-shrink-0 w-4 h-4 rounded-full bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-300 flex items-center justify-center font-bold text-[10px]">{i + 1}</span>
+                      <span>{step}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+
+              {/* Webhook URL — shown once the feature is turned on and saved */}
+              {form.moniepointWebhookToken && (
+                <div className="rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/40 p-4 space-y-2">
+                  <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                    Your Moniepoint POS Webhook URL
+                  </p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500">
+                    Paste this into Moniepoint's Webhooks tab when creating the subscription:
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-xs font-mono text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 px-3 py-2 rounded-lg break-all">
+                      {`https://ledgerapi.lumitechsystems.com/api/webhooks/moniepoint-pos/${form.moniepointWebhookToken}`}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`https://ledgerapi.lumitechsystems.com/api/webhooks/moniepoint-pos/${form.moniepointWebhookToken}`);
+                        setCopiedMoniepointUrl(true);
+                        setTimeout(() => setCopiedMoniepointUrl(false), 2000);
+                      }}
+                      className="shrink-0 flex items-center gap-1.5 text-xs text-green-600 hover:text-green-700 dark:text-green-400 font-medium border border-green-200 dark:border-green-800 px-3 py-2 rounded-lg transition"
+                    >
+                      {copiedMoniepointUrl ? <Check size={12} /> : <Copy size={12} />}
+                      {copiedMoniepointUrl ? "Copied!" : "Copy"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Webhook Secret — pasted back from Moniepoint after creating the subscription */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Moniepoint Webhook Secret</label>
+                {form.moniepointWebhookSecretConfigured && !editingMoniepointSecret ? (
+                  <div className="flex items-center gap-3 px-4 py-2.5 border border-emerald-200 dark:border-emerald-800 rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <span className="text-sm font-mono text-emerald-700 dark:text-emerald-400 flex-1">••••••••••••••••••••••••</span>
+                    <button type="button" onClick={() => { setEditingMoniepointSecret(true); set("moniepointWebhookSecret", ""); }}
+                      className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-green-600 dark:hover:text-green-400 transition">
+                      <Pencil size={12} /> Change
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    type="password"
+                    value={form.moniepointWebhookSecret || ""}
+                    onChange={e => set("moniepointWebhookSecret", e.target.value)}
+                    placeholder="The secret Moniepoint gave you for this webhook"
+                    autoFocus={editingMoniepointSecret}
+                    className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition"
+                  />
+                )}
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">Keep this secret private — it is used to verify incoming transactions.</p>
+              </div>
             </div>
           </div>
 
