@@ -175,10 +175,10 @@ function MovaraCard() {
               <p className="text-xs font-medium text-slate-600 dark:text-slate-300">Endpoint URL</p>
               <div className="flex items-center gap-2">
                 <code className="flex-1 text-xs font-mono text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 px-2.5 py-1.5 rounded-lg break-all">
-                  POST https://api.lumitechsystems.com/api/webhooks/food-orders
+                  POST https://ledgerapi.lumitechsystems.com/api/webhooks/food-orders
                 </code>
                 <button type="button"
-                  onClick={() => { navigator.clipboard.writeText("https://api.lumitechsystems.com/api/webhooks/food-orders"); }}
+                  onClick={() => { navigator.clipboard.writeText("https://ledgerapi.lumitechsystems.com/api/webhooks/food-orders"); }}
                   className="shrink-0 flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium border border-blue-200 dark:border-blue-800 px-2.5 py-1.5 rounded-lg transition">
                   <Copy size={12} /> Copy
                 </button>
@@ -969,7 +969,7 @@ function OrgSettings() {
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Webhook Secret <span className="text-slate-400 font-normal">(verif-hash)</span></label>
                 <p className="text-xs text-slate-400 dark:text-slate-500 mb-2">
                   Set a secret hash in your Flutterwave dashboard (Settings → Webhooks) and paste it here. Your webhook URL is:<br />
-                  <code className="text-xs bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded mt-1 inline-block">https://api.lumitechsystems.com/api/webhooks/flutterwave</code>
+                  <code className="text-xs bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded mt-1 inline-block">https://ledgerapi.lumitechsystems.com/api/webhooks/flutterwave</code>
                 </p>
                 {form.flutterwaveWebhookSecretConfigured && !editingFwWebhook ? (
                   <div className="flex items-center gap-3 px-4 py-2.5 border border-emerald-200 dark:border-emerald-800 rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
@@ -1094,12 +1094,12 @@ function OrgSettings() {
                   </p>
                   <div className="flex items-center gap-2">
                     <code className="flex-1 text-xs font-mono text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 px-3 py-2 rounded-lg break-all">
-                      {`https://api.lumitechsystems.com/api/webhooks/monnify/${form.monnifyWebhookToken}`}
+                      {`https://ledgerapi.lumitechsystems.com/api/webhooks/monnify/${form.monnifyWebhookToken}`}
                     </code>
                     <button
                       type="button"
                       onClick={() => {
-                        navigator.clipboard.writeText(`https://api.lumitechsystems.com/api/webhooks/monnify/${form.monnifyWebhookToken}`);
+                        navigator.clipboard.writeText(`https://ledgerapi.lumitechsystems.com/api/webhooks/monnify/${form.monnifyWebhookToken}`);
                         setCopiedMonnifyUrl(true);
                         setTimeout(() => setCopiedMonnifyUrl(false), 2000);
                       }}
