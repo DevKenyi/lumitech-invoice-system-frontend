@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Bell, Check, CheckCheck, X } from "lucide-react";
+import { Bell, BellRing, Check, CheckCheck, X } from "lucide-react";
 import api from "../services/api";
+import { pushSupported, isSubscribed, subscribeToPush } from "../services/push";
 
 const TYPE_STYLES = {
   NEW_REGISTRATION:      { dot: "bg-blue-500",    badge: "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300" },
@@ -26,7 +27,23 @@ export default function NotificationBell({ align = "right" }) {
   const [notifications, setNotifications] = useState([]);
   const [unread, setUnread]             = useState(0);
   const [loading, setLoading]           = useState(false);
+  const [pushEnabled, setPushEnabled]   = useState(isSubscribed());
+  const [enablingPush, setEnablingPush] = useState(false);
   const dropdownRef                     = useRef(null);
+
+  const canOfferPush = pushSupported() && !pushEnabled && Notification.permission !== "denied";
+
+  const handleEnablePush = async () => {
+    try {
+      setEnablingPush(true);
+      await subscribeToPush();
+      setPushEnabled(true);
+    } catch (err) {
+      console.warn("Push subscribe failed:", err.message);
+    } finally {
+      setEnablingPush(false);
+    }
+  };
 
   // Fetch unread count — poll every 30s
   useEffect(() => {
@@ -73,7 +90,11 @@ export default function NotificationBell({ align = "right" }) {
     try {
       await api.patch(`/api/notifications/${id}/read`);
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-      setUnread(prev => Math.max(0, prev - 1));
+      setUnread(prev => {
+        const next = Math.max(0, prev - 1);
+        if (next === 0) navigator.clearAppBadge?.();
+        return next;
+      });
     } catch { /* silent */ }
   };
 
@@ -82,6 +103,7 @@ export default function NotificationBell({ align = "right" }) {
       await api.post("/api/notifications/read-all");
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       setUnread(0);
+      navigator.clearAppBadge?.();
     } catch { /* silent */ }
   };
 
@@ -133,6 +155,20 @@ export default function NotificationBell({ align = "right" }) {
               </button>
             </div>
           </div>
+
+          {/* Enable push notifications prompt */}
+          {canOfferPush && (
+            <button
+              onClick={handleEnablePush}
+              disabled={enablingPush}
+              className="w-full flex items-center gap-2.5 px-4 py-2.5 border-b border-slate-100 dark:border-slate-700 bg-indigo-50/60 dark:bg-indigo-900/10 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition text-left disabled:opacity-60"
+            >
+              <BellRing size={15} className="text-indigo-500 flex-shrink-0" />
+              <span className="text-xs font-medium text-indigo-700 dark:text-indigo-300 flex-1">
+                {enablingPush ? "Enabling…" : "Enable notifications for new transactions"}
+              </span>
+            </button>
+          )}
 
           {/* List */}
           <div className="max-h-[420px] overflow-y-auto divide-y divide-slate-50 dark:divide-slate-700/50">
