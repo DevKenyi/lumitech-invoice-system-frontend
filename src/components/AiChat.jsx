@@ -415,7 +415,8 @@ export default function AiChat() {
         <button
           onClick={() => setOpen(true)}
           aria-label="Ask Lumi AI"
-          className="fixed bottom-6 right-5 z-50 flex items-center gap-2 px-4 py-3 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 shadow-xl shadow-indigo-500/40 hover:shadow-2xl hover:shadow-indigo-500/50 hover:scale-105 active:scale-95 transition-all duration-150"
+          className="fixed right-5 z-50 flex items-center gap-2 px-4 py-3 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 shadow-xl shadow-indigo-500/40 hover:shadow-2xl hover:shadow-indigo-500/50 hover:scale-105 active:scale-95 transition-all duration-150"
+          style={{ bottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
         >
           <Sparkles className="w-4 h-4 text-white shrink-0" />
           <span className="text-sm font-semibold text-white pr-0.5">Ask Lumi</span>
@@ -440,7 +441,10 @@ export default function AiChat() {
         >
 
           {/* Header */}
-          <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-indigo-500 to-violet-600 sm:rounded-t-2xl shrink-0">
+          <div
+            className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-indigo-500 to-violet-600 sm:rounded-t-2xl shrink-0"
+            style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top))" }}
+          >
             <button
               onClick={() => setOpen(false)}
               className="sm:hidden p-1.5 rounded-lg hover:bg-indigo-400/40 text-white transition-colors"
@@ -556,7 +560,10 @@ export default function AiChat() {
           </div>
 
           {/* Input bar */}
-          <div className="shrink-0 px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 sm:rounded-b-2xl">
+          <div
+            className="shrink-0 px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 sm:rounded-b-2xl"
+            style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+          >
             <div className="flex items-end gap-2 bg-slate-100 dark:bg-slate-800 rounded-2xl px-4 py-2">
               <textarea
                 ref={inputRef}

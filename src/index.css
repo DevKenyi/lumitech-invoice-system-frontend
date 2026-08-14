@@ -1,3 +1,16 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Native-app feel when installed as a PWA on iOS */
+html, body {
+  /* kill the rubber-band bounce + pull-to-refresh at the document edges */
+  overscroll-behavior-y: none;
+  /* remove the gray flash on tap */
+  -webkit-tap-highlight-color: transparent;
+}
+
+button, a {
+  /* stop long-press from triggering iOS's text-selection/callout menu on UI chrome */
+  -webkit-touch-callout: none;
+}

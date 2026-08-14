@@ -517,7 +517,10 @@ function Navbar({ onClose }) {
       {searchOpen && <CommandPalette items={paletteItems} onClose={() => setSearchOpen(false)} />}
 
       {/* Logo & Toggle */}
-      <div className="flex items-center justify-between p-3 border-b border-slate-200/60 dark:border-slate-700/60 flex-shrink-0">
+      <div
+        className="flex items-center justify-between p-3 border-b border-slate-200/60 dark:border-slate-700/60 flex-shrink-0"
+        style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top))" }}
+      >
         <div className={`flex items-center gap-2 ${effectiveCollapsed ? "justify-center w-full" : ""}`}>
           <div className="p-2 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow-lg shadow-blue-600/20 flex-shrink-0">
             <FileText className="w-4 h-4 text-white" />
@@ -756,7 +759,10 @@ function Navbar({ onClose }) {
       </nav>
 
       {/* User Profile + Mode Switch + Logout */}
-      <div className="p-3 border-t border-slate-200/60 dark:border-slate-700/60 flex-shrink-0 space-y-1">
+      <div
+        className="p-3 border-t border-slate-200/60 dark:border-slate-700/60 flex-shrink-0 space-y-1"
+        style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+      >
 
         {/* User info */}
         {user && !effectiveCollapsed && (

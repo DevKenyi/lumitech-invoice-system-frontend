@@ -139,7 +139,10 @@ function Layout({ children }) {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Mobile Header */}
-        <div className="lg:hidden sticky top-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-b border-slate-200/60 dark:border-slate-700/60 px-4 py-3 flex items-center gap-3">
+        <div
+          className="lg:hidden sticky top-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-b border-slate-200/60 dark:border-slate-700/60 px-4 py-3 flex items-center gap-3"
+          style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top))" }}
+        >
           <button
             onClick={() => setSidebarOpen(true)}
             className="p-2 -ml-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 shrink-0"
@@ -165,7 +168,10 @@ function Layout({ children }) {
         </div>
 
         <TrialBanner />
-        <main className="flex-1 p-4 md:p-6">
+        <main
+          className="flex-1 p-4 md:p-6"
+          style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
+        >
           {isRouteLocked(location.pathname, plan)
             ? <UpgradeOverlay path={location.pathname} />
             : children}
