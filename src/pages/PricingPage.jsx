@@ -56,7 +56,6 @@ const features = [
     rows: [
       { label: "Team members (users)",            values: ["2 users", "5 users", "Unlimited", "Unlimited"] },
       { label: "Team roles (Admin / Staff)",      values: [false, false, true,  true]  },
-      { label: "Multi-business management",       values: [false, false, false, true]  },
       { label: "Priority support",                values: [false, false, false, true]  },
     ],
   },
@@ -94,7 +93,7 @@ const faqs = [
   },
   {
     q: "I'm an accountant managing multiple businesses. Which plan is for me?",
-    a: "Accountant Pro. It gives you unlimited client organisations, full double-entry accounting, team roles, and priority support. Register as an Accountant and you'll get the accountant-focused experience from day one.",
+    a: "Accountant Pro. It gives you full double-entry accounting, team roles, and priority support, with the accountant-focused experience from day one. Each business you manage needs its own LumiLedger workspace — a single login to switch between multiple client organisations isn't available yet.",
   },
 ];
 
