@@ -146,52 +146,8 @@ function SuspendModal({ org, onConfirm, onCancel, loading }) {
   );
 }
 
-// ── Billing exemption modal ─────────────────────────────────────────────────────
-function BillingExemptModal({ org, onConfirm, onCancel, loading }) {
-  const [note, setNote] = useState("");
-  if (!org) return null;
-  return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 max-w-md w-full p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-              <Gift className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-            </div>
-            <h3 className="text-base font-semibold text-slate-900 dark:text-white">Exempt from Billing</h3>
-          </div>
-          <button onClick={onCancel} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition">
-            <X size={16} />
-          </button>
-        </div>
-        <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">
-          <span className="font-semibold text-slate-900 dark:text-white">{org.name}</span> will never be charged, suspended for trial expiry, or sent billing reminders — for as long as this stays on.
-        </p>
-        <div className="mb-5">
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-            Reason <span className="text-slate-400 font-normal">(e.g. special arrangement)</span>
-          </label>
-          <textarea
-            rows={3}
-            value={note}
-            onChange={e => setNote(e.target.value)}
-            placeholder="e.g., Special arrangement — Chydec Food POS"
-            className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-xl text-sm bg-white dark:bg-slate-700/50 dark:text-white dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 resize-none transition"
-          />
-        </div>
-        <div className="flex justify-end gap-3">
-          <button onClick={onCancel} disabled={loading} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-600 transition">Cancel</button>
-          <button onClick={() => onConfirm(note)} disabled={loading} className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-xl hover:bg-purple-700 transition disabled:opacity-60">
-            {loading ? "Saving…" : "Mark Exempt"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ── Org row (All Organisations table) ─────────────────────────────────────────
-function OrgRow({ org, isOwnOrg, onSuspend, onUnsuspend, onDelete, onPlanChange, onBillingExempt, onRemoveBillingExempt }) {
+function OrgRow({ org, isOwnOrg, onSuspend, onUnsuspend, onDelete, onPlanChange }) {
   const [expanded, setExpanded] = useState(false);
   const [users, setUsers]       = useState(null);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -218,14 +174,7 @@ function OrgRow({ org, isOwnOrg, onSuspend, onUnsuspend, onDelete, onPlanChange,
               {org.name?.charAt(0).toUpperCase()}
             </div>
             <div>
-              <div className="flex items-center gap-1.5">
-                <p className="font-medium text-slate-900 dark:text-white">{org.name}</p>
-                {org.billingExempt && (
-                  <span title={org.billingExemptNote || "Exempt from billing"} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300">
-                    <Gift size={9} />Exempt
-                  </span>
-                )}
-              </div>
+              <p className="font-medium text-slate-900 dark:text-white">{org.name}</p>
               {org.email && <p className="text-xs text-slate-400">{org.email}</p>}
               {org.ownerPhone && <p className="text-xs text-slate-400">{org.ownerPhone}</p>}
             </div>
@@ -263,17 +212,6 @@ function OrgRow({ org, isOwnOrg, onSuspend, onUnsuspend, onDelete, onPlanChange,
             <button onClick={toggleUsers} title="View users" className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-600 transition">
               <Users size={12} />{expanded ? "Hide" : "Users"}
             </button>
-            {!isOwnOrg && !org.platformAdminOrg && (
-              org.billingExempt ? (
-                <button onClick={() => onRemoveBillingExempt(org)} title={org.billingExemptNote || ""} className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg hover:bg-purple-100 transition">
-                  <Gift size={12} />Remove Exemption
-                </button>
-              ) : (
-                <button onClick={() => onBillingExempt(org)} className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-600 transition">
-                  <Gift size={12} />Exempt Billing
-                </button>
-              )
-            )}
             {isOwnOrg || org.platformAdminOrg ? (
               <span className="text-xs text-slate-400 italic px-2">{org.platformAdminOrg ? "Platform Admin" : "Your org"}</span>
             ) : isSuspended ? (
@@ -469,8 +407,6 @@ function SuperAdmin() {
   const [savingPricing, setSavingPricing] = useState(false);
   const [suspendTarget, setSuspendTarget] = useState(null);
   const [suspending, setSuspending]       = useState(false);
-  const [billingExemptTarget, setBillingExemptTarget] = useState(null);
-  const [settingBillingExempt, setSettingBillingExempt] = useState(false);
   const [deleteTarget, setDeleteTarget]   = useState(null);
   const [deleting, setDeleting]           = useState(false);
   const [currentOrgId, setCurrentOrgId]  = useState(null);
@@ -594,28 +530,6 @@ function SuperAdmin() {
       showToast(`${org.name} restored`);
     } catch (err) {
       showToast(err.response?.data?.message || "Failed to restore.", "error");
-    }
-  };
-
-  const doSetBillingExempt = async (note) => {
-    setSettingBillingExempt(true);
-    try {
-      await api.post(`/api/superadmin/organisations/${billingExemptTarget.id}/billing-exempt`, { exempt: true, note });
-      setOrgs(prev => prev.map(o => o.id === billingExemptTarget.id ? { ...o, billingExempt: true, billingExemptNote: note } : o));
-      showToast(`${billingExemptTarget.name} exempted from billing`);
-      setBillingExemptTarget(null);
-    } catch (err) {
-      showToast(err.response?.data?.message || "Failed to set billing exemption.", "error");
-    } finally { setSettingBillingExempt(false); }
-  };
-
-  const doRemoveBillingExempt = async (org) => {
-    try {
-      await api.post(`/api/superadmin/organisations/${org.id}/billing-exempt`, { exempt: false });
-      setOrgs(prev => prev.map(o => o.id === org.id ? { ...o, billingExempt: false, billingExemptNote: null } : o));
-      showToast(`${org.name} billing exemption removed`);
-    } catch (err) {
-      showToast(err.response?.data?.message || "Failed to remove billing exemption.", "error");
     }
   };
 
@@ -1242,8 +1156,6 @@ function SuperAdmin() {
                         onUnsuspend={doUnsuspend}
                         onDelete={setDeleteTarget}
                         onPlanChange={changePlan}
-                        onBillingExempt={setBillingExemptTarget}
-                        onRemoveBillingExempt={doRemoveBillingExempt}
                       />
                     ))}
                   </tbody>
@@ -3750,7 +3662,6 @@ function SuperAdmin() {
       {/* Modals & toasts */}
       <Toast {...toast} onClose={() => setToast({ ...toast, visible: false })} />
       <SuspendModal org={suspendTarget} onConfirm={doSuspend} onCancel={() => setSuspendTarget(null)} loading={suspending} />
-      <BillingExemptModal org={billingExemptTarget} onConfirm={doSetBillingExempt} onCancel={() => setBillingExemptTarget(null)} loading={settingBillingExempt} />
       <ConfirmModal
         visible={!!deleteTarget}
         title="Delete Organisation"
