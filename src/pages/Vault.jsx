@@ -29,6 +29,12 @@ const monthLabel = (month) => {
   return new Date(y, m - 1, 1).toLocaleDateString("en", { month: "long", year: "numeric" });
 };
 
+const PRESET_CATEGORIES = [
+  "Savings", "Family", "Subscriptions", "Rent/Mortgage", "Transport",
+  "Groceries", "Entertainment", "Debt Repayment", "Emergency Fund",
+  "Healthcare", "Education", "Gifts & Donations",
+];
+
 const inputCls = "w-full px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition";
 const pinInputCls = "w-full px-4 py-3 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 dark:text-white text-center text-lg tracking-[0.4em] focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition";
 
@@ -76,6 +82,7 @@ export default function Vault() {
   // Category modal
   const [categoryModal, setCategoryModal] = useState(null); // null | { mode, category? }
   const [categoryForm, setCategoryForm] = useState({ name: "", monthlyBudget: "" });
+  const [useCustomCategoryName, setUseCustomCategoryName] = useState(false);
   const [savingCategory, setSavingCategory] = useState(false);
 
   // Entry modal
@@ -194,6 +201,7 @@ export default function Vault() {
 
   const openCategoryModal = (category) => {
     setCategoryForm(category ? { name: category.name, monthlyBudget: category.monthlyBudget ?? "" } : { name: "", monthlyBudget: "" });
+    setUseCustomCategoryName(category ? !PRESET_CATEGORIES.includes(category.name) : false);
     setCategoryModal({ mode: category ? "edit" : "create", category });
   };
 
@@ -506,8 +514,33 @@ export default function Vault() {
             </div>
             <form onSubmit={saveCategory} className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Name</label>
-                <input value={categoryForm.name} onChange={e => setCategoryForm(f => ({ ...f, name: e.target.value }))} className={inputCls} placeholder="e.g. Savings, Family, Subscriptions" autoFocus />
+                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Category</label>
+                <select
+                  value={useCustomCategoryName ? "OTHER" : categoryForm.name}
+                  onChange={e => {
+                    if (e.target.value === "OTHER") {
+                      setUseCustomCategoryName(true);
+                      setCategoryForm(f => ({ ...f, name: "" }));
+                    } else {
+                      setUseCustomCategoryName(false);
+                      setCategoryForm(f => ({ ...f, name: e.target.value }));
+                    }
+                  }}
+                  className={inputCls}
+                  autoFocus
+                >
+                  <option value="" disabled>Select a category</option>
+                  {PRESET_CATEGORIES.map(p => <option key={p} value={p}>{p}</option>)}
+                  <option value="OTHER">Other (custom)…</option>
+                </select>
+                {useCustomCategoryName && (
+                  <input
+                    value={categoryForm.name}
+                    onChange={e => setCategoryForm(f => ({ ...f, name: e.target.value }))}
+                    className={`${inputCls} mt-2`}
+                    placeholder="Enter custom category name"
+                  />
+                )}
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Monthly budget <span className="text-slate-400 font-normal">(optional)</span></label>
