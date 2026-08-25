@@ -4,7 +4,7 @@ import { useOrg } from "../context/OrgContext";
 import { formatCurrency } from "../utils/currencies";
 import {
   Lock, Plus, Trash2, Edit2, X, ChevronLeft, ChevronRight,
-  ArrowUpCircle, ArrowDownCircle, ShieldCheck, KeyRound,
+  ArrowUpCircle, ArrowDownCircle, ShieldCheck, KeyRound, Repeat, CheckCircle2,
 } from "lucide-react";
 import Toast from "../components/Toast";
 
@@ -37,6 +37,20 @@ const PRESET_CATEGORIES = [
 
 const inputCls = "w-full px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition";
 const pinInputCls = "w-full px-4 py-3 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 dark:text-white text-center text-lg tracking-[0.4em] focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition";
+
+const FREQUENCIES = [
+  { value: "WEEKLY", label: "Weekly" },
+  { value: "MONTHLY", label: "Monthly" },
+  { value: "QUARTERLY", label: "Quarterly" },
+  { value: "YEARLY", label: "Yearly" },
+];
+const FREQUENCY_LABEL = Object.fromEntries(FREQUENCIES.map(f => [f.value, f.label]));
+
+const daysUntil = (dateStr) => {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const due = new Date(dateStr + "T00:00:00");
+  return Math.round((due - today) / 86400000);
+};
 
 export default function Vault() {
   const { org } = useOrg();
@@ -77,6 +91,7 @@ export default function Vault() {
   const [categories, setCategories] = useState([]);
   const [entries, setEntries] = useState([]);
   const [summary, setSummary] = useState(null);
+  const [recurring, setRecurring] = useState([]);
   const [dataLoading, setDataLoading] = useState(false);
 
   // Category modal
@@ -89,6 +104,12 @@ export default function Vault() {
   const [entryModal, setEntryModal] = useState(null); // null | { mode, entry? }
   const [entryForm, setEntryForm] = useState({ categoryId: "", type: "EXPENSE", amount: "", note: "", entryDate: new Date().toISOString().slice(0, 10) });
   const [savingEntry, setSavingEntry] = useState(false);
+
+  // Recurring modal
+  const [recurringModal, setRecurringModal] = useState(null); // null | { mode, item? }
+  const [recurringForm, setRecurringForm] = useState({ name: "", categoryId: "", amount: "", frequency: "MONTHLY", nextDueDate: new Date().toISOString().slice(0, 10), note: "" });
+  const [savingRecurring, setSavingRecurring] = useState(false);
+  const [markingPaidId, setMarkingPaidId] = useState(null);
 
   const vaultHeaders = () => ({ headers: { "X-Vault-Token": vaultToken } });
 
@@ -125,14 +146,16 @@ export default function Vault() {
   const loadData = async () => {
     setDataLoading(true);
     try {
-      const [catRes, entRes, sumRes] = await Promise.all([
+      const [catRes, entRes, sumRes, recRes] = await Promise.all([
         api.get("/api/vault/categories", vaultHeaders()),
         api.get("/api/vault/entries", { params: { month }, ...vaultHeaders() }),
         api.get("/api/vault/summary", { params: { month }, ...vaultHeaders() }),
+        api.get("/api/vault/recurring", vaultHeaders()),
       ]);
       setCategories(catRes.data);
       setEntries(entRes.data);
       setSummary(sumRes.data);
+      setRecurring(recRes.data);
     } catch (err) {
       if (!handleVaultAuthError(err)) showToast("Failed to load vault data.", "error");
     } finally {
@@ -278,6 +301,64 @@ export default function Vault() {
     } catch (err) {
       if (!handleVaultAuthError(err)) showToast("Failed to delete entry.", "error");
     }
+  };
+
+  // ── Recurring payments ───────────────────────────────────────────────
+
+  const openRecurringModal = (item) => {
+    setRecurringForm(item
+      ? { name: item.name, categoryId: item.categoryId || "", amount: item.amount, frequency: item.frequency, nextDueDate: item.nextDueDate, note: item.note || "" }
+      : { name: "", categoryId: "", amount: "", frequency: "MONTHLY", nextDueDate: new Date().toISOString().slice(0, 10), note: "" });
+    setRecurringModal({ mode: item ? "edit" : "create", item });
+  };
+
+  const saveRecurring = async (e) => {
+    e.preventDefault();
+    if (!recurringForm.name.trim()) { showToast("Name is required.", "error"); return; }
+    if (!recurringForm.amount || Number(recurringForm.amount) <= 0) { showToast("Enter a valid amount.", "error"); return; }
+    setSavingRecurring(true);
+    try {
+      const body = {
+        name: recurringForm.name.trim(),
+        categoryId: recurringForm.categoryId || null,
+        amount: Number(recurringForm.amount),
+        frequency: recurringForm.frequency,
+        nextDueDate: recurringForm.nextDueDate,
+        note: recurringForm.note || null,
+      };
+      if (recurringModal.mode === "edit") {
+        await api.put(`/api/vault/recurring/${recurringModal.item.id}`, body, vaultHeaders());
+      } else {
+        await api.post("/api/vault/recurring", body, vaultHeaders());
+      }
+      setRecurringModal(null);
+      showToast(recurringModal.mode === "edit" ? "Recurring payment updated." : "Recurring payment added.");
+      loadData();
+    } catch (err) {
+      if (!handleVaultAuthError(err)) showToast(err.response?.data?.message || "Failed to save.", "error");
+    } finally { setSavingRecurring(false); }
+  };
+
+  const deleteRecurring = async (item) => {
+    if (!window.confirm(`Delete "${item.name}"? This won't remove past logged payments.`)) return;
+    try {
+      await api.delete(`/api/vault/recurring/${item.id}`, vaultHeaders());
+      showToast("Recurring payment deleted.");
+      loadData();
+    } catch (err) {
+      if (!handleVaultAuthError(err)) showToast("Failed to delete.", "error");
+    }
+  };
+
+  const markRecurringPaid = async (item) => {
+    setMarkingPaidId(item.id);
+    try {
+      await api.post(`/api/vault/recurring/${item.id}/mark-paid`, {}, vaultHeaders());
+      showToast(`Logged payment for ${item.name} — next due date rolled forward.`);
+      loadData();
+    } catch (err) {
+      if (!handleVaultAuthError(err)) showToast("Failed to mark as paid.", "error");
+    } finally { setMarkingPaidId(null); }
   };
 
   // ── Render ────────────────────────────────────────────────────────────
@@ -504,6 +585,59 @@ export default function Vault() {
         )}
       </div>
 
+      {/* Recurring payments — subscriptions & utilities */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Recurring Payments</h3>
+          <button onClick={() => openRecurringModal(null)}
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition">
+            <Plus size={13} />Add Recurring
+          </button>
+        </div>
+        {recurring.length === 0 ? (
+          <p className="text-sm text-slate-400 py-4 text-center">Track subscriptions and utility bills here — e.g. Netflix, electricity, water.</p>
+        ) : (
+          <div className="divide-y divide-slate-100 dark:divide-slate-700">
+            {recurring.map(item => {
+              const days = daysUntil(item.nextDueDate);
+              const statusCls = item.overdue
+                ? "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300"
+                : days <= 7
+                  ? "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
+                  : "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400";
+              const statusLabel = item.overdue
+                ? `Overdue by ${Math.abs(days)}d`
+                : days === 0 ? "Due today" : days === 1 ? "Due tomorrow" : `Due in ${days}d`;
+              return (
+                <div key={item.id} className="flex items-center justify-between py-2.5">
+                  <div className="flex items-center gap-3">
+                    <Repeat size={16} className="text-indigo-500 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm text-slate-700 dark:text-slate-200">
+                        {item.name}
+                        {item.categoryName && <span className="text-slate-400"> — {item.categoryName}</span>}
+                      </p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs text-slate-400">{FREQUENCY_LABEL[item.frequency]} · {item.nextDueDate}</span>
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${statusCls}`}>{statusLabel}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{formatCurrency(item.amount, currency)}</span>
+                    <button onClick={() => markRecurringPaid(item)} disabled={markingPaidId === item.id}
+                      title="Mark as paid — logs an expense and rolls the due date forward"
+                      className="p-1 text-slate-400 hover:text-emerald-600 transition disabled:opacity-50"><CheckCircle2 size={15} /></button>
+                    <button onClick={() => openRecurringModal(item)} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition"><Edit2 size={13} /></button>
+                    <button onClick={() => deleteRecurring(item)} className="p-1 text-slate-400 hover:text-rose-600 transition"><Trash2 size={13} /></button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       {/* Category modal */}
       {categoryModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -596,6 +730,55 @@ export default function Vault() {
               <div className="flex justify-end gap-3 pt-1">
                 <button type="button" onClick={() => setEntryModal(null)} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-600 transition">Cancel</button>
                 <button type="submit" disabled={savingEntry} className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition disabled:opacity-60">{savingEntry ? "Saving…" : "Save"}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Recurring modal */}
+      {recurringModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 max-w-sm w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-semibold text-slate-900 dark:text-white">{recurringModal.mode === "edit" ? "Edit Recurring Payment" : "Add Recurring Payment"}</h3>
+              <button onClick={() => setRecurringModal(null)} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition"><X size={16} /></button>
+            </div>
+            <form onSubmit={saveRecurring} className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Name</label>
+                <input value={recurringForm.name} onChange={e => setRecurringForm(f => ({ ...f, name: e.target.value }))} className={inputCls} placeholder="e.g. Netflix, DSTV, PHCN Electricity, Water" autoFocus />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Amount</label>
+                <input type="number" min="0" step="0.01" value={recurringForm.amount} onChange={e => setRecurringForm(f => ({ ...f, amount: e.target.value }))} className={inputCls} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Frequency</label>
+                  <select value={recurringForm.frequency} onChange={e => setRecurringForm(f => ({ ...f, frequency: e.target.value }))} className={inputCls}>
+                    {FREQUENCIES.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Next due date</label>
+                  <input type="date" value={recurringForm.nextDueDate} onChange={e => setRecurringForm(f => ({ ...f, nextDueDate: e.target.value }))} className={inputCls} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Category <span className="text-slate-400 font-normal">(optional)</span></label>
+                <select value={recurringForm.categoryId} onChange={e => setRecurringForm(f => ({ ...f, categoryId: e.target.value }))} className={inputCls}>
+                  <option value="">Uncategorised</option>
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Note <span className="text-slate-400 font-normal">(optional)</span></label>
+                <input value={recurringForm.note} onChange={e => setRecurringForm(f => ({ ...f, note: e.target.value }))} className={inputCls} placeholder="e.g. account number, plan tier" />
+              </div>
+              <div className="flex justify-end gap-3 pt-1">
+                <button type="button" onClick={() => setRecurringModal(null)} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-600 transition">Cancel</button>
+                <button type="submit" disabled={savingRecurring} className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition disabled:opacity-60">{savingRecurring ? "Saving…" : "Save"}</button>
               </div>
             </form>
           </div>
