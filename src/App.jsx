@@ -79,6 +79,7 @@ import EasyBuy from "./pages/EasyBuy";
 import MonnifyTransactions from "./pages/MonnifyTransactions";
 import MoniepointPosTransactions from "./pages/MoniepointPosTransactions";
 import MyFees from "./pages/MyFees";
+import Vault from "./pages/Vault";
 
 // Shown instead of the full app when the account is suspended or trial has ended.
 // Lives inside OrgProvider so <Billing /> can use OrgContext.
@@ -632,6 +633,11 @@ function App() {
           } />
           <Route path="/expenses/claims/:id" element={
             <ProtectedRoute><Layout><ClaimDetail /></Layout></ProtectedRoute>
+          } />
+
+          {/* VAULT — private, PIN-locked personal budget. Data is scoped to the logged-in user only. */}
+          <Route path="/vault" element={
+            <ProtectedRoute><Layout><Vault /></Layout></ProtectedRoute>
           } />
 
           {/* ACTIVITY REPORTS — /activity-reports = staff submit, /activity-reports/manage = admin review */}
