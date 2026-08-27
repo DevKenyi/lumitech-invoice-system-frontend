@@ -6,7 +6,7 @@ import api from "../services/api";
 import {
   TrendingUp, CheckCircle, AlertCircle, Clock, DollarSign,
   BarChart3, X, Wallet, Plus, BookOpenCheck, LayoutList, Scale, Sparkles, ArrowRight,
-  FileText, ChevronRight,
+  FileText, ChevronRight, Users, RefreshCw,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -38,6 +38,9 @@ const Dashboard = () => {
   const [aiInput, setAiInput] = useState("");
   const [pendingQuotes, setPendingQuotes] = useState([]);
   const [foodStats, setFoodStats] = useState(null);
+  const [walletBalance, setWalletBalance] = useState(null);
+  const [walletLoading, setWalletLoading] = useState(false);
+  const [employeeCount, setEmployeeCount] = useState(null);
 
   const isAccountant = userType === USER_TYPES.ACCOUNTANT;
 
@@ -58,7 +61,21 @@ const Dashboard = () => {
       })
       .catch(() => {});
     api.get("/api/dashboard/food").then(res => setFoodStats(res.data)).catch(() => {});
+    loadWalletBalance();
+    api.get("/api/payroll/employees").then(res => setEmployeeCount((res.data ?? []).length)).catch(() => {});
   }, []);
+
+  const loadWalletBalance = async () => {
+    setWalletLoading(true);
+    try {
+      const res = await api.get("/api/payroll/flutterwave/balance");
+      setWalletBalance(res.data);
+    } catch {
+      setWalletBalance(null); // not connected — widget stays hidden
+    } finally {
+      setWalletLoading(false);
+    }
+  };
 
   const fetchDashboard = async () => {
     try {
@@ -294,6 +311,42 @@ const Dashboard = () => {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Payroll & Flutterwave Widget */}
+      {(walletBalance || employeeCount != null) && (
+        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shrink-0">
+                <Wallet className="w-3 h-3 text-white" />
+              </div>
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Payroll & Flutterwave</p>
+            </div>
+            <Link to="/payroll" className="flex items-center gap-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline">
+              View Payroll <ChevronRight className="w-3 h-3" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-slate-500 dark:text-slate-400">Wallet Balance</p>
+                <button onClick={loadWalletBalance} disabled={walletLoading} title="Refresh">
+                  <RefreshCw className={`w-3 h-3 text-slate-400 ${walletLoading ? "animate-spin" : ""}`} />
+                </button>
+              </div>
+              <p className="text-lg font-bold text-slate-900 dark:text-white mt-1">
+                {walletBalance ? fmt(walletBalance.balance) : "—"}
+              </p>
+            </div>
+            <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3">
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                <Users className="w-3 h-3" /> Employees
+              </div>
+              <p className="text-lg font-bold text-slate-900 dark:text-white mt-1">{employeeCount ?? "—"}</p>
+            </div>
           </div>
         </div>
       )}
