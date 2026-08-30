@@ -9,7 +9,7 @@ import {
   PhoneCall, Mail, Search, RefreshCw, Download, Copy, Link2, MessageSquare, RotateCcw,
   BookOpen, ExternalLink, Lightbulb, Plus, Edit2, Handshake, Gift,
   Tag, DollarSign, CheckSquare, Clock,
-  Monitor, Printer, ChevronRight, Eye,
+  Monitor, Printer, ChevronRight, Eye, KeyRound,
 } from "lucide-react";
 import Toast from "../components/Toast";
 import ConfirmModal from "../components/ConfirmModal";
@@ -191,7 +191,7 @@ function BillingExemptModal({ org, onConfirm, onCancel, loading }) {
 }
 
 // ── Org row (All Organisations table) ─────────────────────────────────────────
-function OrgRow({ org, isOwnOrg, onSuspend, onUnsuspend, onDelete, onPlanChange, onBillingExempt, onRemoveBillingExempt }) {
+function OrgRow({ org, isOwnOrg, onSuspend, onUnsuspend, onDelete, onPlanChange, onBillingExempt, onRemoveBillingExempt, onGenerateApiKey }) {
   const [expanded, setExpanded] = useState(false);
   const [users, setUsers]       = useState(null);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -223,6 +223,11 @@ function OrgRow({ org, isOwnOrg, onSuspend, onUnsuspend, onDelete, onPlanChange,
                 {org.billingExempt && (
                   <span title={org.billingExemptNote || "Exempt from billing"} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300">
                     <Gift size={9} />Exempt
+                  </span>
+                )}
+                {org.hasExternalInvoiceApiKey && (
+                  <span title={`External API connected${org.externalAppName ? ` — ${org.externalAppName}` : ""}`} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300">
+                    <KeyRound size={9} />{org.externalAppName || "API"}
                   </span>
                 )}
               </div>
@@ -274,6 +279,11 @@ function OrgRow({ org, isOwnOrg, onSuspend, onUnsuspend, onDelete, onPlanChange,
                 </button>
               )
             )}
+            <button onClick={() => onGenerateApiKey(org)}
+              title={org.hasExternalInvoiceApiKey ? "Rotate the external invoice API key (invalidates the old one)" : "Generate an API key for an external app to create invoices in this org"}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-700 rounded-lg hover:bg-indigo-100 transition">
+              <KeyRound size={12} />{org.hasExternalInvoiceApiKey ? "Rotate Key" : "API Key"}
+            </button>
             {isOwnOrg || org.platformAdminOrg ? (
               <span className="text-xs text-slate-400 italic px-2">{org.platformAdminOrg ? "Platform Admin" : "Your org"}</span>
             ) : isSuspended ? (
@@ -616,6 +626,29 @@ function SuperAdmin() {
       showToast(`${org.name} billing exemption removed`);
     } catch (err) {
       showToast(err.response?.data?.message || "Failed to remove billing exemption.", "error");
+    }
+  };
+
+  const doGenerateApiKey = async (org) => {
+    const appName = window.prompt(
+      org.hasExternalInvoiceApiKey
+        ? `Rotating the key invalidates the old one. External app name (currently "${org.externalAppName || ""}"):`
+        : "External app name (e.g. Unyimi):",
+      org.externalAppName || ""
+    );
+    if (appName === null) return; // cancelled
+    try {
+      const res = await api.post(`/api/superadmin/organisations/${org.id}/external-invoice-api-key`, {
+        appName: appName || null,
+        rotate: org.hasExternalInvoiceApiKey,
+      });
+      setOrgs(prev => prev.map(o => o.id === org.id
+        ? { ...o, hasExternalInvoiceApiKey: true, externalAppName: res.data.appName }
+        : o));
+      await navigator.clipboard.writeText(res.data.apiKey);
+      showToast(`API key for ${org.name} copied to clipboard — save it now, it won't be shown again.`);
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to generate API key.", "error");
     }
   };
 
@@ -1244,6 +1277,7 @@ function SuperAdmin() {
                         onPlanChange={changePlan}
                         onBillingExempt={setBillingExemptTarget}
                         onRemoveBillingExempt={doRemoveBillingExempt}
+                        onGenerateApiKey={doGenerateApiKey}
                       />
                     ))}
                   </tbody>
