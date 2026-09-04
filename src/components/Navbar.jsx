@@ -468,6 +468,7 @@ function Navbar({ onClose }) {
     ...(isPlatformAdmin ? [{ path: "/admin", label: "Platform Admin", icon: ShieldCheck, info: "System-wide administration" }] : []),
     { path: "/referrals", label: "Referral Programme", icon: Gift, info: "Earn ₦ by referring businesses to LumiLedger" },
     { path: "/vault", label: "My Vault", icon: Lock, info: "Private, PIN-locked personal budget — only you can see it" },
+    { path: "/lumiflow", label: "LumiFlow", icon: PiggyBank, info: "Auto-split your salary and control your spending allowance" },
   ];
   const settingsActive = settingsItems.some(i => cur === i.path);
 
@@ -489,6 +490,7 @@ function Navbar({ onClose }) {
     ...(staffFeatureAllowed("activity_report") ? [{ path: "/activity-reports", label: "Weekly Report",  icon: ClipboardList,     info: "Submit your weekly activity report" }] : []),
     { path: "/settings/org",    label: "Preferences",     icon: SlidersHorizontal, info: "Change your display preferences" },
     { path: "/vault", label: "My Vault", icon: Lock, info: "Private, PIN-locked personal budget — only you can see it" },
+    { path: "/lumiflow", label: "LumiFlow", icon: PiggyBank, info: "Auto-split your salary and control your spending allowance" },
   ];
 
   // ── Sections config ───────────────────────────────────────────────────────

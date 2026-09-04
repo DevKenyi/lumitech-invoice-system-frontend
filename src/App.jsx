@@ -80,6 +80,7 @@ import MonnifyTransactions from "./pages/MonnifyTransactions";
 import MoniepointPosTransactions from "./pages/MoniepointPosTransactions";
 import MyFees from "./pages/MyFees";
 import Vault from "./pages/Vault";
+import LumiFlow from "./pages/LumiFlow";
 
 // Shown instead of the full app when the account is suspended or trial has ended.
 // Lives inside OrgProvider so <Billing /> can use OrgContext.
@@ -638,6 +639,11 @@ function App() {
           {/* VAULT — private, PIN-locked personal budget. Data is scoped to the logged-in user only. */}
           <Route path="/vault" element={
             <ProtectedRoute><Layout><Vault /></Layout></ProtectedRoute>
+          } />
+
+          {/* LUMIFLOW — salary auto-distribution & allowance engine, lives inside the same PIN-locked Vault. */}
+          <Route path="/lumiflow" element={
+            <ProtectedRoute><Layout><LumiFlow /></Layout></ProtectedRoute>
           } />
 
           {/* ACTIVITY REPORTS — /activity-reports = staff submit, /activity-reports/manage = admin review */}

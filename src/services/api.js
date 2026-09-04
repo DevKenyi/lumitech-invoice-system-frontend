@@ -43,8 +43,14 @@ api.interceptors.response.use(
       }
     }
 
-    // Only treat 401 as "token expired/invalid" — redirect to login
-    if (status === 401) {
+    // 401 normally means the main session JWT expired/is invalid — but the personal Vault (and LumiFlow,
+    // which shares its PIN lock) also returns 401 for "wrong PIN" / "vault token expired", which is NOT a
+    // main-session issue. Don't nuke the whole login session over a mistyped vault PIN.
+    const isVaultAuthCall =
+      Boolean(error.config?.headers?.["X-Vault-Token"]) ||
+      /\/api\/vault\/(unlock|change-pin|reset-pin)$/.test(error.config?.url || "");
+
+    if (status === 401 && !isVaultAuthCall) {
       localStorage.removeItem("token");
       if (window.location.pathname !== "/login") {
         window.location.href = "/login";
