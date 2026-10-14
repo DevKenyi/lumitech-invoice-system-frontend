@@ -6,7 +6,7 @@ import ConfirmModal from "../components/ConfirmModal";
 import {
   UtensilsCrossed, Plus, Pencil, Trash2, X, Loader2,
   ToggleLeft, ToggleRight, Tag, ChevronRight, ImagePlus, Camera,
-  Upload, FileDown, Package,
+  Upload, FileDown,
 } from "lucide-react";
 
 const fmt = (val, currency) =>
@@ -324,11 +324,6 @@ export default function MenuManagement() {
                         </button>
                       </div>
                       <p className="text-base font-bold text-blue-600">{fmt(item.price, currency)}</p>
-                      {item.packCost > 0 && (
-                        <p className="text-xs text-orange-500 flex items-center gap-1">
-                          <Package size={10} /> +{fmt(item.packCost, currency)} pack
-                        </p>
-                      )}
                       {item.categoryName && (
                         <p className="text-xs text-slate-400 flex items-center gap-1">
                           <Tag size={10} /> {item.categoryName}
@@ -508,7 +503,6 @@ function ItemModal({ mode, data, categories, modifiers, currency, onSave, onClos
   const [form, setForm] = useState({
     name: data.name || "",
     price: data.price || "",
-    packCost: data.packCost || "",
     categoryId: data.categoryId || "",
     available: data.available !== false,
     imageUrl: data.imageUrl || "",
@@ -550,7 +544,6 @@ function ItemModal({ mode, data, categories, modifiers, currency, onSave, onClos
     await onSave({
       ...form,
       price: parseFloat(form.price),
-      packCost: form.packCost ? parseFloat(form.packCost) : 0,
       categoryId: form.categoryId || null,
     });
     setSaving(false);
@@ -612,14 +605,6 @@ function ItemModal({ mode, data, categories, modifiers, currency, onSave, onClos
               onChange={e => set("price", e.target.value)}
               className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 text-sm"
               required />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-slate-500 mb-1 block">Pack cost ({currency})</label>
-            <input type="number" min="0" step="0.01" value={form.packCost}
-              onChange={e => set("packCost", e.target.value)}
-              placeholder="0.00"
-              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 text-sm" />
-            <p className="text-xs text-slate-400 mt-1">Charged per unit on Takeaway orders / items marked TO GO</p>
           </div>
           <div>
             <label className="text-xs font-medium text-slate-500 mb-1 block">Category</label>
