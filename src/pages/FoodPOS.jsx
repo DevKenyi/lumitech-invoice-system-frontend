@@ -151,6 +151,7 @@ export default function FoodPOS() {
         cartId: uuid(), refId: item.id, modKey,
         itemType: "menu_item", name: item.name,
         unitPrice, qty: 1, modifiers: selectedMods, toGo: false,
+        packCost: parseFloat(item.packCost || 0),
       }];
     });
   }
@@ -171,9 +172,13 @@ export default function FoodPOS() {
     setCart(prev => prev.filter(ci => ci.cartId !== cartId));
   }
 
+  // Takeaway orders pack every item; for Dine In only items individually marked TO GO are packed.
+  const isToGo = (ci) => orderType === "TAKEAWAY" || ci.toGo;
+
   const subtotal = cart.reduce((s, ci) => s + ci.unitPrice * ci.qty, 0);
   const convenienceFee = Math.round(subtotal * 0.05 * 100) / 100;
-  const total = subtotal + convenienceFee;
+  const packFee = cart.reduce((s, ci) => s + (isToGo(ci) ? (ci.packCost || 0) * ci.qty : 0), 0);
+  const total = subtotal + convenienceFee + packFee;
 
   async function charge() {
     if (cart.length === 0) return;
@@ -201,7 +206,7 @@ export default function FoodPOS() {
           name: ci.name,
           qty: ci.qty,
           unitPrice: ci.unitPrice,
-          toGo: ci.toGo || false,
+          toGo: isToGo(ci),
           modifiers: ci.modifiers.map(m => ({
             modifierOptionId: m.modifierOptionId,
             name: m.name,
@@ -432,6 +437,9 @@ export default function FoodPOS() {
                         {ci.modifiers.map(m => m.qty > 1 ? `${m.name} ×${m.qty}` : m.name).join(", ")}
                       </p>
                     )}
+                    {isToGo(ci) && ci.packCost > 0 && (
+                      <p className="text-xs text-orange-500">+{fmt(ci.packCost * ci.qty, currency)} pack</p>
+                    )}
                   </div>
                   <button onClick={() => removeItem(ci.cartId)} className="text-slate-400 hover:text-red-500 shrink-0">
                     <X size={14} />
@@ -483,6 +491,12 @@ export default function FoodPOS() {
             <div className="flex justify-between items-center text-sm text-slate-500 dark:text-slate-400">
               <span>✅ Convenience (5%)</span>
               <span>{fmt(convenienceFee, currency)}</span>
+            </div>
+          )}
+          {packFee > 0 && (
+            <div className="flex justify-between items-center text-sm text-slate-500 dark:text-slate-400">
+              <span>📦 Pack</span>
+              <span>{fmt(packFee, currency)}</span>
             </div>
           )}
           <div className="flex justify-between items-center">

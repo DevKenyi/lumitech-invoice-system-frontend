@@ -353,9 +353,10 @@ export function printFoodOrderBrowser(order, orgName, currency = "", existingWin
       <table>${customerItems}</table>
       <div class="divider"></div>
       <table>
-        ${order.convenienceFee && Number(order.convenienceFee) > 0 ? `
-        <tr><td style="font-size:11px;color:#555">Subtotal</td><td style="text-align:right;font-size:11px;color:#555">${fmtAmt(Number(order.total) - Number(order.convenienceFee))}</td></tr>
-        <tr><td style="font-size:11px;color:#555">Convenience fee (5%)</td><td style="text-align:right;font-size:11px;color:#555">${fmtAmt(order.convenienceFee)}</td></tr>
+        ${(order.convenienceFee && Number(order.convenienceFee) > 0) || (order.packFee && Number(order.packFee) > 0) ? `
+        <tr><td style="font-size:11px;color:#555">Subtotal</td><td style="text-align:right;font-size:11px;color:#555">${fmtAmt(Number(order.total) - Number(order.convenienceFee || 0) - Number(order.packFee || 0))}</td></tr>
+        ${order.convenienceFee && Number(order.convenienceFee) > 0 ? `<tr><td style="font-size:11px;color:#555">Convenience fee (5%)</td><td style="text-align:right;font-size:11px;color:#555">${fmtAmt(order.convenienceFee)}</td></tr>` : ""}
+        ${order.packFee && Number(order.packFee) > 0 ? `<tr><td style="font-size:11px;color:#555">Pack</td><td style="text-align:right;font-size:11px;color:#555">${fmtAmt(order.packFee)}</td></tr>` : ""}
         ` : ""}
         <tr class="total"><td>TOTAL</td><td style="text-align:right">${fmtAmt(order.total)}</td></tr>
       </table>
@@ -467,10 +468,13 @@ function buildFoodEscPos(order, orgName, currency = "") {
   hr();
 
   // Fee breakdown
-  if (order.convenienceFee && Number(order.convenienceFee) > 0) {
-    const subtotalAmt = Number(order.total) - Number(order.convenienceFee);
+  const hasConvenience = order.convenienceFee && Number(order.convenienceFee) > 0;
+  const hasPackFee = order.packFee && Number(order.packFee) > 0;
+  if (hasConvenience || hasPackFee) {
+    const subtotalAmt = Number(order.total) - Number(order.convenienceFee || 0) - Number(order.packFee || 0);
     text("Subtotal       : " + fmtShort(subtotalAmt)); nl();
-    text("Convenience(5%): " + fmtShort(order.convenienceFee)); nl();
+    if (hasConvenience) { text("Convenience(5%): " + fmtShort(order.convenienceFee)); nl(); }
+    if (hasPackFee) { text("Pack           : " + fmtShort(order.packFee)); nl(); }
     hr();
   }
 
