@@ -298,7 +298,7 @@ export default function FoodPOS() {
               <p>No items in this category</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(130px,1fr))] gap-3">
               {visibleItems.map(item => (
                 <div key={item.id} onClick={() => clickItem(item)}
                   className={`relative bg-white dark:bg-slate-800 rounded-xl border shadow-sm cursor-pointer transition-all select-none overflow-hidden flex flex-col ${
@@ -322,8 +322,8 @@ export default function FoodPOS() {
                     </button>
                   )}
                   <div className="p-2.5">
-                    <p className="font-semibold text-slate-800 dark:text-slate-100 text-sm leading-tight mb-1">{item.name}</p>
-                    <p className="text-blue-600 font-bold text-sm">{fmt(item.price, currency)}</p>
+                    <p className="font-semibold text-slate-800 dark:text-slate-100 text-sm leading-tight mb-1 break-words">{item.name}</p>
+                    <p className="text-blue-600 font-bold text-sm break-words">{fmt(item.price, currency)}</p>
                     {!item.available && <span className="text-xs text-red-500 font-medium">Sold Out</span>}
                   </div>
                 </div>

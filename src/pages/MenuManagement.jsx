@@ -302,7 +302,7 @@ export default function MenuManagement() {
                 <p>No items yet</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-3">
                 {visibleItems.map(item => (
                   <div key={item.id} className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden">
                     {/* Photo */}
