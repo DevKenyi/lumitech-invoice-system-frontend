@@ -2,10 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import api from "../services/api";
 import { useOrg } from "../context/OrgContext";
 import Toast from "../components/Toast";
+import { useOnlineStatus } from "../hooks/useOnlineStatus";
+import * as offlineDb from "../db/offlineDb";
 import {
   ShoppingCart, Plus, Minus, X, Loader2,
   UtensilsCrossed, ToggleLeft, ToggleRight, RefreshCw,
   Printer, Users, ShoppingBag, Package, Usb, Bluetooth, Wifi, CheckCircle,
+  WifiOff, CloudOff, History,
 } from "lucide-react";
 import {
   printFoodOrderBrowser, printFoodOrderUSB, printFoodOrderBluetooth,
@@ -42,8 +45,43 @@ export default function FoodPOS() {
   const [movaraSlug, setMovaraSlug] = useState(null);
   const [packFee, setPackFee] = useState("");
   const [showPackInput, setShowPackInput] = useState(false);
+  const [pendingOrders, setPendingOrders] = useState([]);
+  const [showPendingPanel, setShowPendingPanel] = useState(false);
+  const [localOrderSaved, setLocalOrderSaved] = useState(null);
+  const isOnline = useOnlineStatus();
+  const hydratedRef = useRef(false);
 
   const showToast = (msg, type = "success") => setToast({ msg, type });
+
+  async function refreshPendingOrders() {
+    setPendingOrders(await offlineDb.listPendingOrders());
+  }
+
+  // Restore an in-progress cart if the app was refreshed/crashed mid-order.
+  useEffect(() => {
+    (async () => {
+      const draft = await offlineDb.getCartDraft();
+      if (draft) {
+        if (draft.cart) setCart(draft.cart);
+        if (draft.orderType) setOrderType(draft.orderType);
+        if (draft.paymentMethod) setPaymentMethod(draft.paymentMethod);
+        if (typeof draft.notes === "string") setNotes(draft.notes);
+        if (typeof draft.packFee === "string") setPackFee(draft.packFee);
+        if (draft.packFee) setShowPackInput(true);
+      }
+      hydratedRef.current = true;
+      refreshPendingOrders();
+    })();
+  }, []);
+
+  // Persist the cart as it's built, debounced, so it survives a refresh/crash.
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    const t = setTimeout(() => {
+      offlineDb.saveCartDraft({ cart, orderType, paymentMethod, notes, packFee });
+    }, 300);
+    return () => clearTimeout(t);
+  }, [cart, orderType, paymentMethod, notes, packFee]);
 
   async function handlePrint(order) {
     if (usbDevice) {
@@ -73,8 +111,17 @@ export default function FoodPOS() {
         await loadLocalMenu();
       }
     } catch {
-      // Fallback to local menu if org check fails
-      await loadLocalMenu();
+      // Can't reach our own backend to even check Movara status — restore whichever
+      // menu (local or Movara) was last successfully cached on this device.
+      const snapshot = await offlineDb.getMenuSnapshot();
+      if (snapshot) {
+        setCategories(snapshot.categories || []);
+        setItems(snapshot.items || []);
+        setMovaraSlug(snapshot.movaraSlug || null);
+        showToast("Offline — showing last saved menu", "info");
+      } else {
+        showToast("Offline and no saved menu yet on this device", "error");
+      }
     } finally {
       setLoading(false);
     }
@@ -89,10 +136,9 @@ export default function FoodPOS() {
       const data = await res.json();
 
       // Map Movara categories → local format
-      setCategories((data.categories || []).map(c => ({ id: c.id, name: c.name })));
-
+      const mappedCategories = (data.categories || []).map(c => ({ id: c.id, name: c.name }));
       // Map Movara dishes → local format
-      setItems((data.dishes || []).map(d => ({
+      const mappedItems = (data.dishes || []).map(d => ({
         id: d.id,
         name: d.name,
         price: d.price,
@@ -100,7 +146,10 @@ export default function FoodPOS() {
         available: d.is_available,
         categoryId: d.category_id || null,
         modifiers: [],
-      })));
+      }));
+      setCategories(mappedCategories);
+      setItems(mappedItems);
+      await offlineDb.saveMenuSnapshot({ categories: mappedCategories, items: mappedItems, movaraSlug: slug });
     } catch {
       // Movara is down — fall back to local menu silently
       showToast("Using local menu (Movara unavailable)", "info");
@@ -110,12 +159,24 @@ export default function FoodPOS() {
   }
 
   async function loadLocalMenu() {
-    const [cRes, iRes] = await Promise.all([
-      api.get("/api/menu/categories"),
-      api.get("/api/menu/items"),
-    ]);
-    setCategories(cRes.data);
-    setItems(iRes.data);
+    try {
+      const [cRes, iRes] = await Promise.all([
+        api.get("/api/menu/categories"),
+        api.get("/api/menu/items"),
+      ]);
+      setCategories(cRes.data);
+      setItems(iRes.data);
+      await offlineDb.saveMenuSnapshot({ categories: cRes.data, items: iRes.data, movaraSlug: null });
+    } catch {
+      const snapshot = await offlineDb.getMenuSnapshot();
+      if (snapshot) {
+        setCategories(snapshot.categories || []);
+        setItems(snapshot.items || []);
+        showToast("Offline — showing last saved menu", "info");
+      } else {
+        showToast("Offline and no saved menu yet on this device", "error");
+      }
+    }
   }
 
   const visibleItems = activeCat
@@ -178,9 +239,52 @@ export default function FoodPOS() {
   const packFeeAmount = parseFloat(packFee) || 0;
   const total = subtotal + convenienceFee + packFeeAmount;
 
+  function resetCartState() {
+    setCart([]);
+    setNotes("");
+    setPackFee("");
+    setShowPackInput(false);
+    setShowCartSheet(false);
+    offlineDb.clearCartDraft();
+  }
+
   async function charge() {
     if (cart.length === 0) return;
     setCharging(true);
+
+    const clientOrderId = crypto.randomUUID();
+    const requestPayload = {
+      orderType,
+      channel: "IN_STORE",
+      paymentMethod,
+      notes,
+      convenienceFee,
+      packFee: packFeeAmount,
+      clientOrderId,
+      items: cart.map(ci => ({
+        itemType: ci.itemType,
+        refId: movaraSlug ? null : ci.refId,
+        name: ci.name,
+        qty: ci.qty,
+        unitPrice: ci.unitPrice,
+        toGo: ci.toGo || false,
+        modifiers: ci.modifiers.map(m => ({
+          modifierOptionId: m.modifierOptionId,
+          name: m.name,
+          priceDelta: m.priceDelta,
+          qty: m.qty || 1,
+        })),
+      })),
+    };
+
+    // Record it locally FIRST — the order is durable on this device before any
+    // network call is attempted, so a lost connection never loses the order.
+    const localOrderNumber = await offlineDb.nextLocalOrderNumber();
+    await offlineDb.saveLocalOrder({
+      clientOrderId, localOrderNumber, requestPayload,
+      status: "pending_sync", createdAt: Date.now(),
+    });
+    await refreshPendingOrders();
 
     // Pre-open the print window NOW, while we're still inside the user-gesture.
     // Calling window.open() after an await breaks the gesture chain on mobile
@@ -192,35 +296,12 @@ export default function FoodPOS() {
     }
 
     try {
-      const res = await api.post("/api/orders", {
-        orderType,
-        channel: "IN_STORE",
-        paymentMethod,
-        notes,
-        convenienceFee,
-        packFee: packFeeAmount,
-        items: cart.map(ci => ({
-          itemType: ci.itemType,
-          refId: movaraSlug ? null : ci.refId,
-          name: ci.name,
-          qty: ci.qty,
-          unitPrice: ci.unitPrice,
-          toGo: ci.toGo || false,
-          modifiers: ci.modifiers.map(m => ({
-            modifierOptionId: m.modifierOptionId,
-            name: m.name,
-            priceDelta: m.priceDelta,
-            qty: m.qty || 1,
-          })),
-        })),
-      });
+      const res = await api.post("/api/orders", requestPayload);
       const order = res.data;
+      await offlineDb.markLocalOrderSynced(clientOrderId, order);
+      await refreshPendingOrders();
       setSuccessOrder(order);
-      setCart([]);
-      setNotes("");
-      setPackFee("");
-      setShowPackInput(false);
-      setShowCartSheet(false);
+      resetCartState();
 
       if (usbDevice) {
         try {
@@ -242,11 +323,56 @@ export default function FoodPOS() {
       printFoodOrderBrowser(order, orgName || "Restaurant", currency, printWin);
       printWin = null;
     } catch (e) {
-      if (printWin && !printWin.closed) printWin.close();
-      showToast(e.response?.data?.message || "Failed to place order", "error");
+      const networkFailure = !e.response;
+
+      if (networkFailure) {
+        // Order is already saved locally — never claim it synced when it didn't.
+        resetCartState();
+        setLocalOrderSaved({ clientOrderId, localOrderNumber, requestPayload });
+        await refreshPendingOrders();
+
+        const localOrderForPrint = {
+          orderNumber: localOrderNumber,
+          orderType: requestPayload.orderType,
+          paymentMethod: requestPayload.paymentMethod,
+          convenienceFee: requestPayload.convenienceFee,
+          packFee: requestPayload.packFee,
+          total,
+          notes: requestPayload.notes,
+          items: requestPayload.items.map(it => ({ ...it, subtotal: it.unitPrice * it.qty })),
+        };
+        try {
+          if (usbDevice) await printFoodOrderUSB(usbDevice, localOrderForPrint, orgName || "Restaurant", currency);
+          else if (btConn) await printFoodOrderBluetooth(btConn, localOrderForPrint, orgName || "Restaurant", currency);
+          else printFoodOrderBrowser(localOrderForPrint, orgName || "Restaurant", currency, printWin);
+          printWin = null;
+        } catch { showToast("Saved, but printing failed — retry from Pending orders", "info"); }
+      } else {
+        await offlineDb.markLocalOrderFailed(clientOrderId, e.response?.data?.message || "Failed to place order");
+        await refreshPendingOrders();
+        if (printWin && !printWin.closed) printWin.close();
+        showToast(e.response?.data?.message || "Failed to place order", "error");
+      }
     } finally {
       if (printWin && !printWin.closed) printWin.close();
       setCharging(false);
+    }
+  }
+
+  async function retrySync(localOrder) {
+    try {
+      const res = await api.post("/api/orders", localOrder.requestPayload);
+      await offlineDb.markLocalOrderSynced(localOrder.clientOrderId, res.data);
+      showToast(`${localOrder.localOrderNumber} synced as ${res.data.orderNumber}`, "success");
+    } catch (e) {
+      if (!e.response) {
+        showToast("Still offline — will stay saved on this device", "info");
+      } else {
+        await offlineDb.markLocalOrderFailed(localOrder.clientOrderId, e.response?.data?.message || "Sync failed");
+        showToast(e.response?.data?.message || "Sync failed", "error");
+      }
+    } finally {
+      await refreshPendingOrders();
     }
   }
 
@@ -279,16 +405,67 @@ export default function FoodPOS() {
             </button>
           ))}
           <div className="ml-auto flex items-center gap-2 shrink-0">
+            {!isOnline && (
+              <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-slate-700 text-white text-[10px] font-semibold uppercase tracking-wide">
+                <WifiOff size={11} /> Offline
+              </span>
+            )}
             {movaraSlug && (
               <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-[10px] font-semibold uppercase tracking-wide">
                 Movara
               </span>
             )}
+            <button onClick={() => setShowPendingPanel(v => !v)}
+              className={`relative p-1.5 rounded-lg transition-colors ${
+                pendingOrders.length > 0 ? "text-orange-500 hover:text-orange-600" : "text-slate-400 hover:text-blue-600"
+              }`}
+              title="Pending orders">
+              <CloudOff size={16} />
+              {pendingOrders.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                  {pendingOrders.length}
+                </span>
+              )}
+            </button>
             <button onClick={loadMenu} className="p-1.5 text-slate-400 hover:text-blue-600">
               <RefreshCw size={16} />
             </button>
           </div>
         </div>
+
+        {/* Pending orders panel */}
+        {showPendingPanel && (
+          <div className="shrink-0 border-b border-slate-200 dark:border-slate-700 bg-amber-50 dark:bg-amber-900/10 px-3 py-2 max-h-48 overflow-y-auto">
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-xs font-semibold text-amber-800 dark:text-amber-400 flex items-center gap-1">
+                <History size={13} /> Pending orders on this device
+              </p>
+              <button onClick={() => setShowPendingPanel(false)} className="text-amber-700 dark:text-amber-400">
+                <X size={14} />
+              </button>
+            </div>
+            {pendingOrders.length === 0 ? (
+              <p className="text-xs text-amber-700 dark:text-amber-500">Nothing pending — all orders synced.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {pendingOrders.map(o => (
+                  <div key={o.clientOrderId} className="flex items-center justify-between gap-2 bg-white dark:bg-slate-800 rounded-lg px-2.5 py-1.5 text-xs">
+                    <div>
+                      <span className="font-semibold text-slate-700 dark:text-slate-200">{o.localOrderNumber}</span>
+                      <span className={`ml-2 ${o.status === "failed" ? "text-red-500" : "text-amber-600"}`}>
+                        {o.status === "failed" ? "Failed — " + (o.lastError || "retry") : "Not yet synced"}
+                      </span>
+                    </div>
+                    <button onClick={() => retrySync(o)}
+                      className="px-2 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium">
+                      Retry sync
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Items grid */}
         <div className="flex-1 overflow-y-auto p-3 pb-24 md:pb-3 bg-slate-50 dark:bg-slate-900">
@@ -596,6 +773,26 @@ export default function FoodPOS() {
                 New Order
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Saved-locally modal — order could not reach the server; never claim it synced */}
+      {localOrderSaved && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 w-full max-w-xs text-center">
+            <div className="w-28 h-28 rounded-full bg-amber-500 text-white flex flex-col items-center justify-center mx-auto mb-3 gap-0.5">
+              <CloudOff size={22} />
+              <span className="text-xs font-black leading-tight text-center px-2 mt-1">{localOrderSaved.localOrderNumber}</span>
+            </div>
+            <h3 className="text-base font-bold text-amber-700 dark:text-amber-400 mb-1">Saved on this device</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+              Couldn't reach the server. This order is safely saved here and will sync automatically once you're back online — or tap Retry sync from the pending list.
+            </p>
+            <button onClick={() => setLocalOrderSaved(null)}
+              className="w-full py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm">
+              New Order
+            </button>
           </div>
         </div>
       )}
