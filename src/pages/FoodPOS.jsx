@@ -15,6 +15,9 @@ import {
   connectUSBPrinter, reconnectBluetoothPrinter, connectBluetoothPrinter,
   getAuthorizedUSBPrinters, getAuthorizedBTPrinters,
   isWebUSBSupported, isWebBluetoothSupported,
+  rememberUSBPrinter, rememberBTPrinter,
+  silentReconnectUSBPrinter, silentReconnectBTPrinter,
+  watchUSBDisconnect, watchBTDisconnect, installWakeLockKeepAlive,
 } from "../utils/thermalPrint";
 
 const PAYMENT_METHODS = ["CASH", "CARD", "TRANSFER", "POS_TERMINAL"];
@@ -95,6 +98,55 @@ export default function FoodPOS() {
     }
     printFoodOrderBrowser(order, orgName || "Restaurant", currency);
   }
+
+  // Keep the tablet screen awake while this page is open — screen sleep is the
+  // most common cause of the printer connection getting silently torn down.
+  useEffect(() => installWakeLockKeepAlive(), []);
+
+  // Silently restore a previously-connected printer (e.g. after a page refresh,
+  // or the tab waking back up) without requiring the user to reopen Setup Printer.
+  useEffect(() => {
+    (async () => {
+      const device = await silentReconnectUSBPrinter();
+      if (device) { setUsbDevice(device); return; }
+      const conn = await silentReconnectBTPrinter();
+      if (conn) setBtConn(conn);
+    })();
+  }, []);
+
+  // Detect a real USB disconnect immediately (unplugged, power loss) instead of
+  // only finding out next time someone tries to print, and auto-retry reconnecting.
+  useEffect(() => {
+    if (!usbDevice) return;
+    return watchUSBDisconnect(async (device) => {
+      const same = device.vendorId === usbDevice.vendorId && device.productId === usbDevice.productId
+        && device.serialNumber === usbDevice.serialNumber;
+      if (!same) return;
+      setUsbDevice(null);
+      showToast("Printer disconnected — reconnecting…", "info");
+      for (const delay of [1000, 3000, 6000]) {
+        await new Promise((r) => setTimeout(r, delay));
+        const reconnected = await silentReconnectUSBPrinter();
+        if (reconnected) { setUsbDevice(reconnected); showToast("Printer reconnected"); return; }
+      }
+      showToast("Printer still disconnected — check the USB cable, or tap Setup Printer", "error");
+    });
+  }, [usbDevice]);
+
+  // Same treatment for Bluetooth.
+  useEffect(() => {
+    if (!btConn) return;
+    return watchBTDisconnect(btConn.device, async () => {
+      setBtConn(null);
+      showToast("Printer disconnected — reconnecting…", "info");
+      for (const delay of [1000, 3000, 6000]) {
+        await new Promise((r) => setTimeout(r, delay));
+        const reconnected = await silentReconnectBTPrinter();
+        if (reconnected) { setBtConn(reconnected); showToast("Printer reconnected"); return; }
+      }
+      showToast("Printer still disconnected — check Bluetooth, or tap Setup Printer", "error");
+    });
+  }, [btConn]);
 
   useEffect(() => { loadMenu(); }, []);
 
@@ -734,7 +786,10 @@ export default function FoodPOS() {
         <FoodPrinterSetupModal
           orgName={orgName || "Restaurant"}
           currency={currency}
-          onConnect={(usb, bt) => { if (usb) setUsbDevice(usb); if (bt) setBtConn(bt); }}
+          onConnect={(usb, bt) => {
+            if (usb) { setUsbDevice(usb); rememberUSBPrinter(usb); }
+            if (bt) { setBtConn(bt); rememberBTPrinter(bt.device); }
+          }}
           onClose={() => setShowPrinterSetup(false)}
         />
       )}

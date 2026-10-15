@@ -198,6 +198,115 @@ export async function printReceiptBluetooth(connection, receipt, orgName, curren
   }
 }
 
+// ── Reliability: persistence, auto-reconnect, disconnect detection ─────────
+// Printers on Android tablets drop out for three unrelated reasons: (1) the page
+// reloads/remounts and loses the in-memory device handle even though the printer
+// is still physically connected and still authorised, (2) the physical USB/BT
+// link actually drops (cable, power), (3) the tablet screen sleeps and Android
+// suspends the tab, tearing down the USB stack. These helpers address all three:
+// silently re-acquire already-authorised devices (no browser picker, no gesture
+// needed), detect a real disconnect immediately instead of failing silently at
+// the next print, and hold a screen wake lock while this page is open.
+
+const USB_PRINTER_KEY = "lumitech_usb_printer";
+const BT_PRINTER_KEY = "lumitech_bt_printer";
+
+export function rememberUSBPrinter(device) {
+  try {
+    localStorage.setItem(USB_PRINTER_KEY, JSON.stringify({
+      vendorId: device.vendorId, productId: device.productId, serialNumber: device.serialNumber || null,
+    }));
+  } catch (_) {}
+}
+
+export function forgetUSBPrinter() {
+  try { localStorage.removeItem(USB_PRINTER_KEY); } catch (_) {}
+}
+
+/** Re-acquires the last-connected USB printer with no browser picker — works as
+ *  long as the browser still has it in its authorised-devices list for this origin
+ *  (true for the same physical device being unplugged/replugged or the page reloading;
+ *  false if the user revoked the permission). Returns null if it can't. */
+export async function silentReconnectUSBPrinter() {
+  if (!isWebUSBSupported()) return null;
+  let saved;
+  try { saved = JSON.parse(localStorage.getItem(USB_PRINTER_KEY) || "null"); } catch { saved = null; }
+  if (!saved) return null;
+  const known = await getAuthorizedUSBPrinters();
+  return known.find((d) =>
+    d.vendorId === saved.vendorId && d.productId === saved.productId &&
+    (saved.serialNumber ? d.serialNumber === saved.serialNumber : true)
+  ) || null;
+}
+
+/** Fires onDisconnect(device) whenever any previously-authorised USB device
+ *  disconnects — callers should check whether it's the device they care about.
+ *  Returns an unsubscribe function. */
+export function watchUSBDisconnect(onDisconnect) {
+  if (!isWebUSBSupported()) return () => {};
+  const handler = (event) => onDisconnect(event.device);
+  navigator.usb.addEventListener("disconnect", handler);
+  return () => navigator.usb.removeEventListener("disconnect", handler);
+}
+
+export function rememberBTPrinter(device) {
+  try { localStorage.setItem(BT_PRINTER_KEY, JSON.stringify({ id: device.id })); } catch (_) {}
+}
+
+export function forgetBTPrinter() {
+  try { localStorage.removeItem(BT_PRINTER_KEY); } catch (_) {}
+}
+
+/** Re-connects to the last-known BT printer with no picker, if still authorised. */
+export async function silentReconnectBTPrinter() {
+  if (!isWebBluetoothSupported()) return null;
+  let saved;
+  try { saved = JSON.parse(localStorage.getItem(BT_PRINTER_KEY) || "null"); } catch { saved = null; }
+  if (!saved) return null;
+  const known = await getAuthorizedBTPrinters();
+  const device = known.find((d) => d.id === saved.id);
+  if (!device) return null;
+  try { return await reconnectBluetoothPrinter(device); } catch { return null; }
+}
+
+/** Attaches a 'gattserverdisconnected' listener to a connected BT device.
+ *  Returns an unsubscribe function. */
+export function watchBTDisconnect(device, onDisconnect) {
+  if (!device) return () => {};
+  const handler = () => onDisconnect();
+  device.addEventListener("gattserverdisconnected", handler);
+  return () => device.removeEventListener("gattserverdisconnected", handler);
+}
+
+// ── Screen Wake Lock ─────────────────────────────────────────────────────────
+// Prevents the tablet screen from sleeping (and the browser tab/USB stack from
+// being suspended by Android) while a POS page with a printer is open.
+
+let wakeLock = null;
+
+async function requestWakeLock() {
+  if (!("wakeLock" in navigator)) return null;
+  try { wakeLock = await navigator.wakeLock.request("screen"); return wakeLock; }
+  catch { return null; }
+}
+
+function releaseWakeLock() {
+  if (wakeLock) { try { wakeLock.release(); } catch (_) {} wakeLock = null; }
+}
+
+/** Requests a wake lock now and re-acquires it whenever the tab becomes visible
+ *  again (the browser auto-releases it whenever the tab is hidden). Returns a
+ *  cleanup function to call on unmount. */
+export function installWakeLockKeepAlive() {
+  requestWakeLock();
+  const onVisible = () => { if (document.visibilityState === "visible") requestWakeLock(); };
+  document.addEventListener("visibilitychange", onVisible);
+  return () => {
+    document.removeEventListener("visibilitychange", onVisible);
+    releaseWakeLock();
+  };
+}
+
 // ── ESC/POS command builder ────────────────────────────────────────────────
 
 function buildEscPos(receipt, orgName, currency = "NGN", locale = "en-NG") {

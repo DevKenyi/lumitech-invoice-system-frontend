@@ -18,12 +18,15 @@ import {
   connectBluetoothPrinter, reconnectBluetoothPrinter, printReceiptBluetooth,
   isWebUSBSupported, isWebBluetoothSupported,
   getAuthorizedUSBPrinters, getAuthorizedBTPrinters,
+  rememberUSBPrinter, rememberBTPrinter,
+  silentReconnectUSBPrinter, silentReconnectBTPrinter,
+  watchUSBDisconnect, watchBTDisconnect, installWakeLockKeepAlive,
 } from "../utils/thermalPrint";
 import { useOrg } from "../context/OrgContext";
 const PAYMENT_METHODS = ["CASH", "TRANSFER", "CARD", "POS_TERMINAL"];
 
 // ── Printer Setup Modal ───────────────────────────────────────────────────
-function PrinterSetupModal({ orgName, onClose }) {
+function PrinterSetupModal({ orgName, onClose, onConnect }) {
   const { currency, locale } = useOrg();
   const [usbDevice, setUsbDevice]     = useState(null);
   const [btConn, setBtConn]           = useState(null);
@@ -257,7 +260,7 @@ function PrinterSetupModal({ orgName, onClose }) {
         {/* Footer */}
         <div className="px-6 pb-6 flex items-center justify-between gap-3">
           <p className="text-xs text-slate-400">USB/BT requires Chrome or Edge</p>
-          <button onClick={onClose} disabled={isBusy}
+          <button onClick={() => { onConnect(usbDevice, btConn); onClose(); }} disabled={isBusy}
             className="px-5 py-2 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition disabled:opacity-40">
             {isConnected ? "Done" : "Cancel"}
           </button>
@@ -561,6 +564,55 @@ export default function POS() {
     }
     printReceiptBrowser(receipt, orgName, currency, locale);
   };
+
+  // Keep the tablet screen awake while this page is open — screen sleep is the
+  // most common cause of the printer connection getting silently torn down.
+  useEffect(() => installWakeLockKeepAlive(), []);
+
+  // Silently restore a previously-connected printer (e.g. after a page refresh,
+  // or the tab waking back up) without requiring the user to reopen Setup Printer.
+  useEffect(() => {
+    (async () => {
+      const device = await silentReconnectUSBPrinter();
+      if (device) { setUsbDevice(device); return; }
+      const conn = await silentReconnectBTPrinter();
+      if (conn) setBtConn(conn);
+    })();
+  }, []);
+
+  // Detect a real USB disconnect immediately (unplugged, power loss) instead of
+  // only finding out next time someone tries to print, and auto-retry reconnecting.
+  useEffect(() => {
+    if (!usbDevice) return;
+    return watchUSBDisconnect(async (device) => {
+      const same = device.vendorId === usbDevice.vendorId && device.productId === usbDevice.productId
+        && device.serialNumber === usbDevice.serialNumber;
+      if (!same) return;
+      setUsbDevice(null);
+      notify("Printer disconnected — reconnecting…", "info");
+      for (const delay of [1000, 3000, 6000]) {
+        await new Promise((r) => setTimeout(r, delay));
+        const reconnected = await silentReconnectUSBPrinter();
+        if (reconnected) { setUsbDevice(reconnected); notify("Printer reconnected"); return; }
+      }
+      notify("Printer still disconnected — check the USB cable, or tap Setup Printer", "error");
+    });
+  }, [usbDevice]);
+
+  // Same treatment for Bluetooth.
+  useEffect(() => {
+    if (!btConn) return;
+    return watchBTDisconnect(btConn.device, async () => {
+      setBtConn(null);
+      notify("Printer disconnected — reconnecting…", "info");
+      for (const delay of [1000, 3000, 6000]) {
+        await new Promise((r) => setTimeout(r, delay));
+        const reconnected = await silentReconnectBTPrinter();
+        if (reconnected) { setBtConn(reconnected); notify("Printer reconnected"); return; }
+      }
+      notify("Printer still disconnected — check Bluetooth, or tap Setup Printer", "error");
+    });
+  }, [btConn]);
 
   const downloadReceipt = (receipt) => {
     const date = new Date(receipt.saleDate || Date.now()).toLocaleString("en-NG", {
@@ -1210,6 +1262,10 @@ export default function POS() {
         <PrinterSetupModal
           orgName={orgName}
           onClose={() => setShowPrinterSetup(false)}
+          onConnect={(usb, bt) => {
+            if (usb) { setUsbDevice(usb); rememberUSBPrinter(usb); }
+            if (bt) { setBtConn(bt); rememberBTPrinter(bt.device); }
+          }}
         />
       )}
 
