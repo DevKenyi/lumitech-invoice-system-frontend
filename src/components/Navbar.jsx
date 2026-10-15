@@ -8,7 +8,7 @@ import {
   Info, SlidersHorizontal, Package, ShoppingCart, BarChart2,
   FileCheck, Repeat, Undo2, FileMinus, ClipboardCheck,
   Warehouse, Target, UserCog, GitBranch, BookMarked, TrendingDown, History,
-  Tag, ShoppingBag, UtensilsCrossed, Search, Gift, Monitor, Zap,
+  Tag, ShoppingBag, UtensilsCrossed, Search, Gift, Monitor, Zap, Wheat,
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import api, { getUserFromToken } from "../services/api";
@@ -447,6 +447,7 @@ function Navbar({ onClose }) {
     ...(navVisible("nav_food_pos")     ? [{ path: "/pos/food",     label: "Food POS",          icon: UtensilsCrossed, info: "Food & beverage ordering terminal" }] : []),
     ...(navVisible("nav_food_pos")     ? [{ path: "/my-fees",      label: "Fee Statement",     icon: Receipt,         info: "View and pay your outstanding convenience fees" }] : []),
     ...(navVisible("nav_menu")         ? [{ path: "/menu",         label: "Menu",              icon: Tag,             info: "Manage food menu categories and items" }] : []),
+    ...(navVisible("nav_ingredients")  ? [{ path: "/ingredients",  label: "Ingredients",       icon: Wheat,           info: "Manage ingredients, recipes and stock" }] : []),
     ...(navVisible("nav_orders")       ? [{ path: "/orders",       label: "Order Fulfillment", icon: ClipboardList,   info: "View and fulfil incoming orders" }] : []),
     ...(navVisible("nav_inventory")    ? [{ path: "/inventory",    label: "Inventory",         icon: Package,         info: "Manage products, stock and prices" }] : []),
     ...(navVisible("nav_sales_report") ? [{ path: "/sales/report", label: "Sales Reports",     icon: BarChart2,       info: "Revenue, transactions and performance" }] : []),

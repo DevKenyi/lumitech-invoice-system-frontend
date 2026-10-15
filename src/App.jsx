@@ -45,6 +45,7 @@ import AuditLogPage from "./pages/AuditLog";
 import TaxReport from "./pages/TaxReport";
 import BankReconciliation from "./pages/BankReconciliation";
 import Inventory from "./pages/Inventory";
+import IngredientManagement from "./pages/IngredientManagement";
 import POS from "./pages/POS";
 import SalesReport from "./pages/SalesReport";
 import Quotes from "./pages/Quotes";
@@ -681,6 +682,7 @@ function App() {
 
           {/* INVENTORY & POS */}
           <Route path="/inventory" element={<ProtectedRoute><Layout><Inventory /></Layout></ProtectedRoute>} />
+          <Route path="/ingredients" element={<ProtectedRoute><Layout><IngredientManagement /></Layout></ProtectedRoute>} />
           <Route path="/pos" element={<ProtectedRoute><Layout><POS /></Layout></ProtectedRoute>} />
           <Route path="/pos/food" element={<ProtectedRoute><Layout><FoodPOS /></Layout></ProtectedRoute>} />
           <Route path="/my-fees" element={<ProtectedRoute><Layout><MyFees /></Layout></ProtectedRoute>} />
