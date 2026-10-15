@@ -6,7 +6,7 @@ import ConfirmModal from "../components/ConfirmModal";
 import {
   UtensilsCrossed, Plus, Pencil, Trash2, X, Loader2,
   ToggleLeft, ToggleRight, Tag, ChevronRight, ImagePlus, Camera,
-  Upload, FileDown,
+  Upload, FileDown, ChefHat,
 } from "lucide-react";
 
 const fmt = (val, currency) =>
@@ -26,6 +26,7 @@ export default function MenuManagement() {
   const [catModal, setCatModal] = useState(null); // null | {mode, data}
   const [itemModal, setItemModal] = useState(null);
   const [modModal, setModModal] = useState(null);
+  const [recipeModal, setRecipeModal] = useState(null); // {itemId, itemName}
   const [deleteTarget, setDeleteTarget] = useState(null); // {type, id, name}
   const [csvUploading, setCsvUploading] = useState(false);
 
@@ -341,6 +342,11 @@ export default function MenuManagement() {
                           className="flex-1 flex items-center justify-center gap-1 text-xs py-1 rounded border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">
                           <Pencil size={12} /> Edit
                         </button>
+                        <button onClick={() => setRecipeModal({ itemId: item.id, itemName: item.name })}
+                          title="Recipe & stock deduction"
+                          className="p-1 rounded border border-slate-200 dark:border-slate-600 text-slate-400 hover:text-amber-600 hover:border-amber-300">
+                          <ChefHat size={14} />
+                        </button>
                         <button onClick={() => setDeleteTarget({ type: "item", id: item.id, name: item.name })}
                           className="p-1 rounded border border-slate-200 dark:border-slate-600 text-slate-400 hover:text-red-600 hover:border-red-300">
                           <Trash2 size={14} />
@@ -438,6 +444,16 @@ export default function MenuManagement() {
           currency={currency}
           onSave={saveModifier}
           onClose={() => setModModal(null)}
+        />
+      )}
+
+      {/* Recipe Modal */}
+      {recipeModal && (
+        <RecipeModal
+          itemId={recipeModal.itemId}
+          itemName={recipeModal.itemName}
+          onClose={() => setRecipeModal(null)}
+          showToast={showToast}
         />
       )}
 
@@ -729,6 +745,223 @@ function ModifierModal({ mode, data, currency, onSave, onClose }) {
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Recipe Modal ───────────────────────────────────────────────────────────────
+function RecipeModal({ itemId, itemName, onClose, showToast }) {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [ingredientOptions, setIngredientOptions] = useState([]);
+  const [hasRecipe, setHasRecipe] = useState(false);
+
+  const [yieldMode, setYieldMode] = useState("PER_SERVING");
+  const [batchServings, setBatchServings] = useState("");
+  const [active, setActive] = useState(true);
+  const [lines, setLines] = useState([{ ingredientId: "", quantity: "", unit: "", wastePercent: "0" }]);
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      try {
+        const [ingRes, recipeRes] = await Promise.all([
+          api.get("/api/ingredients"),
+          api.get(`/api/menu/items/${itemId}/recipe`).catch(err => {
+            if (err.response?.status === 404) return null;
+            throw err;
+          }),
+        ]);
+        setIngredientOptions(ingRes.data || []);
+        if (recipeRes) {
+          const r = recipeRes.data;
+          setHasRecipe(true);
+          setYieldMode(r.yieldMode);
+          setBatchServings(r.batchServings ?? "");
+          setActive(r.active);
+          setLines(r.ingredients.map(i => ({
+            ingredientId: i.ingredientId, quantity: i.quantity, unit: i.unit,
+            wastePercent: i.wastePercent ?? "0",
+          })));
+        }
+      } catch {
+        showToast("Failed to load recipe", "error");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [itemId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const setLine = (i, k, v) => setLines(prev => prev.map((l, idx) => idx === i ? { ...l, [k]: v } : l));
+  const addLine = () => setLines(prev => [...prev, { ingredientId: "", quantity: "", unit: "", wastePercent: "0" }]);
+  const removeLine = (i) => setLines(prev => prev.filter((_, idx) => idx !== i));
+
+  const onPickIngredient = (i, ingredientId) => {
+    const ing = ingredientOptions.find(o => o.id === ingredientId);
+    setLines(prev => prev.map((l, idx) => idx === i
+      ? { ...l, ingredientId, unit: l.unit || ing?.stockUnit || "" }
+      : l));
+  };
+
+  async function handleSave() {
+    if (yieldMode === "BATCH" && (!batchServings || Number(batchServings) <= 0)) {
+      showToast("Enter a positive number of servings per batch", "error"); return;
+    }
+    const validLines = lines.filter(l => l.ingredientId && l.quantity !== "" && l.unit.trim());
+    if (validLines.length === 0) {
+      showToast("Add at least one ingredient with a quantity and unit", "error"); return;
+    }
+    setSaving(true);
+    try {
+      await api.put(`/api/menu/items/${itemId}/recipe`, {
+        yieldMode,
+        batchServings: yieldMode === "BATCH" ? parseInt(batchServings, 10) : null,
+        active,
+        ingredients: validLines.map(l => ({
+          ingredientId: l.ingredientId,
+          quantity: parseFloat(l.quantity),
+          unit: l.unit.trim(),
+          wastePercent: parseFloat(l.wastePercent) || 0,
+        })),
+      });
+      showToast("Recipe saved — stock will now auto-deduct on sale");
+      onClose();
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to save recipe", "error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      await api.delete(`/api/menu/items/${itemId}/recipe`);
+      showToast("Recipe removed — this item will no longer deduct stock");
+      onClose();
+    } catch {
+      showToast("Failed to remove recipe", "error");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 w-full max-w-lg my-8">
+        <div className="flex items-center justify-between mb-1">
+          <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+            <ChefHat size={18} className="text-amber-600" /> Recipe
+          </h3>
+          <button onClick={onClose} className="p-1 rounded text-slate-400 hover:text-slate-600">
+            <X size={18} />
+          </button>
+        </div>
+        <p className="text-xs text-slate-400 mb-4">{itemName}</p>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 size={24} className="animate-spin text-amber-600" />
+          </div>
+        ) : ingredientOptions.length === 0 ? (
+          <p className="text-sm text-slate-500 py-8 text-center">
+            No ingredients in your catalog yet. Add ingredients first, then come back to build this recipe.
+          </p>
+        ) : (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium text-slate-500 mb-1 block">Yield</label>
+                <select value={yieldMode} onChange={e => setYieldMode(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 text-sm">
+                  <option value="PER_SERVING">Per serving</option>
+                  <option value="BATCH">Whole batch</option>
+                </select>
+              </div>
+              {yieldMode === "BATCH" && (
+                <div>
+                  <label className="text-xs font-medium text-slate-500 mb-1 block">Servings per batch</label>
+                  <input type="number" min="1" step="1" value={batchServings}
+                    onChange={e => setBatchServings(e.target.value)}
+                    placeholder="e.g. 10"
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 text-sm" />
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-slate-400">
+              {yieldMode === "BATCH"
+                ? "Enter quantities for the whole batch — we'll divide by servings to get the per-serving deduction."
+                : "Enter quantities for one serving of this item."}
+            </p>
+
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-xs font-medium text-slate-500">Ingredients</label>
+                <button type="button" onClick={addLine}
+                  className="text-xs text-amber-600 hover:text-amber-700 flex items-center gap-1">
+                  <Plus size={12} /> Add ingredient
+                </button>
+              </div>
+              <div className="space-y-2">
+                {lines.map((l, i) => (
+                  <div key={i} className="flex gap-2 items-center">
+                    <select value={l.ingredientId} onChange={e => onPickIngredient(i, e.target.value)}
+                      className="flex-1 min-w-0 px-2 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 text-sm">
+                      <option value="">Select ingredient</option>
+                      {ingredientOptions.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                    </select>
+                    <input type="number" step="0.001" min="0" value={l.quantity}
+                      onChange={e => setLine(i, "quantity", e.target.value)}
+                      placeholder="Qty"
+                      className="w-20 px-2 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 text-sm" />
+                    <input value={l.unit} onChange={e => setLine(i, "unit", e.target.value)}
+                      placeholder="unit"
+                      className="w-16 px-2 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 text-sm" />
+                    <input type="number" step="0.1" min="0" max="100" value={l.wastePercent}
+                      onChange={e => setLine(i, "wastePercent", e.target.value)}
+                      title="Waste %"
+                      placeholder="Waste %"
+                      className="w-20 px-2 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 text-sm" />
+                    <button type="button" onClick={() => removeLine(i)}
+                      className="text-slate-400 hover:text-red-600 shrink-0"><X size={16} /></button>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-slate-400 mt-2">
+                Unit must match the ingredient's stock unit, or be g/kg or ml/l (auto-converted). Waste % inflates the deduction to cover prep loss.
+              </p>
+            </div>
+
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={active} onChange={e => setActive(e.target.checked)}
+                className="w-4 h-4 rounded text-amber-600" />
+              <span className="text-sm text-slate-700 dark:text-slate-200">Active — deduct stock when this item sells</span>
+            </label>
+
+            <div className="flex gap-3 justify-between pt-2">
+              {hasRecipe ? (
+                <button type="button" onClick={handleDelete} disabled={deleting}
+                  className="px-4 py-2 rounded-lg border border-red-200 dark:border-red-700 text-red-600 text-sm font-medium flex items-center gap-2 disabled:opacity-50">
+                  {deleting && <Loader2 size={14} className="animate-spin" />}
+                  Remove Recipe
+                </button>
+              ) : <span />}
+              <div className="flex gap-3">
+                <button type="button" onClick={onClose}
+                  className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-sm">
+                  Cancel
+                </button>
+                <button type="button" onClick={handleSave} disabled={saving}
+                  className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium flex items-center gap-2 disabled:opacity-50">
+                  {saving && <Loader2 size={14} className="animate-spin" />}
+                  Save Recipe
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
