@@ -43,6 +43,7 @@ export default function FoodPOS() {
   const [btConn, setBtConn] = useState(null);
   const [showCartSheet, setShowCartSheet] = useState(false);
   const [movaraSlug, setMovaraSlug] = useState(null);
+  const [convenienceFeeFlatAmount, setConvenienceFeeFlatAmount] = useState(null);
   const [packFee, setPackFee] = useState("");
   const [showPackInput, setShowPackInput] = useState(false);
   const [pendingOrders, setPendingOrders] = useState([]);
@@ -104,6 +105,9 @@ export default function FoodPOS() {
       const orgRes = await api.get("/api/org");
       const vendorSlug = orgRes.data.movaraVendorSlug || null;
       setMovaraSlug(vendorSlug);
+      setConvenienceFeeFlatAmount(
+        orgRes.data.convenienceFeeFlatAmount != null ? parseFloat(orgRes.data.convenienceFeeFlatAmount) : null
+      );
 
       if (vendorSlug) {
         await loadMovaraMenu(vendorSlug);
@@ -235,7 +239,9 @@ export default function FoodPOS() {
   }
 
   const subtotal = cart.reduce((s, ci) => s + ci.unitPrice * ci.qty, 0);
-  const convenienceFee = Math.round(subtotal * 0.05 * 100) / 100;
+  const convenienceFee = convenienceFeeFlatAmount != null
+    ? convenienceFeeFlatAmount
+    : Math.round(subtotal * 0.05 * 100) / 100;
   const packFeeAmount = parseFloat(packFee) || 0;
   const total = subtotal + convenienceFee + packFeeAmount;
 
@@ -662,9 +668,9 @@ export default function FoodPOS() {
               <span>{fmt(subtotal, currency)}</span>
             </div>
           )}
-          {cart.length > 0 && (
+          {cart.length > 0 && convenienceFee > 0 && (
             <div className="flex justify-between items-center text-sm text-slate-500 dark:text-slate-400">
-              <span>✅ Convenience (5%)</span>
+              <span>✅ Convenience{convenienceFeeFlatAmount == null ? " (5%)" : ""}</span>
               <span>{fmt(convenienceFee, currency)}</span>
             </div>
           )}
