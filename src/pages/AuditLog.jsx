@@ -10,7 +10,7 @@ const ACTION_COLORS = {
   SENT:             "bg-amber-100 text-amber-700",
 };
 
-const ENTITY_TYPES = ["ALL", "INVOICE", "CLIENT", "PAYMENT", "EXPENSE"];
+const ENTITY_TYPES = ["ALL", "INVOICE", "CLIENT", "PAYMENT", "EXPENSE", "FEE_RATE"];
 
 function timeAgo(ts) {
   const diff = Math.floor((Date.now() - new Date(ts)) / 1000);

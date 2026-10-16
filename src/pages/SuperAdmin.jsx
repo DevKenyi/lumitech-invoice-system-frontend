@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import Toast from "../components/Toast";
 import ConfirmModal from "../components/ConfirmModal";
+import DateRangeFilter from "../components/DateRangeFilter";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, BarChart, Bar,
@@ -348,6 +349,7 @@ const TABS = [
   { id: "hardware",       label: "Hardware",       icon: Monitor },
   { id: "tips",          label: "Tips",           icon: Lightbulb },
   { id: "conv-fees",     label: "Conv. Fees",     icon: DollarSign },
+  { id: "fee-intel",     label: "Fee Intelligence", icon: TrendingUp },
 ];
 
 const FOLLOWUP_STATUS_LABEL = {
@@ -474,6 +476,18 @@ function SuperAdmin() {
   const [markingPaid, setMarkingPaid]     = useState(new Set());
   const [convFeeSearch, setConvFeeSearch] = useState("");
   const [convFeeDetail, setConvFeeDetail] = useState(null); // {orgId, orgName, date, orders, loading}
+
+  // ── Fee Intelligence ──
+  const [feeIntelRange, setFeeIntelRange] = useState({ range: "last30" });
+  const [feeOverview, setFeeOverview] = useState(null);
+  const [feeOrgs, setFeeOrgs] = useState(null);
+  const [feeOrgsPage, setFeeOrgsPage] = useState(0);
+  const [feeOrgsSort, setFeeOrgsSort] = useState("fees");
+  const [feeTrends, setFeeTrends] = useState(null);
+  const [feeExceptions, setFeeExceptions] = useState([]);
+  const [feeRecommendations, setFeeRecommendations] = useState([]);
+  const [feeIntelLoading, setFeeIntelLoading] = useState(false);
+  const [feeOrgDetail, setFeeOrgDetail] = useState(null); // {orgId, orgName, data, loading}
   const [pendingNotifs, setPendingNotifs] = useState([]);
   const [confirmingNotif, setConfirmingNotif] = useState(null);
   const [savingPricing, setSavingPricing] = useState(false);
@@ -571,6 +585,42 @@ function SuperAdmin() {
         .finally(() => setConvFeesLoading(false));
     }
   }, [tab, tipsLoaded, bmsLoaded, referralsLoaded, customBillingLoaded, hardwareLoaded]);
+
+  const feeRangeQuery = (r) => r.range === "custom" ? `range=custom&from=${r.from}&to=${r.to}` : `range=${r.range}`;
+
+  useEffect(() => {
+    if (tab !== "fee-intel") return;
+    setFeeIntelLoading(true);
+    const rq = feeRangeQuery(feeIntelRange);
+    Promise.all([
+      api.get(`/api/superadmin/fee-intelligence/overview?${rq}`),
+      api.get(`/api/superadmin/fee-intelligence/organisations?${rq}&sort=${feeOrgsSort}&page=${feeOrgsPage}&size=20`),
+      api.get(`/api/superadmin/fee-intelligence/trends?${rq}`),
+      api.get(`/api/superadmin/fee-intelligence/exceptions?${rq}`),
+      api.get(`/api/superadmin/fee-intelligence/recommendations?${rq}`),
+    ]).then(([ovRes, orgsRes, trendsRes, excRes, recRes]) => {
+      setFeeOverview(ovRes.data);
+      setFeeOrgs(orgsRes.data);
+      setFeeTrends(trendsRes.data);
+      setFeeExceptions(excRes.data ?? []);
+      setFeeRecommendations(recRes.data ?? []);
+    }).catch(() => showToast("Failed to load fee intelligence data.", "error"))
+      .finally(() => setFeeIntelLoading(false));
+  }, [tab, feeIntelRange, feeOrgsSort, feeOrgsPage]);
+
+  const openFeeOrgDetail = (orgId, orgName) => {
+    setFeeOrgDetail({ orgId, orgName, data: null, loading: true });
+    api.get(`/api/superadmin/fee-intelligence/organisations/${orgId}?${feeRangeQuery(feeIntelRange)}`)
+      .then(res => setFeeOrgDetail(prev => prev && ({ ...prev, data: res.data, loading: false })))
+      .catch(() => setFeeOrgDetail(prev => prev && ({ ...prev, loading: false })));
+  };
+
+  const dismissFeeRecommendation = async (key) => {
+    try {
+      await api.post(`/api/superadmin/fee-intelligence/recommendations/${encodeURIComponent(key)}/dismiss`, { reason: "" });
+      setFeeRecommendations(prev => prev.map(r => r.key === key ? { ...r, dismissed: true } : r));
+    } catch { showToast("Failed to dismiss recommendation.", "error"); }
+  };
 
   if (!isPlatformAdmin) return <Navigate to="/dashboard" replace />;
 
@@ -3780,6 +3830,306 @@ function SuperAdmin() {
           </div>
         </div>
       )}
+
+      {tab === "fee-intel" && (() => {
+        const fmtMoney = (v) => v == null ? "—" : Number(v).toLocaleString("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const activeRecs = feeRecommendations.filter(r => !r.dismissed);
+        const TREND_STYLE = {
+          UP: "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300",
+          DOWN: "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300",
+          NEW: "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300",
+          INACTIVE: "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400",
+          FLAT: "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400",
+        };
+        const RECON_STYLE = {
+          RECONCILED: "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300",
+          PARTIALLY_RECONCILED: "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
+          UNRECONCILED: "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300",
+          EXCEPTION: "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300",
+        };
+
+        return (
+          <div className="space-y-6">
+            <DateRangeFilter value={feeIntelRange} onChange={(r) => { setFeeIntelRange(r); setFeeOrgsPage(0); }} />
+
+            {/* KPI overview */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <StatCard label="Total Fees Generated" value={feeOverview ? `₦${fmtMoney(feeOverview.totalEarned)}` : "—"} icon={DollarSign} color="bg-blue-500" />
+              <StatCard label="Fees Received" value={feeOverview ? `₦${fmtMoney(feeOverview.totalCollected)}` : "—"} icon={CheckCircle} color="bg-emerald-500" />
+              <StatCard label="Outstanding Fees" value={feeOverview ? `₦${fmtMoney(feeOverview.totalOutstanding)}` : "—"} icon={AlertTriangle} color="bg-amber-500" />
+              <StatCard label="Orgs Generating Fees" value={feeOverview?.organisationsGeneratingFees ?? "—"} icon={Building2} color="bg-indigo-500" />
+              <StatCard label="Total Eligible Sales" value={feeOverview ? `₦${fmtMoney(feeOverview.eligibleSales)}` : "—"} icon={TrendingUp} color="bg-purple-500" />
+              <StatCard label="Effective Fee Rate" value={feeOverview?.effectiveFeeRatePercent != null ? `${feeOverview.effectiveFeeRatePercent.toFixed(2)}%` : "—"} icon={Tag} color="bg-pink-500" />
+              <StatCard label="Collection Rate" value={feeOverview?.collectionRatePercent != null ? `${feeOverview.collectionRatePercent.toFixed(1)}%` : "—"} icon={CheckSquare} color="bg-teal-500" />
+              <StatCard label="Reconciliation" value={feeOverview ? `${feeOverview.reconciledCount} ok / ${feeOverview.unreconciledCount + feeOverview.partiallyReconciledCount + feeOverview.exceptionCount} flagged` : "—"} icon={Clock} color="bg-slate-500" />
+            </div>
+
+            {/* Ask Lumi Insights */}
+            <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1 flex items-center gap-2">
+                <Lightbulb size={16} className="text-amber-500" /> Ask Lumi — Business Insights
+              </p>
+              <p className="text-xs text-slate-400 mb-4">Computed from real numbers, not AI-generated text — ask Lumi in chat to discuss any of these.</p>
+              {feeIntelLoading ? (
+                <div className="flex justify-center py-6"><Spinner /></div>
+              ) : activeRecs.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-6">No active recommendations — all clear for this period.</p>
+              ) : (
+                <div className="space-y-3">
+                  {activeRecs.map(r => (
+                    <div key={r.key} className="border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-800 dark:text-white">{r.title}</p>
+                          <p className="text-xs text-slate-500 mt-1">{r.metrics}</p>
+                          <p className="text-xs text-slate-400 mt-1">{r.reason}</p>
+                          <div className="flex items-center gap-2 mt-2 flex-wrap">
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">{r.period}</span>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300">{r.confidence}</span>
+                          </div>
+                          <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-2 font-medium">Next: {r.nextAction}</p>
+                        </div>
+                        <div className="flex flex-col gap-1.5 items-end shrink-0">
+                          {r.orgId && (
+                            <button onClick={() => openFeeOrgDetail(r.orgId, r.orgName)}
+                              className="text-xs text-blue-600 hover:text-blue-700 font-medium whitespace-nowrap">View org</button>
+                          )}
+                          <button onClick={() => dismissFeeRecommendation(r.key)}
+                            className="text-xs text-slate-400 hover:text-rose-600 whitespace-nowrap">Dismiss</button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Organisation Performance */}
+            <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <div className="flex items-center justify-between p-5 pb-4 flex-wrap gap-2">
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Organisation Performance</p>
+                <select value={feeOrgsSort} onChange={e => { setFeeOrgsSort(e.target.value); setFeeOrgsPage(0); }}
+                  className="text-xs border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1.5 bg-white dark:bg-slate-700 dark:text-white">
+                  <option value="fees">Highest fees generated</option>
+                  <option value="outstanding">Highest outstanding</option>
+                  <option value="sales">Highest sales</option>
+                  <option value="collectionRateAsc">Lowest collection rate</option>
+                  <option value="inactive">Longest inactive</option>
+                </select>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/60">
+                      {["Organisation", "Arrangement", "Sales", "Orders", "Avg Order", "Earned", "Received", "Outstanding", "Collection %", "Trend", "Status", ""].map(h => (
+                        <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                    {(feeOrgs?.content ?? []).map(row => (
+                      <tr key={row.orgId} className="hover:bg-slate-50 dark:hover:bg-slate-700/40">
+                        <td className="px-4 py-3 font-medium text-slate-800 dark:text-white whitespace-nowrap">{row.orgName}</td>
+                        <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{row.feeArrangement}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">₦{fmtMoney(row.eligibleSales)}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">{row.totalOrders}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">₦{fmtMoney(row.avgOrderValue)}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">₦{fmtMoney(row.feesEarned)}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-emerald-600 dark:text-emerald-400">₦{fmtMoney(row.feesReceived)}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-amber-600 dark:text-amber-400">₦{fmtMoney(row.outstanding)}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">{row.collectionRatePercent != null ? `${row.collectionRatePercent.toFixed(0)}%` : "—"}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${TREND_STYLE[row.trend] || TREND_STYLE.FLAT}`}>{row.trend}</span>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${RECON_STYLE[row.reconciliationStatus] || RECON_STYLE.UNRECONCILED}`}>
+                            {row.reconciliationStatus.replace("_", " ")}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <button onClick={() => openFeeOrgDetail(row.orgId, row.orgName)}
+                            className="text-xs text-blue-600 hover:text-blue-700 font-medium">View</button>
+                        </td>
+                      </tr>
+                    ))}
+                    {(feeOrgs?.content ?? []).length === 0 && (
+                      <tr><td colSpan={12} className="px-4 py-10 text-center text-slate-400 text-sm">
+                        {feeIntelLoading ? "Loading…" : "No fee-generating organisations in this period."}
+                      </td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              {feeOrgs && feeOrgs.totalPages > 1 && (
+                <div className="flex items-center justify-between p-4 border-t border-slate-100 dark:border-slate-700">
+                  <button disabled={feeOrgsPage === 0} onClick={() => setFeeOrgsPage(p => p - 1)}
+                    className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-600 disabled:opacity-40">Prev</button>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">Page {feeOrgsPage + 1} of {feeOrgs.totalPages}</span>
+                  <button disabled={feeOrgsPage + 1 >= feeOrgs.totalPages} onClick={() => setFeeOrgsPage(p => p + 1)}
+                    className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-600 disabled:opacity-40">Next</button>
+                </div>
+              )}
+            </div>
+
+            {/* Revenue Trends */}
+            <div className="grid md:grid-cols-2 gap-6">
+              <ChartCard title="Fees Generated vs Received — Monthly" loading={feeIntelLoading}>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={feeTrends?.monthlyEarnedVsCollected ?? []}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} width={70} />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="earned" name="Earned" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="collected" name="Collected" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartCard>
+              <ChartCard title="Revenue Contribution by Organisation" loading={feeIntelLoading}>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={feeTrends?.revenueByOrg ?? []} layout="vertical" margin={{ left: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis type="number" tick={{ fontSize: 11 }} />
+                    <YAxis type="category" dataKey="orgName" tick={{ fontSize: 10 }} width={110} />
+                    <Tooltip />
+                    <Bar dataKey="fees" fill="#6366f1" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartCard>
+              <ChartCard title="Collection Rate Trend" loading={feeIntelLoading}>
+                <ResponsiveContainer width="100%" height={220}>
+                  <AreaChart data={feeTrends?.collectionRateTrend ?? []}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} width={50} tickFormatter={v => `${v}%`} />
+                    <Tooltip formatter={v => `${Number(v).toFixed(1)}%`} />
+                    <Area type="monotone" dataKey="collectionRatePercent" name="Collection %" stroke="#10b981" fill="#10b98133" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </ChartCard>
+            </div>
+
+            {/* Reconciliation Exceptions */}
+            <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1">Reconciliation Exceptions</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mb-4">
+                Manually confirmed via the Conv. Fees tab — not yet verified against actual bank receipts.
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-100 dark:border-slate-700">
+                      {["Organisation", "Period", "Type", "Amount Due", "Days Outstanding", "Note"].map(h => (
+                        <th key={h} className="text-left px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                    {feeExceptions.map((e, i) => (
+                      <tr key={i}>
+                        <td className="px-3 py-2 whitespace-nowrap">{e.orgName}</td>
+                        <td className="px-3 py-2 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{e.periodDate}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${RECON_STYLE[e.type] || RECON_STYLE.UNRECONCILED}`}>
+                            {e.type.replace("_", " ")}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap">₦{fmtMoney(e.amountDue)}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">{e.daysOutstanding}d</td>
+                        <td className="px-3 py-2 text-xs text-slate-400 dark:text-slate-500">{e.note || "—"}</td>
+                      </tr>
+                    ))}
+                    {feeExceptions.length === 0 && (
+                      <tr><td colSpan={6} className="px-3 py-10 text-center text-slate-400 text-sm">
+                        {feeIntelLoading ? "Loading…" : "No reconciliation exceptions in this period."}
+                      </td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Fee Intelligence — organisation detail */}
+      {feeOrgDetail && (() => {
+        const fmtMoney = (v) => v == null ? "—" : Number(v).toLocaleString("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
+               onClick={() => setFeeOrgDetail(null)}>
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto"
+                 onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700">
+                <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">{feeOrgDetail.orgName}</h3>
+                <button onClick={() => setFeeOrgDetail(null)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="p-5">
+                {feeOrgDetail.loading ? (
+                  <div className="flex justify-center py-10"><Spinner /></div>
+                ) : !feeOrgDetail.data ? (
+                  <p className="text-sm text-slate-400 text-center py-10">Failed to load organisation detail.</p>
+                ) : (
+                  <div className="space-y-5">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{feeOrgDetail.data.feeArrangement}</p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div><p className="text-xs text-slate-400">Eligible Sales</p><p className="font-semibold text-slate-800 dark:text-white">₦{fmtMoney(feeOrgDetail.data.eligibleSales)}</p></div>
+                      <div><p className="text-xs text-slate-400">Earned</p><p className="font-semibold text-slate-800 dark:text-white">₦{fmtMoney(feeOrgDetail.data.feesEarned)}</p></div>
+                      <div><p className="text-xs text-slate-400">Received</p><p className="font-semibold text-emerald-600 dark:text-emerald-400">₦{fmtMoney(feeOrgDetail.data.feesReceived)}</p></div>
+                      <div><p className="text-xs text-slate-400">Outstanding</p><p className="font-semibold text-amber-600 dark:text-amber-400">₦{fmtMoney(feeOrgDetail.data.outstanding)}</p></div>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">Order Activity</p>
+                      <ResponsiveContainer width="100%" height={160}>
+                        <BarChart data={feeOrgDetail.data.dailyOrders}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                          <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                          <YAxis tick={{ fontSize: 10 }} />
+                          <Tooltip />
+                          <Bar dataKey="orderCount" name="Orders" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">Settlement History</p>
+                      <div className="space-y-1 max-h-48 overflow-y-auto">
+                        {feeOrgDetail.data.settlementHistory.length === 0 && (
+                          <p className="text-xs text-slate-400">No settlement records in this period.</p>
+                        )}
+                        {feeOrgDetail.data.settlementHistory.map((s, i) => (
+                          <div key={i} className="flex justify-between text-xs py-1.5 border-b border-slate-100 dark:border-slate-700">
+                            <span className="text-slate-600 dark:text-slate-300">{s.settlementDate}</span>
+                            <span className="text-slate-600 dark:text-slate-300">₦{fmtMoney(s.totalFees)}</span>
+                            <span className={s.paid ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}>
+                              {s.paid ? "Paid" : "Unpaid"}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    {feeOrgDetail.data.rateChangeHistory?.length > 0 && (
+                      <div>
+                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">Fee Rate Change History</p>
+                        <div className="space-y-1">
+                          {feeOrgDetail.data.rateChangeHistory.map((c, i) => (
+                            <div key={i} className="text-xs text-slate-500 dark:text-slate-400">
+                              {c.field}: {c.oldValue ?? "none"} → {c.newValue ?? "none"} by {c.changedBy} on {new Date(c.changedAt).toLocaleDateString()}
+                              {c.note && ` — "${c.note}"`}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Modals & toasts */}
       <Toast {...toast} onClose={() => setToast({ ...toast, visible: false })} />
