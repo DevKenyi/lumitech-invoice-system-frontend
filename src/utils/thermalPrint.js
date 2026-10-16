@@ -1,7 +1,11 @@
 /**
  * ThermalPrint — ESC/POS thermal printer support for LumiLedger POS
- * Supports: Browser Print (CSS 80mm), WebUSB (ESC/POS), Web Bluetooth (ESC/POS)
+ * Supports: Browser Print (CSS 80mm), WebUSB (ESC/POS), Web Bluetooth (ESC/POS),
+ * and native Android USB (ESC/POS, via the UsbPrinter Capacitor plugin — see
+ * nativeUsbPrinter.js — used instead of WebUSB when running as the native app).
  */
+import { nativeUsbPrintEnsuringPermission } from "./nativeUsbPrinter";
+export { isNativeAndroid } from "./nativeUsbPrinter";
 
 // ── Browser / CSS Print (works with ANY printer set as default) ─────────────
 
@@ -149,6 +153,18 @@ export async function printReceiptUSB(device, receipt, orgName, currency = "NGN"
   } finally {
     try { await device.close(); } catch (_) {}
   }
+}
+
+// ── Native Android USB ESC/POS ──────────────────────────────────────────────
+// Used instead of WebUSB when running inside the Capacitor native shell, where
+// a real UsbManager permission (persists across unplug/replug) is available.
+
+export async function printReceiptNativeUSB(receipt, orgName, currency = "NGN", locale = "en-NG") {
+  await nativeUsbPrintEnsuringPermission(buildEscPos(receipt, orgName, currency, locale));
+}
+
+export async function printFoodOrderNativeUSB(order, orgName, currency = "") {
+  await nativeUsbPrintEnsuringPermission(buildFoodEscPos(order, orgName, currency));
 }
 
 // ── Web Bluetooth ESC/POS ──────────────────────────────────────────────────

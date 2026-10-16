@@ -14,9 +14,9 @@ import Toast from "../components/Toast";
 import BarcodeScanner from "../components/BarcodeScanner";
 import {
   printReceiptBrowser,
-  connectUSBPrinter, printReceiptUSB,
+  connectUSBPrinter, printReceiptUSB, printReceiptNativeUSB,
   connectBluetoothPrinter, reconnectBluetoothPrinter, printReceiptBluetooth,
-  isWebUSBSupported, isWebBluetoothSupported,
+  isWebUSBSupported, isWebBluetoothSupported, isNativeAndroid,
   getAuthorizedUSBPrinters, getAuthorizedBTPrinters,
   rememberUSBPrinter, rememberBTPrinter,
   silentReconnectUSBPrinter, silentReconnectBTPrinter,
@@ -103,9 +103,10 @@ function PrinterSetupModal({ orgName, onClose, onConnect }) {
       items: [{ productName: "Test Item", quantity: 1, unitPrice: 5000, subtotal: 5000 }],
     };
     try {
-      if (usbDevice)   { await printReceiptUSB(usbDevice, testReceipt, orgName, currency, locale);    setStatus("Test sent to USB printer ✓"); }
-      else if (btConn) { await printReceiptBluetooth(btConn, testReceipt, orgName, currency, locale); setStatus("Test sent to Bluetooth printer ✓"); }
-      else             { printReceiptBrowser(testReceipt, orgName, currency, locale);                 setStatus("Browser print dialog opened ✓"); }
+      if (isNativeAndroid()) { await printReceiptNativeUSB(testReceipt, orgName, currency, locale);   setStatus("Test sent to USB printer ✓"); }
+      else if (usbDevice)    { await printReceiptUSB(usbDevice, testReceipt, orgName, currency, locale);    setStatus("Test sent to USB printer ✓"); }
+      else if (btConn)       { await printReceiptBluetooth(btConn, testReceipt, orgName, currency, locale); setStatus("Test sent to Bluetooth printer ✓"); }
+      else                   { printReceiptBrowser(testReceipt, orgName, currency, locale);                 setStatus("Browser print dialog opened ✓"); }
     } catch (e) {
       setError("Print error: " + e.message); setStatus("");
     } finally { setBusy(null); }
@@ -554,6 +555,10 @@ export default function POS() {
   });
 
   const handlePrint = async (receipt) => {
+    if (isNativeAndroid()) {
+      try { await printReceiptNativeUSB(receipt, orgName, currency, locale); notify("Printed to USB printer"); return; }
+      catch { notify("USB print failed, using browser print", "info"); }
+    }
     if (usbDevice) {
       try { await printReceiptUSB(usbDevice, receipt, orgName, currency, locale); notify("Printed to USB printer"); return; }
       catch { notify("USB print failed, using browser print", "info"); }

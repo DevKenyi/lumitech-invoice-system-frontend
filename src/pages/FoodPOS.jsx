@@ -11,10 +11,10 @@ import {
   WifiOff, CloudOff, History,
 } from "lucide-react";
 import {
-  printFoodOrderBrowser, printFoodOrderUSB, printFoodOrderBluetooth,
+  printFoodOrderBrowser, printFoodOrderUSB, printFoodOrderBluetooth, printFoodOrderNativeUSB,
   connectUSBPrinter, reconnectBluetoothPrinter, connectBluetoothPrinter,
   getAuthorizedUSBPrinters, getAuthorizedBTPrinters,
-  isWebUSBSupported, isWebBluetoothSupported,
+  isWebUSBSupported, isWebBluetoothSupported, isNativeAndroid,
   rememberUSBPrinter, rememberBTPrinter,
   silentReconnectUSBPrinter, silentReconnectBTPrinter,
   watchUSBDisconnect, watchBTDisconnect, installWakeLockKeepAlive,
@@ -88,6 +88,10 @@ export default function FoodPOS() {
   }, [cart, orderType, paymentMethod, notes, packFee]);
 
   async function handlePrint(order) {
+    if (isNativeAndroid()) {
+      try { await printFoodOrderNativeUSB(order, orgName || "Restaurant", currency); return; }
+      catch { showToast("USB print failed, using browser print", "info"); }
+    }
     if (usbDevice) {
       try { await printFoodOrderUSB(usbDevice, order, orgName || "Restaurant", currency); return; }
       catch { showToast("USB print failed, using browser print", "info"); }
@@ -361,6 +365,14 @@ export default function FoodPOS() {
       setSuccessOrder(order);
       resetCartState();
 
+      if (isNativeAndroid()) {
+        try {
+          if (printWin && !printWin.closed) printWin.close();
+          printWin = null;
+          await printFoodOrderNativeUSB(order, orgName || "Restaurant", currency);
+          return;
+        } catch { showToast("USB print failed, using browser print", "info"); }
+      }
       if (usbDevice) {
         try {
           if (printWin && !printWin.closed) printWin.close();
@@ -400,7 +412,8 @@ export default function FoodPOS() {
           items: requestPayload.items.map(it => ({ ...it, subtotal: it.unitPrice * it.qty })),
         };
         try {
-          if (usbDevice) await printFoodOrderUSB(usbDevice, localOrderForPrint, orgName || "Restaurant", currency);
+          if (isNativeAndroid()) await printFoodOrderNativeUSB(localOrderForPrint, orgName || "Restaurant", currency);
+          else if (usbDevice) await printFoodOrderUSB(usbDevice, localOrderForPrint, orgName || "Restaurant", currency);
           else if (btConn) await printFoodOrderBluetooth(btConn, localOrderForPrint, orgName || "Restaurant", currency);
           else printFoodOrderBrowser(localOrderForPrint, orgName || "Restaurant", currency, printWin);
           printWin = null;
@@ -1044,9 +1057,10 @@ function FoodPrinterSetupModal({ orgName, currency, onConnect, onClose }) {
       ],
     };
     try {
-      if (usbDevice)   { await printFoodOrderUSB(usbDevice, testOrder, orgName, currency); setStatus("Test sent to USB printer ✓"); }
-      else if (btConn) { await printFoodOrderBluetooth(btConn, testOrder, orgName, currency); setStatus("Test sent to BT printer ✓"); }
-      else             { printFoodOrderBrowser(testOrder, orgName, currency); setStatus("Browser print dialog opened ✓"); }
+      if (isNativeAndroid()) { await printFoodOrderNativeUSB(testOrder, orgName, currency); setStatus("Test sent to USB printer ✓"); }
+      else if (usbDevice)    { await printFoodOrderUSB(usbDevice, testOrder, orgName, currency); setStatus("Test sent to USB printer ✓"); }
+      else if (btConn)       { await printFoodOrderBluetooth(btConn, testOrder, orgName, currency); setStatus("Test sent to BT printer ✓"); }
+      else                   { printFoodOrderBrowser(testOrder, orgName, currency); setStatus("Browser print dialog opened ✓"); }
     } catch (e) { setError("Print error: " + e.message); setStatus(""); }
     finally { setBusy(null); }
   };
