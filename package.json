@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
     "@stomp/stompjs": "^7.3.0",
     "@zxing/browser": "^0.2.0",
     "@zxing/library": "^0.22.0",
@@ -24,6 +26,7 @@
     "recharts": "^3.8.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "^7.6.9",
     "@eslint/js": "^9.39.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
