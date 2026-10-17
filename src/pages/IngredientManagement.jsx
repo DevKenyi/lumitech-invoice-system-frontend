@@ -9,7 +9,7 @@ import { useOrg } from "../context/OrgContext";
 import {
   Plus, Search, Edit2, Trash2, Wheat, AlertTriangle, X, Check,
   RefreshCw, History, SlidersHorizontal, UtensilsCrossed, BarChart3,
-  Banknote, PackageSearch, TrendingDown,
+  Banknote, PackageSearch, TrendingDown, Truck, Trash,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -23,6 +23,25 @@ const inputCls = "w-full px-3 py-2.5 border border-slate-200 dark:border-slate-6
 const emptyForm = () => ({
   name: "", category: "", stockUnit: "kg", quantityOnHand: 0, lowStockThreshold: 0,
   reorderQuantity: "", purchaseCost: "", supplierName: "", storageLocation: "", active: true,
+  purchaseUnit: "", purchaseUnitQuantity: "",
+});
+
+// Units a stock-receipt line can be entered in for this ingredient: its own stock unit, its
+// configured purchase unit (e.g. "pack"), and the fixed SI pair UnitConversionService supports.
+const SI_PAIR = { g: "kg", kg: "g", ml: "l", l: "ml" };
+function receiptUnitOptions(ingredient) {
+  if (!ingredient) return [];
+  const opts = [ingredient.stockUnit];
+  if (ingredient.purchaseUnit && !opts.includes(ingredient.purchaseUnit)) opts.push(ingredient.purchaseUnit);
+  const pair = SI_PAIR[ingredient.stockUnit];
+  if (pair && !opts.includes(pair)) opts.push(pair);
+  return opts;
+}
+
+const emptyReceiptLine = () => ({ ingredientId: "", quantity: "", unit: "", unitCost: "" });
+const emptyReceiptForm = () => ({
+  supplierName: "", invoiceReference: "", receivedDate: new Date().toISOString().slice(0, 10),
+  notes: "", lines: [emptyReceiptLine()],
 });
 
 const MOVEMENT_STYLES = {
@@ -94,6 +113,13 @@ export default function IngredientManagement() {
   const [movementsLoading, setMovementsLoading] = useState(false);
   const [movementsIngredientId, setMovementsIngredientId] = useState(null);
 
+  // ── Purchases / Stock Receipts ──
+  const [receipts, setReceipts] = useState([]);
+  const [receiptsLoading, setReceiptsLoading] = useState(false);
+  const [showReceiptForm, setShowReceiptForm] = useState(false);
+  const [receiptForm, setReceiptForm] = useState(emptyReceiptForm());
+  const [savingReceipt, setSavingReceipt] = useState(false);
+
   // ── Reports ──
   const [reportRange, setReportRange] = useState({ range: "last30" });
   const [reportOverview, setReportOverview] = useState(null);
@@ -136,6 +162,7 @@ export default function IngredientManagement() {
       quantityOnHand: i.quantityOnHand, lowStockThreshold: i.lowStockThreshold,
       reorderQuantity: i.reorderQuantity ?? "", purchaseCost: i.purchaseCost ?? "",
       supplierName: i.supplierName || "", storageLocation: i.storageLocation || "", active: i.active,
+      purchaseUnit: i.purchaseUnit || "", purchaseUnitQuantity: i.purchaseUnitQuantity ?? "",
     });
     setShowForm(true);
   };
@@ -150,6 +177,8 @@ export default function IngredientManagement() {
         lowStockThreshold: parseFloat(form.lowStockThreshold) || 0,
         reorderQuantity: form.reorderQuantity !== "" ? parseFloat(form.reorderQuantity) : null,
         purchaseCost: form.purchaseCost !== "" ? parseFloat(form.purchaseCost) : null,
+        purchaseUnit: form.purchaseUnit.trim() || null,
+        purchaseUnitQuantity: form.purchaseUnitQuantity !== "" ? parseFloat(form.purchaseUnitQuantity) : null,
       };
       if (editing) {
         await api.put(`/api/ingredients/${editing}`, payload);
@@ -217,6 +246,56 @@ export default function IngredientManagement() {
     if (!movementsIngredientId && ingredients.length > 0) loadMovements(ingredients[0].id);
   }, [activeTab, ingredients]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const loadReceipts = async () => {
+    setReceiptsLoading(true);
+    try {
+      const res = await api.get("/api/ingredients/stock-receipts?size=50");
+      setReceipts(res.data.content || []);
+    } catch { notify("Failed to load purchase history", "error"); }
+    finally { setReceiptsLoading(false); }
+  };
+
+  useEffect(() => {
+    if (activeTab !== "Purchases") return;
+    loadReceipts();
+  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const openRecordPurchase = () => { setReceiptForm(emptyReceiptForm()); setShowReceiptForm(true); };
+
+  const setReceiptField = (k, v) => setReceiptForm(f => ({ ...f, [k]: v }));
+  const setReceiptLine = (idx, k, v) => setReceiptForm(f => ({
+    ...f, lines: f.lines.map((l, i) => i === idx ? { ...l, [k]: v, ...(k === "ingredientId" ? { unit: "" } : {}) } : l),
+  }));
+  const addReceiptLine = () => setReceiptForm(f => ({ ...f, lines: [...f.lines, emptyReceiptLine()] }));
+  const removeReceiptLine = (idx) => setReceiptForm(f => ({ ...f, lines: f.lines.filter((_, i) => i !== idx) }));
+
+  const handleSaveReceipt = async () => {
+    const lines = receiptForm.lines.filter(l => l.ingredientId && l.quantity !== "");
+    if (lines.length === 0) { notify("Add at least one line with an ingredient and quantity", "error"); return; }
+    if (lines.some(l => !l.unit)) { notify("Pick a unit for every line", "error"); return; }
+    setSavingReceipt(true);
+    try {
+      await api.post("/api/ingredients/stock-receipts", {
+        supplierName: receiptForm.supplierName.trim() || null,
+        invoiceReference: receiptForm.invoiceReference.trim() || null,
+        receivedDate: receiptForm.receivedDate || null,
+        notes: receiptForm.notes.trim() || null,
+        lines: lines.map(l => ({
+          ingredientId: l.ingredientId,
+          quantity: parseFloat(l.quantity),
+          unit: l.unit,
+          unitCost: l.unitCost !== "" ? parseFloat(l.unitCost) : null,
+        })),
+      });
+      notify("Purchase recorded — stock updated");
+      setShowReceiptForm(false);
+      loadReceipts();
+      load();
+    } catch (e) {
+      notify(e.response?.data?.message || "Failed to record purchase", "error");
+    } finally { setSavingReceipt(false); }
+  };
+
   useEffect(() => {
     if (activeTab !== "Reports") return;
     const { from, to } = resolveRange(reportRange);
@@ -261,11 +340,17 @@ export default function IngredientManagement() {
               <Plus className="w-4 h-4" /> Add Ingredient
             </button>
           )}
+          {activeTab === "Purchases" && (
+            <button onClick={openRecordPurchase}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-600 text-white rounded-xl font-semibold text-sm hover:bg-amber-700 transition">
+              <Truck className="w-4 h-4" /> Record Purchase
+            </button>
+          )}
         </div>
       </div>
 
       <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl overflow-x-auto max-w-full w-fit">
-        {["Ingredients", "Movements", "Reports"].map(tab => (
+        {["Ingredients", "Purchases", "Movements", "Reports"].map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)}
             className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-semibold transition ${
               activeTab === tab
@@ -274,6 +359,7 @@ export default function IngredientManagement() {
             }`}>
             {tab === "Movements" && <History className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />}
             {tab === "Ingredients" && <Wheat className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />}
+            {tab === "Purchases" && <Truck className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />}
             {tab === "Reports" && <BarChart3 className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />}
             {tab}
           </button>
@@ -360,6 +446,48 @@ export default function IngredientManagement() {
                       </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+
+      {activeTab === "Purchases" && (
+        <>
+          {receiptsLoading ? (
+            <div className="text-center py-16 text-slate-400">Loading…</div>
+          ) : receipts.length === 0 ? (
+            <div className="text-center py-16">
+              <Truck className="w-12 h-12 text-slate-200 mx-auto mb-3" />
+              <p className="text-slate-500">No purchases recorded yet. Record one to track supplier deliveries.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-700">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 text-xs uppercase tracking-wide">
+                  <tr>
+                    {["Date", "Supplier", "Invoice Ref", "Lines", "Total Cost", "Recorded By"].map(h => (
+                      <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                  {receipts.map(r => {
+                    const total = (r.lines || []).reduce((s, l) => s + (l.lineTotal || 0), 0);
+                    return (
+                      <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
+                        <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{fmtDate(r.receivedDate)}</td>
+                        <td className="px-4 py-3 font-medium text-slate-800 dark:text-white">{r.supplierName || "—"}</td>
+                        <td className="px-4 py-3 text-slate-500">{r.invoiceReference || "—"}</td>
+                        <td className="px-4 py-3 text-slate-500">
+                          {(r.lines || []).map(l => `${l.ingredientName} (+${l.quantityInStockUnit} ${l.stockUnit})`).join(", ")}
+                        </td>
+                        <td className="px-4 py-3 font-semibold text-slate-800 dark:text-white">{total > 0 ? fmt(total) : "—"}</td>
+                        <td className="px-4 py-3 text-slate-500">{r.receivedBy || "—"}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -648,6 +776,26 @@ export default function IngredientManagement() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Purchase Unit</label>
+                  <input value={form.purchaseUnit} onChange={e => set("purchaseUnit", e.target.value)}
+                    placeholder="e.g. pack, carton" className={inputCls} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">
+                    {form.stockUnit}s per {form.purchaseUnit || "unit"}
+                  </label>
+                  <input type="number" value={form.purchaseUnitQuantity} onChange={e => set("purchaseUnitQuantity", e.target.value)}
+                    placeholder="e.g. 24" min="0" step="0.0001" className={inputCls} disabled={!form.purchaseUnit.trim()} />
+                </div>
+              </div>
+              {form.purchaseUnit.trim() && (
+                <p className="text-xs text-slate-400 -mt-2">
+                  Lets you record purchases in "{form.purchaseUnit}" on the Purchases tab — it'll convert to {form.stockUnit} automatically.
+                </p>
+              )}
+
               {editing && (
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" checked={form.active} onChange={e => set("active", e.target.checked)}
@@ -704,6 +852,94 @@ export default function IngredientManagement() {
                 {adjusting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                 Apply
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Record Purchase / Stock Receipt Modal */}
+      {showReceiptForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700">
+              <h2 className="font-bold text-slate-900 dark:text-white text-lg flex items-center gap-2">
+                <Truck className="w-5 h-5 text-amber-600" /> Record Purchase
+              </h2>
+              <button onClick={() => setShowReceiptForm(false)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
+                <X className="w-5 h-5 text-slate-400" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Supplier</label>
+                  <input value={receiptForm.supplierName} onChange={e => setReceiptField("supplierName", e.target.value)}
+                    placeholder="Optional" className={inputCls} autoFocus />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Invoice Reference</label>
+                  <input value={receiptForm.invoiceReference} onChange={e => setReceiptField("invoiceReference", e.target.value)}
+                    placeholder="Optional" className={inputCls} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Received Date</label>
+                  <input type="date" value={receiptForm.receivedDate} onChange={e => setReceiptField("receivedDate", e.target.value)}
+                    className={inputCls} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Notes</label>
+                  <input value={receiptForm.notes} onChange={e => setReceiptField("notes", e.target.value)}
+                    placeholder="Optional" className={inputCls} />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="block text-xs font-semibold text-slate-500">Lines Received</label>
+                {receiptForm.lines.map((line, idx) => {
+                  const ingredient = ingredients.find(i => i.id === line.ingredientId);
+                  const unitOptions = receiptUnitOptions(ingredient);
+                  return (
+                    <div key={idx} className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-2 items-start">
+                      <select value={line.ingredientId} onChange={e => setReceiptLine(idx, "ingredientId", e.target.value)}
+                        className={inputCls}>
+                        <option value="">Select ingredient</option>
+                        {ingredients.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+                      </select>
+                      <input type="number" value={line.quantity} onChange={e => setReceiptLine(idx, "quantity", e.target.value)}
+                        placeholder="Qty" min="0" step="0.0001" className={inputCls} />
+                      <select value={line.unit} onChange={e => setReceiptLine(idx, "unit", e.target.value)}
+                        disabled={!ingredient} className={inputCls}>
+                        <option value="">Unit</option>
+                        {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
+                      </select>
+                      <input type="number" value={line.unitCost} onChange={e => setReceiptLine(idx, "unitCost", e.target.value)}
+                        placeholder="Cost" min="0" step="0.01" className={inputCls} />
+                      <button onClick={() => removeReceiptLine(idx)} disabled={receiptForm.lines.length === 1}
+                        className="p-2.5 rounded-xl text-slate-300 hover:text-rose-500 hover:bg-rose-50 disabled:opacity-30 disabled:hover:bg-transparent transition">
+                        <Trash className="w-4 h-4" />
+                      </button>
+                    </div>
+                  );
+                })}
+                <button onClick={addReceiptLine}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-600 hover:text-amber-700 transition">
+                  <Plus className="w-3.5 h-3.5" /> Add Line
+                </button>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setShowReceiptForm(false)}
+                  className="flex-1 px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
+                  Cancel
+                </button>
+                <button onClick={handleSaveReceipt} disabled={savingReceipt}
+                  className="flex-1 px-4 py-2.5 bg-amber-600 text-white rounded-xl text-sm font-semibold hover:bg-amber-700 disabled:opacity-60 transition flex items-center justify-center gap-2">
+                  {savingReceipt ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  Record Purchase
+                </button>
+              </div>
             </div>
           </div>
         </div>
