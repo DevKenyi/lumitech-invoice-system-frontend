@@ -61,6 +61,55 @@ function MovementTypeBadge({ type }) {
   );
 }
 
+// Lets non-technical staff enter "1 full bag + half a bag" instead of pre-computing the kg
+// themselves — each row is a bag/container count x its size, summed into the real stock unit.
+function BagCalculator({ unit, onApply, onClose }) {
+  const [rows, setRows] = useState([{ count: "", size: "" }]);
+  const total = rows.reduce((sum, r) => {
+    const c = parseFloat(r.count), s = parseFloat(r.size);
+    return sum + (isNaN(c) || isNaN(s) ? 0 : c * s);
+  }, 0);
+  const setRow = (idx, k, v) => setRows(rs => rs.map((r, i) => i === idx ? { ...r, [k]: v } : r));
+  const addRow = () => setRows(rs => [...rs, { count: "", size: "" }]);
+  const removeRow = (idx) => setRows(rs => rs.filter((_, i) => i !== idx));
+
+  return (
+    <div className="mt-2 p-3 bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-xl space-y-2">
+      <p className="text-xs text-slate-500">How much do you have? Add a row per bag size — e.g. 1 bag of 50, plus half a bag of 25.</p>
+      {rows.map((r, idx) => (
+        <div key={idx} className="flex items-center gap-2">
+          <input type="number" value={r.count} onChange={e => setRow(idx, "count", e.target.value)}
+            placeholder="Count" min="0" step="0.1" className={`${inputCls} !py-1.5`} />
+          <span className="text-xs text-slate-400 shrink-0">bag(s) of</span>
+          <input type="number" value={r.size} onChange={e => setRow(idx, "size", e.target.value)}
+            placeholder={unit} min="0" step="0.01" className={`${inputCls} !py-1.5`} />
+          <span className="text-xs text-slate-400 shrink-0">{unit} each</span>
+          <button onClick={() => removeRow(idx)} disabled={rows.length === 1}
+            className="p-1 text-slate-300 hover:text-rose-500 disabled:opacity-30 transition">
+            <Trash className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      ))}
+      <div className="flex items-center justify-between pt-1">
+        <button onClick={addRow} className="text-xs font-semibold text-amber-600 hover:text-amber-700 inline-flex items-center gap-1">
+          <Plus className="w-3 h-3" /> Add another size
+        </button>
+        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">= {total} {unit}</p>
+      </div>
+      <div className="flex gap-2 pt-1">
+        <button onClick={onClose}
+          className="flex-1 px-3 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-semibold text-slate-500 hover:bg-slate-100 transition">
+          Cancel
+        </button>
+        <button onClick={() => onApply(total)}
+          className="flex-1 px-3 py-1.5 bg-amber-600 text-white rounded-lg text-xs font-semibold hover:bg-amber-700 transition">
+          Use This Total
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // Resolves a DateRangeFilter preset to actual {from, to} ISO dates — the ingredient reports
 // endpoints take explicit dates, no server-side preset resolution (unlike Fee Intelligence,
 // which has multiple consumers; this is a single page, so keeping it client-side is simpler).
@@ -104,6 +153,7 @@ export default function IngredientManagement() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm());
   const [saving, setSaving] = useState(false);
+  const [showCalc, setShowCalc] = useState(false);
 
   const [adjustTarget, setAdjustTarget] = useState(null); // { id, name, currentQty, unit }
   const [adjustQty, setAdjustQty] = useState("");
@@ -152,6 +202,7 @@ export default function IngredientManagement() {
   const openCreate = () => {
     setEditing(null);
     setForm(emptyForm());
+    setShowCalc(false);
     setShowForm(true);
   };
 
@@ -164,6 +215,7 @@ export default function IngredientManagement() {
       supplierName: i.supplierName || "", storageLocation: i.storageLocation || "", active: i.active,
       purchaseUnit: i.purchaseUnit || "", purchaseUnitQuantity: i.purchaseUnitQuantity ?? "",
     });
+    setShowCalc(false);
     setShowForm(true);
   };
 
@@ -736,12 +788,23 @@ export default function IngredientManagement() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1">
-                    {editing ? "Quantity on Hand" : "Initial Stock"}
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-slate-500">
+                      {editing ? "Quantity on Hand" : "Initial Stock"}
+                    </label>
+                    <button type="button" onClick={() => setShowCalc(v => !v)}
+                      className="text-xs font-semibold text-amber-600 hover:text-amber-700 transition">
+                      {showCalc ? "Hide calculator" : "Calculate from bags"}
+                    </button>
+                  </div>
                   <input type="number" value={form.quantityOnHand} onChange={e => set("quantityOnHand", e.target.value)}
                     min="0" step="0.01" className={inputCls} />
                   {editing && <p className="text-xs text-slate-400 mt-1">Editing this directly logs an ADJUSTMENT movement.</p>}
+                  {showCalc && (
+                    <BagCalculator unit={form.stockUnit}
+                      onApply={(total) => { set("quantityOnHand", total); setShowCalc(false); }}
+                      onClose={() => setShowCalc(false)} />
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1">Low Stock Alert Below</label>
