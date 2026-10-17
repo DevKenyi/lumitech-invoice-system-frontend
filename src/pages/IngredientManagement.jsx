@@ -44,6 +44,10 @@ const emptyReceiptForm = () => ({
   notes: "", lines: [emptyReceiptLine()],
 });
 
+const WASTE_REASONS = ["Spoilage", "Prep Loss", "Burnt/Cooking Error", "Dropped/Damaged", "Expired", "Other"];
+const emptyWasteLine = () => ({ ingredientId: "", quantity: "", unit: "" });
+const emptyWasteForm = () => ({ reason: WASTE_REASONS[0], notes: "", lines: [emptyWasteLine()] });
+
 const MOVEMENT_STYLES = {
   RESTOCK:            "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-700",
   RECIPE_CONSUMPTION: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-700",
@@ -168,6 +172,11 @@ export default function IngredientManagement() {
   const [showReceiptForm, setShowReceiptForm] = useState(false);
   const [receiptForm, setReceiptForm] = useState(emptyReceiptForm());
   const [savingReceipt, setSavingReceipt] = useState(false);
+
+  // ── Waste ──
+  const [showWasteForm, setShowWasteForm] = useState(false);
+  const [wasteForm, setWasteForm] = useState(emptyWasteForm());
+  const [savingWaste, setSavingWaste] = useState(false);
 
   // ── Reports ──
   const [reportRange, setReportRange] = useState({ range: "last30" });
@@ -347,6 +356,39 @@ export default function IngredientManagement() {
     } finally { setSavingReceipt(false); }
   };
 
+  const openRecordWaste = () => { setWasteForm(emptyWasteForm()); setShowWasteForm(true); };
+
+  const setWasteField = (k, v) => setWasteForm(f => ({ ...f, [k]: v }));
+  const setWasteLine = (idx, k, v) => setWasteForm(f => ({
+    ...f, lines: f.lines.map((l, i) => i === idx ? { ...l, [k]: v, ...(k === "ingredientId" ? { unit: "" } : {}) } : l),
+  }));
+  const addWasteLine = () => setWasteForm(f => ({ ...f, lines: [...f.lines, emptyWasteLine()] }));
+  const removeWasteLine = (idx) => setWasteForm(f => ({ ...f, lines: f.lines.filter((_, i) => i !== idx) }));
+
+  const handleSaveWaste = async () => {
+    const lines = wasteForm.lines.filter(l => l.ingredientId && l.quantity !== "");
+    if (lines.length === 0) { notify("Add at least one line with an ingredient and quantity", "error"); return; }
+    if (lines.some(l => !l.unit)) { notify("Pick a unit for every line", "error"); return; }
+    setSavingWaste(true);
+    try {
+      await api.post("/api/ingredients/waste", {
+        reason: wasteForm.reason,
+        notes: wasteForm.notes.trim() || null,
+        lines: lines.map(l => ({
+          ingredientId: l.ingredientId,
+          quantity: parseFloat(l.quantity),
+          unit: l.unit,
+        })),
+      });
+      notify("Waste recorded — stock updated");
+      setShowWasteForm(false);
+      load();
+      if (activeTab === "Movements" && movementsIngredientId) loadMovements(movementsIngredientId);
+    } catch (e) {
+      notify(e.response?.data?.message || "Failed to record waste", "error");
+    } finally { setSavingWaste(false); }
+  };
+
   useEffect(() => {
     if (activeTab !== "Reports") return;
     const { from, to } = resolveRange(reportRange);
@@ -386,10 +428,16 @@ export default function IngredientManagement() {
             <UtensilsCrossed className="w-4 h-4" /> Go to Menu
           </button>
           {activeTab === "Ingredients" && (
-            <button onClick={openCreate}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-600 text-white rounded-xl font-semibold text-sm hover:bg-amber-700 transition">
-              <Plus className="w-4 h-4" /> Add Ingredient
-            </button>
+            <>
+              <button onClick={openRecordWaste}
+                className="inline-flex items-center gap-2 px-3 py-2 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-700 rounded-xl font-semibold text-sm hover:bg-rose-100 dark:hover:bg-rose-900/30 transition">
+                <TrendingDown className="w-4 h-4" /> Record Waste
+              </button>
+              <button onClick={openCreate}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-600 text-white rounded-xl font-semibold text-sm hover:bg-amber-700 transition">
+                <Plus className="w-4 h-4" /> Add Ingredient
+              </button>
+            </>
           )}
           {activeTab === "Purchases" && (
             <button onClick={openRecordPurchase}
@@ -1000,6 +1048,81 @@ export default function IngredientManagement() {
                   className="flex-1 px-4 py-2.5 bg-amber-600 text-white rounded-xl text-sm font-semibold hover:bg-amber-700 disabled:opacity-60 transition flex items-center justify-center gap-2">
                   {savingReceipt ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                   Record Purchase
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Record Waste Modal */}
+      {showWasteForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700">
+              <h2 className="font-bold text-slate-900 dark:text-white text-lg flex items-center gap-2">
+                <TrendingDown className="w-5 h-5 text-rose-600" /> Record Waste
+              </h2>
+              <button onClick={() => setShowWasteForm(false)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
+                <X className="w-5 h-5 text-slate-400" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Reason</label>
+                  <select value={wasteForm.reason} onChange={e => setWasteField("reason", e.target.value)} className={inputCls}>
+                    {WASTE_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Notes</label>
+                  <input value={wasteForm.notes} onChange={e => setWasteField("notes", e.target.value)}
+                    placeholder="Optional" className={inputCls} />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="block text-xs font-semibold text-slate-500">Ingredients Lost</label>
+                {wasteForm.lines.map((line, idx) => {
+                  const ingredient = ingredients.find(i => i.id === line.ingredientId);
+                  const unitOptions = receiptUnitOptions(ingredient);
+                  return (
+                    <div key={idx} className="grid grid-cols-2 sm:grid-cols-[2fr_1fr_1fr_auto] gap-2 items-start border border-slate-100 dark:border-slate-700 rounded-xl p-3 sm:border-0 sm:p-0">
+                      <select value={line.ingredientId} onChange={e => setWasteLine(idx, "ingredientId", e.target.value)}
+                        className={`${inputCls} col-span-2 sm:col-span-1`}>
+                        <option value="">Select ingredient</option>
+                        {ingredients.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+                      </select>
+                      <input type="number" value={line.quantity} onChange={e => setWasteLine(idx, "quantity", e.target.value)}
+                        placeholder="Qty" min="0" step="0.0001" className={inputCls} />
+                      <select value={line.unit} onChange={e => setWasteLine(idx, "unit", e.target.value)}
+                        disabled={!ingredient} className={inputCls}>
+                        <option value="">Unit</option>
+                        {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
+                      </select>
+                      <button onClick={() => removeWasteLine(idx)} disabled={wasteForm.lines.length === 1}
+                        className="w-full sm:w-auto h-full flex items-center justify-center gap-1.5 p-2.5 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 disabled:opacity-30 disabled:hover:bg-transparent transition">
+                        <Trash className="w-4 h-4" /><span className="text-xs font-semibold sm:hidden">Remove line</span>
+                      </button>
+                    </div>
+                  );
+                })}
+                <button onClick={addWasteLine}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-600 hover:text-rose-700 transition">
+                  <Plus className="w-3.5 h-3.5" /> Add Line
+                </button>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setShowWasteForm(false)}
+                  className="flex-1 px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
+                  Cancel
+                </button>
+                <button onClick={handleSaveWaste} disabled={savingWaste}
+                  className="flex-1 px-4 py-2.5 bg-rose-600 text-white rounded-xl text-sm font-semibold hover:bg-rose-700 disabled:opacity-60 transition flex items-center justify-center gap-2">
+                  {savingWaste ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  Record Waste
                 </button>
               </div>
             </div>
