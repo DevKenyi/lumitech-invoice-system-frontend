@@ -830,6 +830,27 @@ function RecipeModal({ itemId, itemName, onClose, showToast }) {
   const addLine = () => setLines(prev => [...prev, { ingredientId: "", quantity: "", unit: "", wastePercent: "0" }]);
   const removeLine = (i) => setLines(prev => prev.filter((_, idx) => idx !== i));
 
+  // Plain-language confirmation of what a line actually means once there's enough to compute
+  // it — e.g. "1 kg of Rice makes 20 portions (0.05 kg per portion)" — so staff can check their
+  // numbers make sense before saving, instead of trusting an abstract "servings" divisor blindly.
+  const lineMeaning = (line) => {
+    const ing = ingredientOptions.find(o => o.id === line.ingredientId);
+    const qty = parseFloat(line.quantity);
+    if (!ing || line.quantity === "" || !line.unit.trim() || isNaN(qty) || qty <= 0) return null;
+
+    const fmtQty = (n) => {
+      const rounded = Math.round(n * 10000) / 10000;
+      return rounded.toString();
+    };
+
+    if (yieldMode === "BATCH") {
+      const servings = parseInt(batchServings, 10);
+      if (!servings || servings <= 0) return null;
+      return `→ ${fmtQty(qty)} ${line.unit} of ${ing.name} makes ${servings} portion${servings === 1 ? "" : "s"} (${fmtQty(qty / servings)} ${line.unit} per portion)`;
+    }
+    return `→ ${fmtQty(qty)} ${line.unit} of ${ing.name} per portion`;
+  };
+
   const onPickIngredient = (i, ingredientId) => {
     const ing = ingredientOptions.find(o => o.id === ingredientId);
     setLines(prev => prev.map((l, idx) => idx === i
@@ -967,18 +988,18 @@ function RecipeModal({ itemId, itemName, onClose, showToast }) {
               </div>
               {yieldMode === "BATCH" && (
                 <div>
-                  <label className="text-xs font-medium text-slate-500 mb-1 block">Servings per batch</label>
+                  <label className="text-xs font-medium text-slate-500 mb-1 block">Portions / Plates per Batch</label>
                   <input type="number" min="1" step="1" value={batchServings}
                     onChange={e => setBatchServings(e.target.value)}
-                    placeholder="e.g. 10"
+                    placeholder="e.g. 20 plates"
                     className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 text-sm" />
                 </div>
               )}
             </div>
             <p className="text-xs text-slate-400">
               {yieldMode === "BATCH"
-                ? "Enter quantities for the whole batch — we'll divide by servings to get the per-serving deduction."
-                : "Enter quantities for one serving of this item."}
+                ? "Enter how much of each ingredient went into the whole pot/batch — we'll divide by how many portions it made."
+                : "Enter how much of each ingredient goes into one plate/portion of this item."}
             </p>
 
             <div>
@@ -990,29 +1011,35 @@ function RecipeModal({ itemId, itemName, onClose, showToast }) {
                 </button>
               </div>
               <div className="space-y-2">
-                {lines.map((l, i) => (
-                  <div key={i} className="flex gap-2 items-center">
-                    <select value={l.ingredientId} onChange={e => onPickIngredient(i, e.target.value)}
-                      className="flex-1 min-w-0 px-2 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 text-sm">
-                      <option value="">Select ingredient</option>
-                      {ingredientOptions.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-                    </select>
-                    <input type="number" step="0.001" min="0" value={l.quantity}
-                      onChange={e => setLine(i, "quantity", e.target.value)}
-                      placeholder="Qty"
-                      className="w-20 px-2 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 text-sm" />
-                    <input value={l.unit} onChange={e => setLine(i, "unit", e.target.value)}
-                      placeholder="unit"
-                      className="w-16 px-2 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 text-sm" />
-                    <input type="number" step="0.1" min="0" max="100" value={l.wastePercent}
-                      onChange={e => setLine(i, "wastePercent", e.target.value)}
-                      title="Waste %"
-                      placeholder="Waste %"
-                      className="w-20 px-2 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 text-sm" />
-                    <button type="button" onClick={() => removeLine(i)}
-                      className="text-slate-400 hover:text-red-600 shrink-0"><X size={16} /></button>
-                  </div>
-                ))}
+                {lines.map((l, i) => {
+                  const meaning = lineMeaning(l);
+                  return (
+                    <div key={i}>
+                      <div className="flex gap-2 items-center">
+                        <select value={l.ingredientId} onChange={e => onPickIngredient(i, e.target.value)}
+                          className="flex-1 min-w-0 px-2 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 text-sm">
+                          <option value="">Select ingredient</option>
+                          {ingredientOptions.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                        </select>
+                        <input type="number" step="0.001" min="0" value={l.quantity}
+                          onChange={e => setLine(i, "quantity", e.target.value)}
+                          placeholder="Qty"
+                          className="w-20 px-2 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 text-sm" />
+                        <input value={l.unit} onChange={e => setLine(i, "unit", e.target.value)}
+                          placeholder="unit"
+                          className="w-16 px-2 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 text-sm" />
+                        <input type="number" step="0.1" min="0" max="100" value={l.wastePercent}
+                          onChange={e => setLine(i, "wastePercent", e.target.value)}
+                          title="Waste %"
+                          placeholder="Waste %"
+                          className="w-20 px-2 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 text-sm" />
+                        <button type="button" onClick={() => removeLine(i)}
+                          className="text-slate-400 hover:text-red-600 shrink-0"><X size={16} /></button>
+                      </div>
+                      {meaning && <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 ml-0.5">{meaning}</p>}
+                    </div>
+                  );
+                })}
               </div>
               <p className="text-xs text-slate-400 mt-2">
                 Unit must match the ingredient's stock unit, or be g/kg or ml/l (auto-converted). Waste % inflates the deduction to cover prep loss.
