@@ -77,13 +77,13 @@ function BagCalculator({ unit, onApply, onClose }) {
     <div className="mt-2 p-3 bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-xl space-y-2">
       <p className="text-xs text-slate-500">How much do you have? Add a row per bag size — e.g. 1 bag of 50, plus half a bag of 25.</p>
       {rows.map((r, idx) => (
-        <div key={idx} className="flex items-center gap-2">
+        <div key={idx} className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_auto] gap-2 items-center">
           <input type="number" value={r.count} onChange={e => setRow(idx, "count", e.target.value)}
-            placeholder="Count" min="0" step="0.1" className={`${inputCls} !py-1.5`} />
-          <span className="text-xs text-slate-400 shrink-0">bag(s) of</span>
+            placeholder="Count" min="0" step="0.1" className={`${inputCls} !py-1.5 !w-full`} />
+          <span className="text-xs text-slate-400 whitespace-nowrap">bag(s) of</span>
           <input type="number" value={r.size} onChange={e => setRow(idx, "size", e.target.value)}
-            placeholder={unit} min="0" step="0.01" className={`${inputCls} !py-1.5`} />
-          <span className="text-xs text-slate-400 shrink-0">{unit} each</span>
+            placeholder={unit} min="0" step="0.01" className={`${inputCls} !py-1.5 !w-full`} />
+          <span className="text-xs text-slate-400 whitespace-nowrap">{unit} each</span>
           <button onClick={() => removeRow(idx)} disabled={rows.length === 1}
             className="p-1 text-slate-300 hover:text-rose-500 disabled:opacity-30 transition">
             <Trash className="w-3.5 h-3.5" />
