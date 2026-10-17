@@ -6,7 +6,7 @@ import ConfirmModal from "../components/ConfirmModal";
 import {
   UtensilsCrossed, Plus, Pencil, Trash2, X, Loader2,
   ToggleLeft, ToggleRight, Tag, ChevronRight, ImagePlus, Camera,
-  Upload, FileDown, ChefHat,
+  Upload, FileDown, ChefHat, History,
 } from "lucide-react";
 
 const fmt = (val, currency) =>
@@ -752,11 +752,16 @@ function ModifierModal({ mode, data, currency, onSave, onClose }) {
 
 // ── Recipe Modal ───────────────────────────────────────────────────────────────
 function RecipeModal({ itemId, itemName, onClose, showToast }) {
+  const { fmtDate } = useOrg();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [ingredientOptions, setIngredientOptions] = useState([]);
   const [hasRecipe, setHasRecipe] = useState(false);
+
+  const [showHistory, setShowHistory] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const [yieldMode, setYieldMode] = useState("PER_SERVING");
   const [batchServings, setBatchServings] = useState("");
@@ -848,6 +853,20 @@ function RecipeModal({ itemId, itemName, onClose, showToast }) {
     }
   }
 
+  async function toggleHistory() {
+    if (showHistory) { setShowHistory(false); return; }
+    setShowHistory(true);
+    setHistoryLoading(true);
+    try {
+      const res = await api.get(`/api/menu/items/${itemId}/recipe/versions`);
+      setHistory(res.data || []);
+    } catch {
+      showToast("Failed to load recipe history", "error");
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
+
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 overflow-y-auto">
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 w-full max-w-lg my-8">
@@ -855,11 +874,50 @@ function RecipeModal({ itemId, itemName, onClose, showToast }) {
           <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
             <ChefHat size={18} className="text-amber-600" /> Recipe
           </h3>
-          <button onClick={onClose} className="p-1 rounded text-slate-400 hover:text-slate-600">
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-3">
+            {hasRecipe && (
+              <button onClick={toggleHistory}
+                className="text-xs font-semibold text-amber-600 hover:text-amber-700 inline-flex items-center gap-1">
+                <History size={14} /> {showHistory ? "Hide History" : "History"}
+              </button>
+            )}
+            <button onClick={onClose} className="p-1 rounded text-slate-400 hover:text-slate-600">
+              <X size={18} />
+            </button>
+          </div>
         </div>
         <p className="text-xs text-slate-400 mb-4">{itemName}</p>
+
+        {showHistory && (
+          <div className="mb-4 p-3 bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-xl max-h-60 overflow-y-auto space-y-3">
+            {historyLoading ? (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 size={18} className="animate-spin text-amber-600" />
+              </div>
+            ) : history.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-4">No history yet.</p>
+            ) : (
+              history.map((v) => (
+                <div key={v.versionNumber} className="text-xs border-b border-slate-200 dark:border-slate-700 last:border-0 pb-2 last:pb-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={`font-semibold ${v.current ? "text-amber-600" : "text-slate-600 dark:text-slate-300"}`}>
+                      v{v.versionNumber}{v.current ? " (current)" : ""}
+                    </span>
+                    <span className="text-slate-400">
+                      {fmtDate(v.effectiveFrom, { day: "2-digit", month: "short", year: "numeric" })}
+                      {" – "}
+                      {v.current ? "now" : fmtDate(v.effectiveTo, { day: "2-digit", month: "short", year: "numeric" })}
+                    </span>
+                  </div>
+                  <p className="text-slate-500 dark:text-slate-400">
+                    {v.ingredients.map(i => `${i.ingredientName} (${i.quantity} ${i.unit})`).join(", ")}
+                  </p>
+                  {v.changedBy && <p className="text-slate-400 mt-0.5">Changed by {v.changedBy}</p>}
+                </div>
+              ))
+            )}
+          </div>
+        )}
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
