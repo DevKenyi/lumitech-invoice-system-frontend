@@ -9,7 +9,7 @@ import {
   PhoneCall, Mail, Search, RefreshCw, Download, Copy, Link2, MessageSquare, RotateCcw,
   BookOpen, ExternalLink, Lightbulb, Plus, Edit2, Handshake, Gift,
   Tag, DollarSign, CheckSquare, Clock,
-  Monitor, Printer, ChevronRight, Eye, KeyRound,
+  Monitor, Printer, ChevronRight, Eye, KeyRound, FlaskConical,
 } from "lucide-react";
 import Toast from "../components/Toast";
 import ConfirmModal from "../components/ConfirmModal";
@@ -192,7 +192,7 @@ function BillingExemptModal({ org, onConfirm, onCancel, loading }) {
 }
 
 // ── Org row (All Organisations table) ─────────────────────────────────────────
-function OrgRow({ org, isOwnOrg, onSuspend, onUnsuspend, onDelete, onPlanChange, onBillingExempt, onRemoveBillingExempt, onGenerateApiKey }) {
+function OrgRow({ org, isOwnOrg, onSuspend, onUnsuspend, onDelete, onPlanChange, onBillingExempt, onRemoveBillingExempt, onToggleTestOrg, onGenerateApiKey }) {
   const [expanded, setExpanded] = useState(false);
   const [users, setUsers]       = useState(null);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -224,6 +224,11 @@ function OrgRow({ org, isOwnOrg, onSuspend, onUnsuspend, onDelete, onPlanChange,
                 {org.billingExempt && (
                   <span title={org.billingExemptNote || "Exempt from billing"} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300">
                     <Gift size={9} />Exempt
+                  </span>
+                )}
+                {org.testOrg && (
+                  <span title="Excluded from revenue/fee figures and org-count stats" className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">
+                    <FlaskConical size={9} />Test
                   </span>
                 )}
                 {org.hasExternalInvoiceApiKey && (
@@ -285,6 +290,17 @@ function OrgRow({ org, isOwnOrg, onSuspend, onUnsuspend, onDelete, onPlanChange,
               className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-700 rounded-lg hover:bg-indigo-100 transition">
               <KeyRound size={12} />{org.hasExternalInvoiceApiKey ? "Rotate Key" : "API Key"}
             </button>
+            {!isOwnOrg && !org.platformAdminOrg && (
+              <button onClick={() => onToggleTestOrg(org)}
+                title="Exclude this org's revenue/fees from platform figures without deleting any data"
+                className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg border transition ${
+                  org.testOrg
+                    ? "text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-700 hover:bg-amber-100"
+                    : "text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600"
+                }`}>
+                <FlaskConical size={12} />{org.testOrg ? "Unmark Test" : "Mark as Test"}
+              </button>
+            )}
             {isOwnOrg || org.platformAdminOrg ? (
               <span className="text-xs text-slate-400 italic px-2">{org.platformAdminOrg ? "Platform Admin" : "Your org"}</span>
             ) : isSuspended ? (
@@ -676,6 +692,17 @@ function SuperAdmin() {
       showToast(`${org.name} billing exemption removed`);
     } catch (err) {
       showToast(err.response?.data?.message || "Failed to remove billing exemption.", "error");
+    }
+  };
+
+  const doToggleTestOrg = async (org) => {
+    const next = !org.testOrg;
+    try {
+      await api.post(`/api/superadmin/organisations/${org.id}/test-org`, { testOrg: next });
+      setOrgs(prev => prev.map(o => o.id === org.id ? { ...o, testOrg: next } : o));
+      showToast(`${org.name} ${next ? "marked" : "unmarked"} as test org`);
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to update test org flag.", "error");
     }
   };
 
@@ -1327,6 +1354,7 @@ function SuperAdmin() {
                         onPlanChange={changePlan}
                         onBillingExempt={setBillingExemptTarget}
                         onRemoveBillingExempt={doRemoveBillingExempt}
+                        onToggleTestOrg={doToggleTestOrg}
                         onGenerateApiKey={doGenerateApiKey}
                       />
                     ))}
