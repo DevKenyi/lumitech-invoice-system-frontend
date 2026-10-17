@@ -84,7 +84,7 @@ export default function MenuManagement() {
       setCategories(cRes.data);
       setItems(iRes.data);
       setModifiers(mRes.data);
-      setMovaraEnabled(Boolean(orgRes.data.movaraEnabled && orgRes.data.movaraVendorSlug));
+      setMovaraEnabled(Boolean(orgRes.data.movaraVendorSlug));
     } catch { showToast("Failed to load menu", "error"); }
     finally { setLoading(false); }
   }

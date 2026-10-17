@@ -160,7 +160,7 @@ export default function FoodPOS() {
       // Check if this org has a Movara vendor slug configured
       const orgRes = await api.get("/api/org");
       const vendorSlug = orgRes.data.movaraVendorSlug || null;
-      const movaraActive = Boolean(orgRes.data.movaraEnabled && vendorSlug);
+      const movaraActive = Boolean(vendorSlug);
       setMovaraSlug(movaraActive ? vendorSlug : null);
       setConvenienceFeeFlatAmount(
         orgRes.data.convenienceFeeFlatAmount != null ? parseFloat(orgRes.data.convenienceFeeFlatAmount) : null
