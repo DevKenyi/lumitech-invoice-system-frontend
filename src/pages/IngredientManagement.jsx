@@ -4,11 +4,16 @@ import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import ConfirmModal from "../components/ConfirmModal";
 import Toast from "../components/Toast";
+import DateRangeFilter from "../components/DateRangeFilter";
 import { useOrg } from "../context/OrgContext";
 import {
   Plus, Search, Edit2, Trash2, Wheat, AlertTriangle, X, Check,
-  RefreshCw, History, SlidersHorizontal, UtensilsCrossed,
+  RefreshCw, History, SlidersHorizontal, UtensilsCrossed, BarChart3,
+  Banknote, PackageSearch, TrendingDown,
 } from "lucide-react";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from "recharts";
 
 const STOCK_UNITS = ["g", "kg", "ml", "l", "pcs", "pack", "bottle", "bag", "box"];
 const CATEGORIES = ["Grains", "Vegetables", "Meat", "Seafood", "Dairy", "Cooking Oil", "Spices", "Beverages", "Packaging", "Other"];
@@ -37,8 +42,30 @@ function MovementTypeBadge({ type }) {
   );
 }
 
+// Resolves a DateRangeFilter preset to actual {from, to} ISO dates — the ingredient reports
+// endpoints take explicit dates, no server-side preset resolution (unlike Fee Intelligence,
+// which has multiple consumers; this is a single page, so keeping it client-side is simpler).
+function resolveRange(r) {
+  const iso = (d) => d.toISOString().slice(0, 10);
+  const today = new Date();
+  if (r.range === "custom") return { from: r.from, to: r.to };
+  switch (r.range) {
+    case "today": return { from: iso(today), to: iso(today) };
+    case "yesterday": { const d = new Date(today); d.setDate(d.getDate() - 1); return { from: iso(d), to: iso(d) }; }
+    case "last7": { const d = new Date(today); d.setDate(d.getDate() - 6); return { from: iso(d), to: iso(today) }; }
+    case "thisMonth": { const d = new Date(today.getFullYear(), today.getMonth(), 1); return { from: iso(d), to: iso(today) }; }
+    case "lastMonth": {
+      const s = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      const e = new Date(today.getFullYear(), today.getMonth(), 0);
+      return { from: iso(s), to: iso(e) };
+    }
+    case "last30":
+    default: { const d = new Date(today); d.setDate(d.getDate() - 29); return { from: iso(d), to: iso(today) }; }
+  }
+}
+
 export default function IngredientManagement() {
-  const { fmtDate } = useOrg();
+  const { fmtDate, fmt } = useOrg();
   const navigate = useNavigate();
 
   const [dlg, setDlg] = useState({ visible: false, title: "", message: "", action: null });
@@ -66,6 +93,15 @@ export default function IngredientManagement() {
   const [movements, setMovements] = useState([]);
   const [movementsLoading, setMovementsLoading] = useState(false);
   const [movementsIngredientId, setMovementsIngredientId] = useState(null);
+
+  // ── Reports ──
+  const [reportRange, setReportRange] = useState({ range: "last30" });
+  const [reportOverview, setReportOverview] = useState(null);
+  const [reportLowStock, setReportLowStock] = useState([]);
+  const [reportConsumption, setReportConsumption] = useState([]);
+  const [reportWaste, setReportWaste] = useState([]);
+  const [reportFoodCosting, setReportFoodCosting] = useState([]);
+  const [reportsLoading, setReportsLoading] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -181,6 +217,26 @@ export default function IngredientManagement() {
     if (!movementsIngredientId && ingredients.length > 0) loadMovements(ingredients[0].id);
   }, [activeTab, ingredients]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (activeTab !== "Reports") return;
+    const { from, to } = resolveRange(reportRange);
+    setReportsLoading(true);
+    Promise.all([
+      api.get("/api/ingredients/reports/overview"),
+      api.get("/api/ingredients/reports/low-stock"),
+      api.get(`/api/ingredients/reports/consumption?from=${from}&to=${to}`),
+      api.get(`/api/ingredients/reports/waste?from=${from}&to=${to}`),
+      api.get("/api/ingredients/reports/food-costing"),
+    ]).then(([ovRes, lowRes, consRes, wasteRes, costRes]) => {
+      setReportOverview(ovRes.data);
+      setReportLowStock(lowRes.data ?? []);
+      setReportConsumption(consRes.data ?? []);
+      setReportWaste(wasteRes.data ?? []);
+      setReportFoodCosting(costRes.data ?? []);
+    }).catch(() => notify("Failed to load reports.", "error"))
+      .finally(() => setReportsLoading(false));
+  }, [activeTab, reportRange]);
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
       <Toast {...toast} onClose={() => setToast(t => ({ ...t, visible: false }))} />
@@ -209,7 +265,7 @@ export default function IngredientManagement() {
       </div>
 
       <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl overflow-x-auto max-w-full w-fit">
-        {["Ingredients", "Movements"].map(tab => (
+        {["Ingredients", "Movements", "Reports"].map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)}
             className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-semibold transition ${
               activeTab === tab
@@ -218,6 +274,7 @@ export default function IngredientManagement() {
             }`}>
             {tab === "Movements" && <History className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />}
             {tab === "Ingredients" && <Wheat className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />}
+            {tab === "Reports" && <BarChart3 className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />}
             {tab}
           </button>
         ))}
@@ -362,6 +419,158 @@ export default function IngredientManagement() {
             </div>
           )}
         </>
+      )}
+
+      {activeTab === "Reports" && (
+        <div className="space-y-6">
+          <DateRangeFilter value={reportRange} onChange={setReportRange} />
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+              <div className="flex items-center gap-2 text-slate-400 mb-2">
+                <Banknote className="w-4 h-4" /><span className="text-xs font-semibold uppercase">Inventory Value</span>
+              </div>
+              <p className="text-2xl font-bold text-slate-900 dark:text-white">{reportOverview ? fmt(reportOverview.totalInventoryValue) : "—"}</p>
+            </div>
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+              <div className="flex items-center gap-2 text-amber-500 mb-2">
+                <AlertTriangle className="w-4 h-4" /><span className="text-xs font-semibold uppercase">Low Stock</span>
+              </div>
+              <p className="text-2xl font-bold text-slate-900 dark:text-white">{reportOverview?.lowStockCount ?? "—"}</p>
+            </div>
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+              <div className="flex items-center gap-2 text-rose-500 mb-2">
+                <TrendingDown className="w-4 h-4" /><span className="text-xs font-semibold uppercase">Waste Cost (Month)</span>
+              </div>
+              <p className="text-2xl font-bold text-slate-900 dark:text-white">{reportOverview ? fmt(reportOverview.wasteCostThisMonth) : "—"}</p>
+            </div>
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+              <div className="flex items-center gap-2 text-blue-500 mb-2">
+                <PackageSearch className="w-4 h-4" /><span className="text-xs font-semibold uppercase">Ingredients Tracked</span>
+              </div>
+              <p className="text-2xl font-bold text-slate-900 dark:text-white">{reportOverview?.ingredientCount ?? "—"}</p>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-4">Low Stock</p>
+            {reportLowStock.length === 0 ? (
+              <p className="text-sm text-slate-400 text-center py-6">{reportsLoading ? "Loading…" : "Nothing low on stock right now."}</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-slate-500 dark:text-slate-400 uppercase">
+                      <th className="pb-2 pr-4">Ingredient</th><th className="pb-2 pr-4">Category</th>
+                      <th className="pb-2 pr-4">On Hand</th><th className="pb-2 pr-4">Threshold</th><th className="pb-2">% of Threshold</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                    {reportLowStock.map(r => (
+                      <tr key={r.ingredientId}>
+                        <td className="py-2 pr-4 font-medium text-slate-800 dark:text-white">{r.name}</td>
+                        <td className="py-2 pr-4 text-slate-500">{r.category || "—"}</td>
+                        <td className="py-2 pr-4">{r.quantityOnHand} {r.stockUnit}</td>
+                        <td className="py-2 pr-4 text-slate-500">{r.lowStockThreshold} {r.stockUnit}</td>
+                        <td className="py-2">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                            r.percentOfThreshold != null && r.percentOfThreshold < 50
+                              ? "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400"
+                              : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                          }`}>
+                            {r.percentOfThreshold != null ? `${r.percentOfThreshold.toFixed(0)}%` : "—"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-4">Top Ingredients by Usage</p>
+            {reportConsumption.length === 0 ? (
+              <p className="text-sm text-slate-400 text-center py-6">{reportsLoading ? "Loading…" : "No consumption recorded in this period."}</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={reportConsumption.slice(0, 10)} layout="vertical" margin={{ left: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis type="number" tick={{ fontSize: 11 }} />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={100} />
+                  <Tooltip formatter={(v) => fmt(v)} />
+                  <Bar dataKey="cost" fill="#d97706" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-4">Waste Report</p>
+            {reportWaste.length === 0 ? (
+              <p className="text-sm text-slate-400 text-center py-6">{reportsLoading ? "Loading…" : "No waste recorded in this period."}</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-slate-500 dark:text-slate-400 uppercase">
+                      <th className="pb-2 pr-4">Ingredient</th><th className="pb-2 pr-4">Quantity Wasted</th><th className="pb-2">Cost</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                    {reportWaste.map(r => (
+                      <tr key={r.ingredientId}>
+                        <td className="py-2 pr-4 font-medium text-slate-800 dark:text-white">{r.name}</td>
+                        <td className="py-2 pr-4">{r.quantity} {r.stockUnit}</td>
+                        <td className="py-2 text-rose-600 dark:text-rose-400 font-semibold">{fmt(r.cost)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1">Food Costing</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mb-4">Cost per serving vs menu price — worst margin shown first.</p>
+            {reportFoodCosting.length === 0 ? (
+              <p className="text-sm text-slate-400 text-center py-6">{reportsLoading ? "Loading…" : "No menu items have a recipe attached yet."}</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-slate-500 dark:text-slate-400 uppercase">
+                      <th className="pb-2 pr-4">Dish</th><th className="pb-2 pr-4">Cost/Serving</th>
+                      <th className="pb-2 pr-4">Price</th><th className="pb-2 pr-4">Food Cost %</th><th className="pb-2">Margin</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                    {reportFoodCosting.map(r => (
+                      <tr key={r.menuItemId}>
+                        <td className="py-2 pr-4 font-medium text-slate-800 dark:text-white">{r.menuItemName}</td>
+                        <td className="py-2 pr-4">{fmt(r.costPerServing)}</td>
+                        <td className="py-2 pr-4">{fmt(r.price)}</td>
+                        <td className="py-2 pr-4">{r.foodCostPercent != null ? `${r.foodCostPercent.toFixed(1)}%` : "—"}</td>
+                        <td className="py-2">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                            r.marginPercent == null ? "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400" :
+                            r.marginPercent < 50 ? "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400" :
+                            r.marginPercent < 65 ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" :
+                            "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                          }`}>
+                            {r.marginPercent != null ? `${r.marginPercent.toFixed(1)}%` : "—"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Add/Edit Ingredient Modal */}
