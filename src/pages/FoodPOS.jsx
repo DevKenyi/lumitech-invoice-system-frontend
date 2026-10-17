@@ -8,7 +8,7 @@ import {
   ShoppingCart, Plus, Minus, X, Loader2,
   UtensilsCrossed, ToggleLeft, ToggleRight, RefreshCw,
   Printer, Users, ShoppingBag, Package, Usb, Bluetooth, Wifi, CheckCircle,
-  WifiOff, CloudOff, History,
+  WifiOff, CloudOff, History, ShieldAlert, Mail, Receipt,
 } from "lucide-react";
 import {
   printFoodOrderBrowser, printFoodOrderUSB, printFoodOrderBluetooth, printFoodOrderNativeUSB,
@@ -28,7 +28,7 @@ const fmt = (val, currency) =>
 function uuid() { return Math.random().toString(36).slice(2) + Date.now(); }
 
 export default function FoodPOS() {
-  const { currency, orgName } = useOrg();
+  const { currency, orgName, fmtDate } = useOrg();
   const [categories, setCategories] = useState([]);
   const [items, setItems] = useState([]);
   const [activeCat, setActiveCat] = useState(null);
@@ -52,6 +52,12 @@ export default function FoodPOS() {
   const [pendingOrders, setPendingOrders] = useState([]);
   const [showPendingPanel, setShowPendingPanel] = useState(false);
   const [localOrderSaved, setLocalOrderSaved] = useState(null);
+  const [showRecentOrders, setShowRecentOrders] = useState(false);
+  const [recentOrders, setRecentOrders] = useState([]);
+  const [loadingRecentOrders, setLoadingRecentOrders] = useState(false);
+  const [voidModalOrder, setVoidModalOrder] = useState(null);
+  const [voidReason, setVoidReason] = useState("");
+  const [requestingVoid, setRequestingVoid] = useState(false);
   const isOnline = useOnlineStatus();
   const hydratedRef = useRef(false);
 
@@ -59,6 +65,34 @@ export default function FoodPOS() {
 
   async function refreshPendingOrders() {
     setPendingOrders(await offlineDb.listPendingOrders());
+  }
+
+  async function openRecentOrders() {
+    setShowRecentOrders(true);
+    setLoadingRecentOrders(true);
+    try {
+      const res = await api.get("/api/orders?page=0&size=20");
+      setRecentOrders(res.data.content || []);
+    } catch {
+      showToast("Failed to load recent orders", "error");
+    } finally {
+      setLoadingRecentOrders(false);
+    }
+  }
+
+  async function submitVoidRequest() {
+    if (!voidModalOrder || !voidReason.trim()) return;
+    setRequestingVoid(true);
+    try {
+      await api.post(`/api/orders/${voidModalOrder.id}/void-request`, { reason: voidReason.trim() });
+      showToast(`Void request sent — ${voidModalOrder.orderNumber} is pending owner approval`);
+      setVoidModalOrder(null);
+      setVoidReason("");
+    } catch (e) {
+      showToast(e.response?.data?.message || "Failed to submit void request", "error");
+    } finally {
+      setRequestingVoid(false);
+    }
   }
 
   // Restore an in-progress cart if the app was refreshed/crashed mid-order.
@@ -474,11 +508,56 @@ export default function FoodPOS() {
                 </span>
               )}
             </button>
+            <button onClick={openRecentOrders} className="p-1.5 text-slate-400 hover:text-blue-600" title="Recent orders">
+              <Receipt size={16} />
+            </button>
             <button onClick={loadMenu} className="p-1.5 text-slate-400 hover:text-blue-600">
               <RefreshCw size={16} />
             </button>
           </div>
         </div>
+
+        {/* Recent orders panel — lets a cashier request a void on an already-charged order
+            right from the till, instead of needing to go find Order Fulfillment. */}
+        {showRecentOrders && (
+          <div className="shrink-0 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 max-h-56 overflow-y-auto">
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1">
+                <Receipt size={13} /> Recent Orders
+              </p>
+              <button onClick={() => setShowRecentOrders(false)} className="text-slate-500 dark:text-slate-400">
+                <X size={14} />
+              </button>
+            </div>
+            {loadingRecentOrders ? (
+              <div className="flex justify-center py-3"><Loader2 size={16} className="animate-spin text-slate-400" /></div>
+            ) : recentOrders.length === 0 ? (
+              <p className="text-xs text-slate-400">No recent orders.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {recentOrders.map(o => (
+                  <div key={o.id} className="flex items-center justify-between gap-2 bg-white dark:bg-slate-900 rounded-lg px-2.5 py-1.5 text-xs">
+                    <div>
+                      <span className="font-semibold text-slate-700 dark:text-slate-200">{o.orderNumber}</span>
+                      <span className="ml-2 text-slate-400">{fmtDate(o.createdAt, { hour: "2-digit", minute: "2-digit" })}</span>
+                      <span className="ml-2 text-slate-400">{fmt(o.total, currency)}</span>
+                      <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                        o.status === "cancelled" ? "bg-red-100 text-red-600" :
+                        o.status === "completed" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
+                      }`}>{o.status}</span>
+                    </div>
+                    {o.status === "completed" && (
+                      <button onClick={() => { setVoidModalOrder(o); setVoidReason(""); }}
+                        className="flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-500 hover:text-rose-600 hover:border-rose-200 font-medium">
+                        <ShieldAlert size={11} /> Request Void
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Pending orders panel */}
         {showPendingPanel && (
@@ -843,6 +922,51 @@ export default function FoodPOS() {
               className="w-full py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm">
               New Order
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Request Void modal — same owner-approval flow as Order Fulfillment, reachable right
+          from the till so a cashier doesn't have to go find another screen. */}
+      {voidModalOrder && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 max-w-md w-full p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-rose-100 dark:bg-rose-900/30 rounded-lg">
+                  <ShieldAlert className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+                </div>
+                <h3 className="text-base font-semibold text-slate-900 dark:text-white">Request Void</h3>
+              </div>
+              <button onClick={() => setVoidModalOrder(null)} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                <X size={16} />
+              </button>
+            </div>
+            <p className="text-sm text-slate-600 dark:text-slate-300 mb-1">
+              <span className="font-semibold text-slate-900 dark:text-white">{voidModalOrder.orderNumber}</span> — {fmt(voidModalOrder.total, currency)}
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 flex items-center gap-1.5">
+              <Mail size={12} /> The business owner will be emailed this request. Nothing changes until they approve it.
+            </p>
+            <div className="mb-5">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
+                Reason <span className="text-slate-400 font-normal">(required)</span>
+              </label>
+              <textarea
+                rows={3}
+                value={voidReason}
+                onChange={e => setVoidReason(e.target.value)}
+                placeholder="e.g., Customer left without paying"
+                className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-xl text-sm bg-white dark:bg-slate-700/50 dark:text-white dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 resize-none transition"
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setVoidModalOrder(null)} disabled={requestingVoid} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-600 transition">Cancel</button>
+              <button onClick={submitVoidRequest} disabled={requestingVoid || !voidReason.trim()} className="px-4 py-2 text-sm font-medium text-white bg-rose-600 rounded-xl hover:bg-rose-700 transition disabled:opacity-40 flex items-center gap-2">
+                {requestingVoid && <Loader2 size={14} className="animate-spin" />}
+                Send Request
+              </button>
+            </div>
           </div>
         </div>
       )}

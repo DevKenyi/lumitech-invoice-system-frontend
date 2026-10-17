@@ -5,6 +5,7 @@ import Toast from "../components/Toast";
 import {
   RefreshCw, X, Clock, Loader2, ChevronDown, Store, Wifi,
   Hash, ShoppingBag, RotateCcw, ChevronUp, Settings, Save, CheckCircle,
+  ShieldAlert, Mail,
 } from "lucide-react";
 
 const fmt = (val, currency) =>
@@ -194,6 +195,7 @@ export default function OrdersKDS() {
   const user = getUserFromToken();
   const role = user?.role || (Array.isArray(user?.roles) ? user.roles[0] : null);
   const isStaff = role === "STAFF" || role === "STAFF_EXPENSE";
+  const isOwner = role === "SUPER_ADMIN" || role === "PLATFORM_ADMIN";
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -206,7 +208,54 @@ export default function OrdersKDS() {
   const [cancelLoading, setCancelLoading] = useState(null);
   const [completeLoading, setCompleteLoading] = useState(null);
 
+  // ── Void requests (owner-approval for cancelling an already-completed order) ──
+  const [voidModalOrder, setVoidModalOrder] = useState(null); // order being requested
+  const [voidReason, setVoidReason] = useState("");
+  const [requestingVoid, setRequestingVoid] = useState(false);
+  const [pendingVoidRequests, setPendingVoidRequests] = useState([]);
+  const [showVoidPanel, setShowVoidPanel] = useState(false);
+  const [decidingVoidId, setDecidingVoidId] = useState(null);
+
   const showToast = (msg, type = "success") => setToast({ msg, type });
+
+  const loadPendingVoidRequests = async () => {
+    try {
+      const res = await api.get("/api/orders/void-requests/pending");
+      setPendingVoidRequests(res.data || []);
+    } catch { /* non-critical — panel just stays empty */ }
+  };
+
+  useEffect(() => {
+    if (!isOwner) return;
+    loadPendingVoidRequests();
+    const interval = setInterval(loadPendingVoidRequests, 30000);
+    return () => clearInterval(interval);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const submitVoidRequest = async () => {
+    if (!voidModalOrder || !voidReason.trim()) return;
+    setRequestingVoid(true);
+    try {
+      await api.post(`/api/orders/${voidModalOrder.id}/void-request`, { reason: voidReason.trim() });
+      showToast(`Void request sent — ${voidModalOrder.orderNumber} is pending owner approval`);
+      setVoidModalOrder(null);
+      setVoidReason("");
+    } catch (e) {
+      showToast(e.response?.data?.message || "Failed to submit void request", "error");
+    } finally { setRequestingVoid(false); }
+  };
+
+  const decideVoidRequest = async (req, approve) => {
+    setDecidingVoidId(req.id);
+    try {
+      await api.post(`/api/orders/void-requests/${req.id}/${approve ? "approve" : "reject"}`, {});
+      showToast(approve ? `${req.orderNumber} voided` : `Void request for ${req.orderNumber} rejected`);
+      setPendingVoidRequests(prev => prev.filter(r => r.id !== req.id));
+      if (approve) refreshWindow(orders.length);
+    } catch (e) {
+      showToast(e.response?.data?.message || "Failed to record decision", "error");
+    } finally { setDecidingVoidId(null); }
+  };
 
   const PAGE_SIZE = 50;
   const ordersRef = useRef([]);
@@ -320,6 +369,22 @@ export default function OrdersKDS() {
         <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Order Fulfillment</h1>
         <div className="flex items-center gap-2">
           {!isStaff && <RestaurantSettingsPanel />}
+          {isOwner && (
+            <button onClick={() => setShowVoidPanel(v => !v)}
+              className={`relative flex items-center gap-2 text-sm border px-3 py-1.5 rounded-lg transition-colors ${
+                pendingVoidRequests.length > 0
+                  ? "text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20"
+                  : "text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:text-amber-600"
+              }`}>
+              <ShieldAlert size={14} />
+              Void Requests
+              {pendingVoidRequests.length > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 bg-amber-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                  {pendingVoidRequests.length}
+                </span>
+              )}
+            </button>
+          )}
           <button onClick={() => refreshWindow(orders.length)} disabled={refreshing}
             className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 hover:text-blue-600 border border-slate-200 dark:border-slate-600 px-3 py-1.5 rounded-lg">
             <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
@@ -327,6 +392,48 @@ export default function OrdersKDS() {
           </button>
         </div>
       </div>
+
+      {/* Pending Void Requests panel (owner only) */}
+      {isOwner && showVoidPanel && (
+        <div className="mb-6 bg-white dark:bg-slate-800 rounded-xl border border-amber-200 dark:border-amber-800 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 bg-amber-50 dark:bg-amber-900/10 flex items-center justify-between">
+            <span className="font-semibold text-amber-800 dark:text-amber-400 text-sm flex items-center gap-2">
+              <ShieldAlert size={16} /> Pending Void Requests
+            </span>
+            <button onClick={() => setShowVoidPanel(false)} className="text-amber-700 dark:text-amber-400">
+              <X size={14} />
+            </button>
+          </div>
+          <div className="p-4 space-y-3">
+            {pendingVoidRequests.length === 0 ? (
+              <p className="text-xs text-slate-400">No pending void requests.</p>
+            ) : (
+              pendingVoidRequests.map(req => (
+                <div key={req.id} className="border border-slate-200 dark:border-slate-700 rounded-xl p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{req.orderNumber} — {fmt(req.orderTotal, currency)}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Requested by {req.requestedBy} · {timeAgo(req.requestedAt)}</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-300 mt-1 italic">"{req.reason}"</p>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <button onClick={() => decideVoidRequest(req, true)} disabled={decidingVoidId === req.id}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold disabled:opacity-50">
+                        {decidingVoidId === req.id ? <Loader2 size={12} className="animate-spin" /> : null}
+                        Approve Void
+                      </button>
+                      <button onClick={() => decideVoidRequest(req, false)} disabled={decidingVoidId === req.id}
+                        className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50">
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Stand Pool Grid */}
       <StandGrid onStandReturned={() => refreshWindow(orders.length)} />
@@ -522,6 +629,18 @@ export default function OrdersKDS() {
                     </button>
                   </div>
                 )}
+                {order.status === "completed" && (
+                  pendingVoidRequests.some(r => r.orderId === order.id) ? (
+                    <div className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-xs font-medium">
+                      <ShieldAlert size={12} /> Void request pending owner approval
+                    </div>
+                  ) : (
+                    <button onClick={() => { setVoidModalOrder(order); setVoidReason(""); }}
+                      className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-rose-600 hover:border-rose-200 text-xs font-medium transition">
+                      <ShieldAlert size={12} /> Request Void (customer didn't pay, etc.)
+                    </button>
+                  )
+                )}
               </div>
             );
           })}
@@ -534,6 +653,50 @@ export default function OrdersKDS() {
             className="flex items-center gap-2 px-6 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">
             <ChevronDown size={16} /> Load More
           </button>
+        </div>
+      )}
+
+      {/* Request Void Modal */}
+      {voidModalOrder && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 max-w-md w-full p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-rose-100 dark:bg-rose-900/30 rounded-lg">
+                  <ShieldAlert className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+                </div>
+                <h3 className="text-base font-semibold text-slate-900 dark:text-white">Request Void</h3>
+              </div>
+              <button onClick={() => setVoidModalOrder(null)} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                <X size={16} />
+              </button>
+            </div>
+            <p className="text-sm text-slate-600 dark:text-slate-300 mb-1">
+              <span className="font-semibold text-slate-900 dark:text-white">{voidModalOrder.orderNumber}</span> — {fmt(voidModalOrder.total, currency)}
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 flex items-center gap-1.5">
+              <Mail size={12} /> The business owner will be emailed this request. Nothing changes until they approve it.
+            </p>
+            <div className="mb-5">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
+                Reason <span className="text-slate-400 font-normal">(required)</span>
+              </label>
+              <textarea
+                rows={3}
+                value={voidReason}
+                onChange={e => setVoidReason(e.target.value)}
+                placeholder="e.g., Customer left without paying"
+                className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-xl text-sm bg-white dark:bg-slate-700/50 dark:text-white dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 resize-none transition"
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setVoidModalOrder(null)} disabled={requestingVoid} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-600 transition">Cancel</button>
+              <button onClick={submitVoidRequest} disabled={requestingVoid || !voidReason.trim()} className="px-4 py-2 text-sm font-medium text-white bg-rose-600 rounded-xl hover:bg-rose-700 transition disabled:opacity-40 flex items-center gap-2">
+                {requestingVoid && <Loader2 size={14} className="animate-spin" />}
+                Send Request
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
