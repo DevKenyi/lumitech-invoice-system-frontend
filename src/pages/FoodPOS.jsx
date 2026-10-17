@@ -160,19 +160,26 @@ export default function FoodPOS() {
       // Check if this org has a Movara vendor slug configured
       const orgRes = await api.get("/api/org");
       const vendorSlug = orgRes.data.movaraVendorSlug || null;
-      setMovaraSlug(vendorSlug);
+      const movaraActive = Boolean(orgRes.data.movaraEnabled && vendorSlug);
+      setMovaraSlug(movaraActive ? vendorSlug : null);
       setConvenienceFeeFlatAmount(
         orgRes.data.convenienceFeeFlatAmount != null ? parseFloat(orgRes.data.convenienceFeeFlatAmount) : null
       );
 
-      if (vendorSlug) {
-        await loadMovaraMenu(vendorSlug);
-      } else {
-        await loadLocalMenu();
+      // Pull Movara's latest menu into our own Menu Management first — Food POS always
+      // displays (and orders against) the local menu, never Movara's raw dish ids directly,
+      // so recipes attached in Menu Management actually fire for these sales. If the sync
+      // fails (Movara down), we just show whatever was synced last time.
+      if (movaraActive) {
+        try {
+          await api.post("/api/menu/movara-sync");
+        } catch {
+          showToast("Could not refresh from Movara — showing last synced menu", "info");
+        }
       }
+      await loadLocalMenu(movaraActive ? vendorSlug : null);
     } catch {
-      // Can't reach our own backend to even check Movara status — restore whichever
-      // menu (local or Movara) was last successfully cached on this device.
+      // Can't reach our own backend at all — restore whatever was last cached on this device.
       const snapshot = await offlineDb.getMenuSnapshot();
       if (snapshot) {
         setCategories(snapshot.categories || []);
@@ -187,38 +194,7 @@ export default function FoodPOS() {
     }
   }
 
-  async function loadMovaraMenu(slug) {
-    try {
-      const res = await fetch(
-        `https://api.movara.ng/http/menu/public?slug=${encodeURIComponent(slug)}`
-      );
-      if (!res.ok) throw new Error("Movara fetch failed");
-      const data = await res.json();
-
-      // Map Movara categories → local format
-      const mappedCategories = (data.categories || []).map(c => ({ id: c.id, name: c.name }));
-      // Map Movara dishes → local format
-      const mappedItems = (data.dishes || []).map(d => ({
-        id: d.id,
-        name: d.name,
-        price: d.price,
-        imageUrl: d.image_url || null,
-        available: d.is_available,
-        categoryId: d.category_id || null,
-        modifiers: [],
-      }));
-      setCategories(mappedCategories);
-      setItems(mappedItems);
-      await offlineDb.saveMenuSnapshot({ categories: mappedCategories, items: mappedItems, movaraSlug: slug });
-    } catch {
-      // Movara is down — fall back to local menu silently
-      showToast("Using local menu (Movara unavailable)", "info");
-      setMovaraSlug(null);
-      await loadLocalMenu();
-    }
-  }
-
-  async function loadLocalMenu() {
+  async function loadLocalMenu(slugForSnapshot = null) {
     try {
       const [cRes, iRes] = await Promise.all([
         api.get("/api/menu/categories"),
@@ -226,7 +202,7 @@ export default function FoodPOS() {
       ]);
       setCategories(cRes.data);
       setItems(iRes.data);
-      await offlineDb.saveMenuSnapshot({ categories: cRes.data, items: iRes.data, movaraSlug: null });
+      await offlineDb.saveMenuSnapshot({ categories: cRes.data, items: iRes.data, movaraSlug: slugForSnapshot });
     } catch {
       const snapshot = await offlineDb.getMenuSnapshot();
       if (snapshot) {
@@ -325,7 +301,7 @@ export default function FoodPOS() {
       clientOrderId,
       items: cart.map(ci => ({
         itemType: ci.itemType,
-        refId: movaraSlug ? null : ci.refId,
+        refId: ci.refId,
         name: ci.name,
         qty: ci.qty,
         unitPrice: ci.unitPrice,

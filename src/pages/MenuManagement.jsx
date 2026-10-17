@@ -6,7 +6,7 @@ import ConfirmModal from "../components/ConfirmModal";
 import {
   UtensilsCrossed, Plus, Pencil, Trash2, X, Loader2,
   ToggleLeft, ToggleRight, Tag, ChevronRight, ImagePlus, Camera,
-  Upload, FileDown, ChefHat, History,
+  Upload, FileDown, ChefHat, History, RefreshCw,
 } from "lucide-react";
 
 const fmt = (val, currency) =>
@@ -29,6 +29,8 @@ export default function MenuManagement() {
   const [recipeModal, setRecipeModal] = useState(null); // {itemId, itemName}
   const [deleteTarget, setDeleteTarget] = useState(null); // {type, id, name}
   const [csvUploading, setCsvUploading] = useState(false);
+  const [movaraEnabled, setMovaraEnabled] = useState(false);
+  const [syncingMovara, setSyncingMovara] = useState(false);
 
   const showToast = (msg, type = "success") => setToast({ msg, type });
 
@@ -73,16 +75,33 @@ export default function MenuManagement() {
   async function loadAll() {
     setLoading(true);
     try {
-      const [cRes, iRes, mRes] = await Promise.all([
+      const [cRes, iRes, mRes, orgRes] = await Promise.all([
         api.get("/api/menu/categories"),
         api.get("/api/menu/items"),
         api.get("/api/menu/modifiers"),
+        api.get("/api/org"),
       ]);
       setCategories(cRes.data);
       setItems(iRes.data);
       setModifiers(mRes.data);
+      setMovaraEnabled(Boolean(orgRes.data.movaraEnabled && orgRes.data.movaraVendorSlug));
     } catch { showToast("Failed to load menu", "error"); }
     finally { setLoading(false); }
+  }
+
+  async function syncFromMovara() {
+    setSyncingMovara(true);
+    try {
+      const res = await api.post("/api/menu/movara-sync");
+      const { itemsCreated, itemsMatched, categoriesCreated, categoriesMatched } = res.data;
+      showToast(`Synced from Movara — ${itemsCreated} new dish${itemsCreated === 1 ? "" : "es"}, ${itemsMatched} updated`
+        + (categoriesCreated + categoriesMatched > 0 ? `, ${categoriesCreated} new categories` : ""));
+      loadAll();
+    } catch (err) {
+      showToast(err.response?.data?.message || "Movara sync failed", "error");
+    } finally {
+      setSyncingMovara(false);
+    }
   }
 
   const visibleItems = selectedCat
@@ -190,6 +209,14 @@ export default function MenuManagement() {
           <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Menu Management</h1>
         </div>
         <div className="flex items-center gap-2">
+          {movaraEnabled && (
+            <button onClick={syncFromMovara} disabled={syncingMovara}
+              title="Pull the latest menu from Movara into Menu Management"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 ${syncingMovara ? "opacity-60 cursor-not-allowed" : ""}`}>
+              <RefreshCw size={15} className={syncingMovara ? "animate-spin" : ""} />
+              {syncingMovara ? "Syncing…" : "Sync from Movara"}
+            </button>
+          )}
           <button onClick={downloadTemplate}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-sm hover:bg-slate-50 dark:hover:bg-slate-700">
             <FileDown size={15} /> Template
