@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import api, { getUserFromToken } from "../services/api";
 import { useOrg } from "../context/OrgContext";
 import Toast from "../components/Toast";
@@ -208,30 +208,52 @@ export default function OrdersKDS() {
 
   const showToast = (msg, type = "success") => setToast({ msg, type });
 
-  const loadOrders = useCallback(async (reset = false) => {
-    if (reset) { setLoading(true); setPage(0); }
-    else setRefreshing(true);
+  const PAGE_SIZE = 50;
+  const ordersRef = useRef([]);
+  useEffect(() => { ordersRef.current = orders; }, [orders]);
+
+  // Re-fetches exactly as many orders as are already loaded (at least PAGE_SIZE), so a
+  // background refresh — the 30s poll, or releasing a stand — never discards pages the user
+  // already pulled in via "Load More." Only the very first load shows the full-page spinner;
+  // every refresh after that is silent (no component unmount, nothing visually resets).
+  const refreshWindow = useCallback(async (count) => {
+    setRefreshing(true);
     try {
-      const p = reset ? 0 : page;
-      const res = await api.get(`/api/orders?page=${p}&size=50`);
+      const size = Math.max(PAGE_SIZE, count);
+      const res = await api.get(`/api/orders?page=0&size=${size}`);
       const data = res.data;
       const content = data.content || [];
-      if (reset) {
-        setOrders(content);
-      } else {
-        setOrders(prev => [...prev, ...content]);
-      }
+      setOrders(content);
       setHasMore(!data.last);
-      if (!reset) setPage(p + 1);
-    } catch { showToast("Failed to load orders", "error"); }
-    finally { setLoading(false); setRefreshing(false); }
+      setPage(Math.ceil(content.length / PAGE_SIZE));
+    } catch { showToast("Failed to refresh orders", "error"); }
+    finally { setRefreshing(false); }
+  }, []);
+
+  const loadInitial = useCallback(async () => {
+    setLoading(true);
+    await refreshWindow(0);
+    setLoading(false);
+  }, [refreshWindow]);
+
+  const loadMore = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const res = await api.get(`/api/orders?page=${page}&size=${PAGE_SIZE}`);
+      const data = res.data;
+      const content = data.content || [];
+      setOrders(prev => [...prev, ...content]);
+      setHasMore(!data.last);
+      setPage(p => p + 1);
+    } catch { showToast("Failed to load more orders", "error"); }
+    finally { setRefreshing(false); }
   }, [page]);
 
   useEffect(() => {
-    loadOrders(true);
-    const interval = setInterval(() => loadOrders(true), 30000);
+    loadInitial();
+    const interval = setInterval(() => refreshWindow(ordersRef.current.length), 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function completeOrder(id) {
     setCompleteLoading(id);
@@ -279,7 +301,7 @@ export default function OrdersKDS() {
         <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Order Fulfillment</h1>
         <div className="flex items-center gap-2">
           {!isStaff && <RestaurantSettingsPanel />}
-          <button onClick={() => loadOrders(true)} disabled={refreshing}
+          <button onClick={() => refreshWindow(orders.length)} disabled={refreshing}
             className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 hover:text-blue-600 border border-slate-200 dark:border-slate-600 px-3 py-1.5 rounded-lg">
             <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
             {refreshing ? "Refreshing…" : "Refresh"}
@@ -288,7 +310,7 @@ export default function OrdersKDS() {
       </div>
 
       {/* Stand Pool Grid */}
-      <StandGrid onStandReturned={() => loadOrders(true)} />
+      <StandGrid onStandReturned={() => refreshWindow(orders.length)} />
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-6">
@@ -489,7 +511,7 @@ export default function OrdersKDS() {
 
       {hasMore && (
         <div className="flex justify-center mt-6">
-          <button onClick={() => loadOrders(false)} disabled={refreshing}
+          <button onClick={loadMore} disabled={refreshing}
             className="flex items-center gap-2 px-6 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">
             <ChevronDown size={16} /> Load More
           </button>
