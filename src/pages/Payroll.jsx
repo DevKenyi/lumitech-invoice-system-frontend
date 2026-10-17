@@ -755,6 +755,9 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
               </>
             )}
           </div>
+
+          <PayrollDangerZone notify={notify}
+            onCleanupComplete={() => { loadEmployees(); loadRuns(); }} />
         </div>
       )}
 
@@ -1890,4 +1893,145 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
       )}
     </div>
   );
+}
+
+// ── Danger Zone: permanently wipe test/setup payroll data ──────────────────
+// Two-step: preview (read-only) then execute, gated behind typing the exact
+// organisation name — there's no undo once a payroll run is approved, so this
+// confirmation has to be deliberate, not a single accidental click.
+function PayrollDangerZone({ notify, onCleanupComplete }) {
+  const [expanded, setExpanded] = useState(false);
+  const [preview, setPreview] = useState(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+  const [executing, setExecuting] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const loadPreview = async () => {
+    setLoadingPreview(true);
+    setDone(false);
+    try {
+      const res = await api.get("/api/payroll/cleanup/preview");
+      setPreview(res.data);
+    } catch {
+      notify("Failed to load cleanup preview", "error");
+    } finally {
+      setLoadingPreview(false);
+    }
+  };
+
+  const execute = async () => {
+    if (!preview || confirmText !== preview.organisationName) return;
+    setExecuting(true);
+    try {
+      await api.post("/api/payroll/cleanup/execute", { confirmOrganisationName: confirmText });
+      notify(`Deleted ${preview.employeeNames.length} employee(s) and ${preview.payrollRuns.length} payroll run(s).`);
+      setPreview(null);
+      setConfirmText("");
+      setDone(true);
+      onCleanupComplete?.();
+    } catch (e) {
+      notify(e.response?.data?.message || "Failed to delete payroll data", "error");
+    } finally {
+      setExecuting(false);
+    }
+  };
+
+  return (
+    <div className="mt-6 border border-rose-200 dark:border-rose-900/50 rounded-2xl overflow-hidden">
+      <button onClick={() => setExpanded(e => !e)}
+        className="w-full flex items-center justify-between px-5 py-3 bg-rose-50 dark:bg-rose-900/10 text-rose-700 dark:text-rose-400 text-sm font-semibold">
+        <span className="flex items-center gap-2"><BadgeAlert size={16} /> Danger Zone — wipe test/setup payroll data</span>
+        {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+      </button>
+
+      {expanded && (
+        <div className="p-5 space-y-4 bg-white dark:bg-slate-800">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Permanently deletes every employee, payroll run, and any journal entries those runs posted —
+            for cleaning up data that was never real payroll (test/setup entries), not for correcting
+            real disbursed payroll. There is no undo.
+          </p>
+
+          {!preview && !done && (
+            <button onClick={loadPreview} disabled={loadingPreview}
+              className="px-4 py-2 rounded-lg border border-rose-300 dark:border-rose-700 text-rose-600 dark:text-rose-400 text-sm font-medium hover:bg-rose-50 dark:hover:bg-rose-900/20 disabled:opacity-50 flex items-center gap-2">
+              {loadingPreview && <Loader2 size={14} className="animate-spin" />}
+              Show me what would be deleted
+            </button>
+          )}
+
+          {done && (
+            <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">
+              Done — payroll data cleared. You can set up fresh employees now.
+            </p>
+          )}
+
+          {preview && (
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">
+                  Employees ({preview.employeeNames.length})
+                </p>
+                <p className="text-sm text-slate-700 dark:text-slate-200">
+                  {preview.employeeNames.length > 0 ? preview.employeeNames.join(", ") : "None"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">
+                  Payroll Runs ({preview.payrollRuns.length})
+                </p>
+                {preview.payrollRuns.length === 0 ? (
+                  <p className="text-sm text-slate-400">None</p>
+                ) : (
+                  <ul className="text-sm text-slate-700 dark:text-slate-200 space-y-0.5">
+                    {preview.payrollRuns.map(r => (
+                      <li key={r.runNumber}>
+                        {r.runNumber} — {MONTHS[r.periodMonth - 1]} {r.periodYear} — {r.status} — {fmtMoneyPlain(r.totalNet)}
+                        {r.hasJournalEntry && <span className="text-amber-600 dark:text-amber-400"> (posted a journal entry — will be deleted too)</span>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              {preview.hasContractorContracts ? (
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-3">
+                  <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">Can't proceed yet</p>
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                    These employees have contractor contracts on file, which this cleanup doesn't touch:{" "}
+                    {preview.contractorContractWarnings.join(", ")}. Resolve those first.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+                  <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                    Type <span className="font-mono font-semibold">{preview.organisationName}</span> to confirm:
+                  </label>
+                  <input value={confirmText} onChange={e => setConfirmText(e.target.value)}
+                    placeholder={preview.organisationName}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 dark:text-white text-sm" />
+                  <div className="flex gap-2">
+                    <button onClick={execute} disabled={executing || confirmText !== preview.organisationName}
+                      className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold disabled:opacity-40 flex items-center gap-2">
+                      {executing && <Loader2 size={14} className="animate-spin" />}
+                      Permanently Delete
+                    </button>
+                    <button onClick={() => { setPreview(null); setConfirmText(""); }}
+                      className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-sm">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function fmtMoneyPlain(v) {
+  return v == null ? "—" : Number(v).toLocaleString("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
