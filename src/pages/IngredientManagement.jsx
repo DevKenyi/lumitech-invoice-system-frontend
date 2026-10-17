@@ -38,6 +38,23 @@ function receiptUnitOptions(ingredient) {
   return opts;
 }
 
+const SI_FACTOR_TO_STOCK = { "g->kg": 1 / 1000, "kg->g": 1000, "ml->l": 1 / 1000, "l->ml": 1000 };
+// Client-side mirror of UnitConversionService.convertToIngredientStockUnit — purely for live
+// preview text; the backend remains the actual source of truth and re-validates on submit.
+function convertPreview(qty, unit, ingredient) {
+  if (!ingredient || !unit) return null;
+  const u = unit.trim().toLowerCase();
+  const stock = (ingredient.stockUnit || "").toLowerCase();
+  if (u === stock) return qty;
+  if (ingredient.purchaseUnit && u === ingredient.purchaseUnit.trim().toLowerCase() && ingredient.purchaseUnitQuantity) {
+    return qty * parseFloat(ingredient.purchaseUnitQuantity);
+  }
+  const factor = SI_FACTOR_TO_STOCK[`${u}->${stock}`];
+  return factor != null ? qty * factor : null;
+}
+
+const fmtQty = (n) => (Math.round(n * 10000) / 10000).toString();
+
 const emptyReceiptLine = () => ({ ingredientId: "", quantity: "", unit: "", unitCost: "" });
 const emptyReceiptForm = () => ({
   supplierName: "", invoiceReference: "", receivedDate: new Date().toISOString().slice(0, 10),
@@ -329,6 +346,20 @@ export default function IngredientManagement() {
   const addReceiptLine = () => setReceiptForm(f => ({ ...f, lines: [...f.lines, emptyReceiptLine()] }));
   const removeReceiptLine = (idx) => setReceiptForm(f => ({ ...f, lines: f.lines.filter((_, i) => i !== idx) }));
 
+  const receiptLineMeaning = (line, ingredient) => {
+    const qty = parseFloat(line.quantity);
+    if (!ingredient || !line.unit || isNaN(qty) || qty <= 0) return null;
+    const converted = convertPreview(qty, line.unit, ingredient);
+    if (converted == null) return null;
+    let text = `→ ${fmtQty(qty)} ${line.unit} = ${fmtQty(converted)} ${ingredient.stockUnit} added to ${ingredient.name}'s stock`;
+    const cost = parseFloat(line.unitCost);
+    if (!isNaN(cost) && cost > 0 && converted > 0) {
+      const perStockUnit = (cost * qty) / converted;
+      text += ` (${fmt(cost * qty)} → ${fmt(perStockUnit)}/${ingredient.stockUnit})`;
+    }
+    return text;
+  };
+
   const handleSaveReceipt = async () => {
     const lines = receiptForm.lines.filter(l => l.ingredientId && l.quantity !== "");
     if (lines.length === 0) { notify("Add at least one line with an ingredient and quantity", "error"); return; }
@@ -364,6 +395,18 @@ export default function IngredientManagement() {
   }));
   const addWasteLine = () => setWasteForm(f => ({ ...f, lines: [...f.lines, emptyWasteLine()] }));
   const removeWasteLine = (idx) => setWasteForm(f => ({ ...f, lines: f.lines.filter((_, i) => i !== idx) }));
+
+  const wasteLineMeaning = (line, ingredient) => {
+    const qty = parseFloat(line.quantity);
+    if (!ingredient || !line.unit || isNaN(qty) || qty <= 0) return null;
+    const converted = convertPreview(qty, line.unit, ingredient);
+    if (converted == null) return null;
+    let text = `→ ${fmtQty(qty)} ${line.unit} = ${fmtQty(converted)} ${ingredient.stockUnit} removed from ${ingredient.name}'s stock`;
+    if (ingredient.purchaseCost) {
+      text += ` (${fmt(converted * ingredient.purchaseCost)} lost)`;
+    }
+    return text;
+  };
 
   const handleSaveWaste = async () => {
     const lines = wasteForm.lines.filter(l => l.ingredientId && l.quantity !== "");
@@ -901,8 +944,16 @@ export default function IngredientManagement() {
                 </div>
               </div>
               {form.purchaseUnit.trim() && (
-                <p className="text-xs text-slate-400 -mt-2">
-                  Lets you record purchases in "{form.purchaseUnit}" on the Purchases tab — it'll convert to {form.stockUnit} automatically.
+                <p className="text-xs -mt-2">
+                  {form.purchaseUnitQuantity !== "" && !isNaN(parseFloat(form.purchaseUnitQuantity)) ? (
+                    <span className="text-amber-600 dark:text-amber-400 font-medium">
+                      → 1 {form.purchaseUnit} = {form.purchaseUnitQuantity} {form.stockUnit} of {form.name || "this ingredient"}
+                    </span>
+                  ) : (
+                    <span className="text-slate-400">
+                      Lets you record purchases in "{form.purchaseUnit}" on the Purchases tab — it'll convert to {form.stockUnit} automatically.
+                    </span>
+                  )}
                 </p>
               )}
 
@@ -1010,26 +1061,30 @@ export default function IngredientManagement() {
                 {receiptForm.lines.map((line, idx) => {
                   const ingredient = ingredients.find(i => i.id === line.ingredientId);
                   const unitOptions = receiptUnitOptions(ingredient);
+                  const meaning = receiptLineMeaning(line, ingredient);
                   return (
-                    <div key={idx} className="grid grid-cols-2 sm:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-2 items-start border border-slate-100 dark:border-slate-700 rounded-xl p-3 sm:border-0 sm:p-0">
-                      <select value={line.ingredientId} onChange={e => setReceiptLine(idx, "ingredientId", e.target.value)}
-                        className={`${inputCls} col-span-2 sm:col-span-1`}>
-                        <option value="">Select ingredient</option>
-                        {ingredients.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-                      </select>
-                      <input type="number" value={line.quantity} onChange={e => setReceiptLine(idx, "quantity", e.target.value)}
-                        placeholder="Qty" min="0" step="0.0001" className={inputCls} />
-                      <select value={line.unit} onChange={e => setReceiptLine(idx, "unit", e.target.value)}
-                        disabled={!ingredient} className={inputCls}>
-                        <option value="">Unit</option>
-                        {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
-                      </select>
-                      <input type="number" value={line.unitCost} onChange={e => setReceiptLine(idx, "unitCost", e.target.value)}
-                        placeholder="Cost" min="0" step="0.01" className={inputCls} />
-                      <button onClick={() => removeReceiptLine(idx)} disabled={receiptForm.lines.length === 1}
-                        className="w-full sm:w-auto h-full flex items-center justify-center gap-1.5 p-2.5 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 disabled:opacity-30 disabled:hover:bg-transparent transition">
-                        <Trash className="w-4 h-4" /><span className="text-xs font-semibold sm:hidden">Remove line</span>
-                      </button>
+                    <div key={idx}>
+                      <div className="grid grid-cols-2 sm:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-2 items-start border border-slate-100 dark:border-slate-700 rounded-xl p-3 sm:border-0 sm:p-0">
+                        <select value={line.ingredientId} onChange={e => setReceiptLine(idx, "ingredientId", e.target.value)}
+                          className={`${inputCls} col-span-2 sm:col-span-1`}>
+                          <option value="">Select ingredient</option>
+                          {ingredients.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+                        </select>
+                        <input type="number" value={line.quantity} onChange={e => setReceiptLine(idx, "quantity", e.target.value)}
+                          placeholder="Qty" min="0" step="0.0001" className={inputCls} />
+                        <select value={line.unit} onChange={e => setReceiptLine(idx, "unit", e.target.value)}
+                          disabled={!ingredient} className={inputCls}>
+                          <option value="">Unit</option>
+                          {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
+                        </select>
+                        <input type="number" value={line.unitCost} onChange={e => setReceiptLine(idx, "unitCost", e.target.value)}
+                          placeholder="Cost" min="0" step="0.01" className={inputCls} />
+                        <button onClick={() => removeReceiptLine(idx)} disabled={receiptForm.lines.length === 1}
+                          className="w-full sm:w-auto h-full flex items-center justify-center gap-1.5 p-2.5 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 disabled:opacity-30 disabled:hover:bg-transparent transition">
+                          <Trash className="w-4 h-4" /><span className="text-xs font-semibold sm:hidden">Remove line</span>
+                        </button>
+                      </div>
+                      {meaning && <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 ml-0.5">{meaning}</p>}
                     </div>
                   );
                 })}
@@ -1087,24 +1142,28 @@ export default function IngredientManagement() {
                 {wasteForm.lines.map((line, idx) => {
                   const ingredient = ingredients.find(i => i.id === line.ingredientId);
                   const unitOptions = receiptUnitOptions(ingredient);
+                  const meaning = wasteLineMeaning(line, ingredient);
                   return (
-                    <div key={idx} className="grid grid-cols-2 sm:grid-cols-[2fr_1fr_1fr_auto] gap-2 items-start border border-slate-100 dark:border-slate-700 rounded-xl p-3 sm:border-0 sm:p-0">
-                      <select value={line.ingredientId} onChange={e => setWasteLine(idx, "ingredientId", e.target.value)}
-                        className={`${inputCls} col-span-2 sm:col-span-1`}>
-                        <option value="">Select ingredient</option>
-                        {ingredients.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-                      </select>
-                      <input type="number" value={line.quantity} onChange={e => setWasteLine(idx, "quantity", e.target.value)}
-                        placeholder="Qty" min="0" step="0.0001" className={inputCls} />
-                      <select value={line.unit} onChange={e => setWasteLine(idx, "unit", e.target.value)}
-                        disabled={!ingredient} className={inputCls}>
-                        <option value="">Unit</option>
-                        {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
-                      </select>
-                      <button onClick={() => removeWasteLine(idx)} disabled={wasteForm.lines.length === 1}
-                        className="w-full sm:w-auto h-full flex items-center justify-center gap-1.5 p-2.5 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 disabled:opacity-30 disabled:hover:bg-transparent transition">
-                        <Trash className="w-4 h-4" /><span className="text-xs font-semibold sm:hidden">Remove line</span>
-                      </button>
+                    <div key={idx}>
+                      <div className="grid grid-cols-2 sm:grid-cols-[2fr_1fr_1fr_auto] gap-2 items-start border border-slate-100 dark:border-slate-700 rounded-xl p-3 sm:border-0 sm:p-0">
+                        <select value={line.ingredientId} onChange={e => setWasteLine(idx, "ingredientId", e.target.value)}
+                          className={`${inputCls} col-span-2 sm:col-span-1`}>
+                          <option value="">Select ingredient</option>
+                          {ingredients.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+                        </select>
+                        <input type="number" value={line.quantity} onChange={e => setWasteLine(idx, "quantity", e.target.value)}
+                          placeholder="Qty" min="0" step="0.0001" className={inputCls} />
+                        <select value={line.unit} onChange={e => setWasteLine(idx, "unit", e.target.value)}
+                          disabled={!ingredient} className={inputCls}>
+                          <option value="">Unit</option>
+                          {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
+                        </select>
+                        <button onClick={() => removeWasteLine(idx)} disabled={wasteForm.lines.length === 1}
+                          className="w-full sm:w-auto h-full flex items-center justify-center gap-1.5 p-2.5 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 disabled:opacity-30 disabled:hover:bg-transparent transition">
+                          <Trash className="w-4 h-4" /><span className="text-xs font-semibold sm:hidden">Remove line</span>
+                        </button>
+                      </div>
+                      {meaning && <p className="text-xs text-rose-600 dark:text-rose-400 mt-1 ml-0.5">{meaning}</p>}
                     </div>
                   );
                 })}
