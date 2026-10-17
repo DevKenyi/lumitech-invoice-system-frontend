@@ -212,15 +212,32 @@ export default function OrdersKDS() {
   const ordersRef = useRef([]);
   useEffect(() => { ordersRef.current = orders; }, [orders]);
 
-  // Re-fetches exactly as many orders as are already loaded (at least PAGE_SIZE), so a
-  // background refresh — the 30s poll, or releasing a stand — never discards pages the user
-  // already pulled in via "Load More." Only the very first load shows the full-page spinner;
-  // every refresh after that is silent (no component unmount, nothing visually resets).
+  // Read via a ref (not closed-over state) so the long-lived 30s interval below always builds
+  // the query against the CURRENT filter, not whatever it was when the interval was created.
+  const filtersRef = useRef({ status: statusFilter, channel: channelFilter, type: typeFilter });
+  useEffect(() => {
+    filtersRef.current = { status: statusFilter, channel: channelFilter, type: typeFilter };
+  }, [statusFilter, channelFilter, typeFilter]);
+
+  const buildQuery = useCallback((page, size) => {
+    const f = filtersRef.current;
+    const params = new URLSearchParams({ page, size });
+    if (f.status !== "all") params.set("status", f.status);
+    if (f.channel !== "all") params.set("channel", f.channel);
+    if (f.type !== "all") params.set("orderType", f.type);
+    return params.toString();
+  }, []);
+
+  // Re-fetches exactly as many orders as are already loaded (at least PAGE_SIZE), against the
+  // currently active filter, so a background refresh — the 30s poll, or releasing a stand —
+  // never discards pages the user already pulled in via "Load More." Only the very first load
+  // shows the full-page spinner; every refresh after that is silent (no component unmount,
+  // nothing visually resets).
   const refreshWindow = useCallback(async (count) => {
     setRefreshing(true);
     try {
       const size = Math.max(PAGE_SIZE, count);
-      const res = await api.get(`/api/orders?page=0&size=${size}`);
+      const res = await api.get(`/api/orders?${buildQuery(0, size)}`);
       const data = res.data;
       const content = data.content || [];
       setOrders(content);
@@ -228,7 +245,7 @@ export default function OrdersKDS() {
       setPage(Math.ceil(content.length / PAGE_SIZE));
     } catch { showToast("Failed to refresh orders", "error"); }
     finally { setRefreshing(false); }
-  }, []);
+  }, [buildQuery]);
 
   const loadInitial = useCallback(async () => {
     setLoading(true);
@@ -239,7 +256,7 @@ export default function OrdersKDS() {
   const loadMore = useCallback(async () => {
     setRefreshing(true);
     try {
-      const res = await api.get(`/api/orders?page=${page}&size=${PAGE_SIZE}`);
+      const res = await api.get(`/api/orders?${buildQuery(page, PAGE_SIZE)}`);
       const data = res.data;
       const content = data.content || [];
       setOrders(prev => [...prev, ...content]);
@@ -247,13 +264,22 @@ export default function OrdersKDS() {
       setPage(p => p + 1);
     } catch { showToast("Failed to load more orders", "error"); }
     finally { setRefreshing(false); }
-  }, [page]);
+  }, [page, buildQuery]);
 
   useEffect(() => {
     loadInitial();
     const interval = setInterval(() => refreshWindow(ordersRef.current.length), 30000);
     return () => clearInterval(interval);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A filter change makes the previously loaded window meaningless (it was fetched for the old
+  // filter) — start over from page 0 under the new one. Skipped on the very first render since
+  // loadInitial above already covers it.
+  const didMountFilters = useRef(false);
+  useEffect(() => {
+    if (!didMountFilters.current) { didMountFilters.current = true; return; }
+    refreshWindow(0);
+  }, [statusFilter, channelFilter, typeFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function completeOrder(id) {
     setCompleteLoading(id);
@@ -275,16 +301,9 @@ export default function OrdersKDS() {
     finally { setCancelLoading(null); }
   }
 
-  const filtered = orders.filter(o => {
-    const matchStatus = statusFilter === "all" || o.status === statusFilter;
-    const matchChannel = channelFilter === "all"
-      || (channelFilter === "IN_STORE" && o.channel === "IN_STORE")
-      || (channelFilter === "ONLINE" && o.channel === "ONLINE");
-    const matchType = typeFilter === "all"
-      || (typeFilter === "DINE_IN" && o.orderType === "DINE_IN")
-      || (typeFilter === "TAKEAWAY" && o.orderType === "TAKEAWAY");
-    return matchStatus && matchChannel && matchType;
-  });
+  // Filtering now happens server-side (status/channel/orderType query params), so pagination
+  // reflects exactly what's displayed — no client-side re-filtering needed here.
+  const filtered = orders;
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
