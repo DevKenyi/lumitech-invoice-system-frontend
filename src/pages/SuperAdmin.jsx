@@ -9,7 +9,7 @@ import {
   PhoneCall, Mail, Search, RefreshCw, Download, Copy, Link2, MessageSquare, RotateCcw,
   BookOpen, ExternalLink, Lightbulb, Plus, Edit2, Handshake, Gift,
   Tag, DollarSign, CheckSquare, Clock,
-  Monitor, Printer, ChevronRight, Eye, KeyRound, FlaskConical,
+  Monitor, Printer, ChevronRight, Eye, KeyRound, FlaskConical, Loader2,
 } from "lucide-react";
 import Toast from "../components/Toast";
 import ConfirmModal from "../components/ConfirmModal";
@@ -191,8 +191,122 @@ function BillingExemptModal({ org, onConfirm, onCancel, loading }) {
   );
 }
 
+// Permanently wipes every food order (+ journal entries, convenience-fee settlements/
+// notifications) for one org — for test/staging Food POS orgs polluting real platform revenue
+// figures. Same preview-then-type-to-confirm shape as the Payroll Danger Zone tool.
+function FoodOrderCleanupModal({ org, onDone, onCancel }) {
+  const [preview, setPreview] = useState(null);
+  const [loadingPreview, setLoadingPreview] = useState(true);
+  const [confirmText, setConfirmText] = useState("");
+  const [executing, setExecuting] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!org) return;
+    setLoadingPreview(true);
+    setError(null);
+    api.get(`/api/superadmin/organisations/${org.id}/food-order-cleanup/preview`)
+      .then(res => setPreview(res.data))
+      .catch(() => setError("Failed to load cleanup preview"))
+      .finally(() => setLoadingPreview(false));
+  }, [org]);
+
+  if (!org) return null;
+
+  const execute = async () => {
+    if (!preview || confirmText !== preview.organisationName) return;
+    setExecuting(true);
+    try {
+      await api.post(`/api/superadmin/organisations/${org.id}/food-order-cleanup/execute`, { confirmOrganisationName: confirmText });
+      onDone(`Deleted ${preview.orderCount} food order(s) for ${preview.organisationName}.`);
+    } catch (e) {
+      setError(e.response?.data?.message || "Failed to delete food order data");
+    } finally {
+      setExecuting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-rose-200 dark:border-rose-900/50 max-w-md w-full p-6">
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-rose-100 dark:bg-rose-900/30 rounded-lg">
+              <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+            </div>
+            <h3 className="text-base font-semibold text-slate-900 dark:text-white">Wipe Food Order Data</h3>
+          </div>
+          <button onClick={onCancel} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+            <X size={16} />
+          </button>
+        </div>
+
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+          Permanently deletes every food order, journal entry those orders posted, and
+          convenience-fee settlement/notification record for <span className="font-semibold text-slate-700 dark:text-slate-200">{org.name}</span>.
+          For cleaning up test/staging activity — there is no undo. Ingredient stock movements are not touched.
+        </p>
+
+        {loadingPreview ? (
+          <div className="flex items-center justify-center py-6"><Loader2 size={20} className="animate-spin text-rose-500" /></div>
+        ) : error && !preview ? (
+          <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>
+        ) : preview && (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3">
+                <p className="text-xs text-slate-400">Orders</p>
+                <p className="font-semibold text-slate-800 dark:text-slate-100">{preview.orderCount}</p>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3">
+                <p className="text-xs text-slate-400">Convenience Fees</p>
+                <p className="font-semibold text-slate-800 dark:text-slate-100">₦{Number(preview.totalConvenienceFees ?? 0).toLocaleString()}</p>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3">
+                <p className="text-xs text-slate-400">Settlement Records</p>
+                <p className="font-semibold text-slate-800 dark:text-slate-100">{preview.settlementRecordCount}</p>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3">
+                <p className="text-xs text-slate-400">Fee Notifications</p>
+                <p className="font-semibold text-slate-800 dark:text-slate-100">{preview.pendingNotificationCount}</p>
+              </div>
+            </div>
+            {preview.earliestOrderDate && (
+              <p className="text-xs text-slate-400">
+                {fmtDate(preview.earliestOrderDate)} – {fmtDate(preview.latestOrderDate)}
+              </p>
+            )}
+
+            {preview.orderCount === 0 ? (
+              <p className="text-sm text-slate-400 italic pt-1">Nothing to delete.</p>
+            ) : (
+              <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+                <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                  Type <span className="font-mono font-semibold">{preview.organisationName}</span> to confirm:
+                </label>
+                <input value={confirmText} onChange={e => setConfirmText(e.target.value)}
+                  placeholder={preview.organisationName}
+                  className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 dark:text-white text-sm" />
+                {error && <p className="text-xs text-rose-600 dark:text-rose-400">{error}</p>}
+                <div className="flex justify-end gap-3 pt-1">
+                  <button onClick={onCancel} disabled={executing} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-600 transition">Cancel</button>
+                  <button onClick={execute} disabled={executing || confirmText !== preview.organisationName}
+                    className="px-4 py-2 text-sm font-medium text-white bg-rose-600 rounded-xl hover:bg-rose-700 transition disabled:opacity-40 flex items-center gap-2">
+                    {executing && <Loader2 size={14} className="animate-spin" />}
+                    Permanently Delete
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Org row (All Organisations table) ─────────────────────────────────────────
-function OrgRow({ org, isOwnOrg, onSuspend, onUnsuspend, onDelete, onPlanChange, onBillingExempt, onRemoveBillingExempt, onToggleTestOrg, onGenerateApiKey }) {
+function OrgRow({ org, isOwnOrg, onSuspend, onUnsuspend, onDelete, onPlanChange, onBillingExempt, onRemoveBillingExempt, onToggleTestOrg, onWipeFoodOrders, onGenerateApiKey }) {
   const [expanded, setExpanded] = useState(false);
   const [users, setUsers]       = useState(null);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -299,6 +413,13 @@ function OrgRow({ org, isOwnOrg, onSuspend, onUnsuspend, onDelete, onPlanChange,
                     : "text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600"
                 }`}>
                 <FlaskConical size={12} />{org.testOrg ? "Unmark Test" : "Mark as Test"}
+              </button>
+            )}
+            {!isOwnOrg && !org.platformAdminOrg && (
+              <button onClick={() => onWipeFoodOrders(org)}
+                title="Permanently delete every food order (and related journal/fee records) for this org"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-700 rounded-lg hover:bg-rose-100 transition">
+                <Trash2 size={12} />Wipe Food Orders
               </button>
             )}
             {isOwnOrg || org.platformAdminOrg ? (
@@ -511,6 +632,7 @@ function SuperAdmin() {
   const [suspending, setSuspending]       = useState(false);
   const [billingExemptTarget, setBillingExemptTarget] = useState(null);
   const [settingBillingExempt, setSettingBillingExempt] = useState(false);
+  const [foodOrderCleanupTarget, setFoodOrderCleanupTarget] = useState(null);
   const [deleteTarget, setDeleteTarget]   = useState(null);
   const [deleting, setDeleting]           = useState(false);
   const [currentOrgId, setCurrentOrgId]  = useState(null);
@@ -1355,6 +1477,7 @@ function SuperAdmin() {
                         onBillingExempt={setBillingExemptTarget}
                         onRemoveBillingExempt={doRemoveBillingExempt}
                         onToggleTestOrg={doToggleTestOrg}
+                        onWipeFoodOrders={setFoodOrderCleanupTarget}
                         onGenerateApiKey={doGenerateApiKey}
                       />
                     ))}
@@ -4163,6 +4286,9 @@ function SuperAdmin() {
       <Toast {...toast} onClose={() => setToast({ ...toast, visible: false })} />
       <SuspendModal org={suspendTarget} onConfirm={doSuspend} onCancel={() => setSuspendTarget(null)} loading={suspending} />
       <BillingExemptModal org={billingExemptTarget} onConfirm={doSetBillingExempt} onCancel={() => setBillingExemptTarget(null)} loading={settingBillingExempt} />
+      <FoodOrderCleanupModal org={foodOrderCleanupTarget}
+        onCancel={() => setFoodOrderCleanupTarget(null)}
+        onDone={(msg) => { showToast(msg); setFoodOrderCleanupTarget(null); }} />
       <ConfirmModal
         visible={!!deleteTarget}
         title="Delete Organisation"
