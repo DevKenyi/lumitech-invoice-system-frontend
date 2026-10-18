@@ -191,6 +191,105 @@ function BillingExemptModal({ org, onConfirm, onCancel, loading }) {
   );
 }
 
+// Who bears the Food POS convenience fee for one org, and how much — CUSTOMER+Percentage is the
+// default (today's 5%, added to their total); RESTAURANT absorbs it (not charged to the
+// customer, billed to the restaurant directly instead). Either type can be a percent or a flat
+// amount.
+function FeeSettingsModal({ org, onConfirm, onCancel, loading }) {
+  // This component stays mounted across different orgs (the parent renders it unconditionally),
+  // so initial state needs to be re-derived whenever a different org is targeted — done via a
+  // `key` on the element at the call site forcing a remount, rather than syncing via an effect.
+  const [payer, setPayer] = useState(org?.convenienceFeePayer || "CUSTOMER");
+  const [feeType, setFeeType] = useState(org?.convenienceFeeFlatAmount != null ? "FIXED" : "PERCENT");
+  const [value, setValue] = useState(() => {
+    if (!org) return "";
+    if (org.convenienceFeeFlatAmount != null) return String(org.convenienceFeeFlatAmount);
+    return org.convenienceFeePercent != null ? String(org.convenienceFeePercent) : "5";
+  });
+
+  if (!org) return null;
+
+  const submit = () => {
+    const num = parseFloat(value);
+    if (isNaN(num) || num < 0) return;
+    onConfirm({
+      payer,
+      feeType,
+      percent: feeType === "PERCENT" ? num : null,
+      flatAmount: feeType === "FIXED" ? num : null,
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 max-w-md w-full p-6">
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+              <DollarSign className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            </div>
+            <h3 className="text-base font-semibold text-slate-900 dark:text-white">Convenience Fee Settings</h3>
+          </div>
+          <button onClick={onCancel} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+            <X size={16} />
+          </button>
+        </div>
+        <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">
+          <span className="font-semibold text-slate-900 dark:text-white">{org.name}</span> — who pays this fee, and how much.
+        </p>
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">Who Pays</label>
+          <div className="flex gap-2">
+            {[["CUSTOMER", "Customer"], ["RESTAURANT", "Restaurant Absorbs"]].map(([val, label]) => (
+              <button key={val} onClick={() => setPayer(val)}
+                className={`flex-1 px-3 py-2 rounded-xl text-sm font-medium border transition ${
+                  payer === val
+                    ? "bg-blue-600 text-white border-blue-600"
+                    : "bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600"
+                }`}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">Fee Type</label>
+          <div className="flex gap-2">
+            {[["PERCENT", "Percentage"], ["FIXED", "Fixed Amount"]].map(([val, label]) => (
+              <button key={val} onClick={() => setFeeType(val)}
+                className={`flex-1 px-3 py-2 rounded-xl text-sm font-medium border transition ${
+                  feeType === val
+                    ? "bg-blue-600 text-white border-blue-600"
+                    : "bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600"
+                }`}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-5">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
+            {feeType === "PERCENT" ? "Rate (%)" : "Amount (₦)"}
+          </label>
+          <input type="number" min="0" step="0.01" value={value} onChange={e => setValue(e.target.value)}
+            placeholder={feeType === "PERCENT" ? "e.g. 5" : "e.g. 50"}
+            className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-xl text-sm bg-white dark:bg-slate-700/50 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition" />
+        </div>
+
+        <div className="flex justify-end gap-3">
+          <button onClick={onCancel} disabled={loading} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-600 transition">Cancel</button>
+          <button onClick={submit} disabled={loading || value === ""} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition disabled:opacity-40 flex items-center gap-2">
+            {loading ? "Saving…" : "Save"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Permanently wipes every food order (+ journal entries, convenience-fee settlements/
 // notifications) for one org — for test/staging Food POS orgs polluting real platform revenue
 // figures. Same preview-then-type-to-confirm shape as the Payroll Danger Zone tool.
@@ -306,7 +405,7 @@ function FoodOrderCleanupModal({ org, onDone, onCancel }) {
 }
 
 // ── Org row (All Organisations table) ─────────────────────────────────────────
-function OrgRow({ org, isOwnOrg, onSuspend, onUnsuspend, onDelete, onPlanChange, onBillingExempt, onRemoveBillingExempt, onToggleTestOrg, onWipeFoodOrders, onGenerateApiKey }) {
+function OrgRow({ org, isOwnOrg, onSuspend, onUnsuspend, onDelete, onPlanChange, onBillingExempt, onRemoveBillingExempt, onToggleTestOrg, onWipeFoodOrders, onFeeSettings, onGenerateApiKey }) {
   const [expanded, setExpanded] = useState(false);
   const [users, setUsers]       = useState(null);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -413,6 +512,13 @@ function OrgRow({ org, isOwnOrg, onSuspend, onUnsuspend, onDelete, onPlanChange,
                     : "text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600"
                 }`}>
                 <FlaskConical size={12} />{org.testOrg ? "Unmark Test" : "Mark as Test"}
+              </button>
+            )}
+            {!isOwnOrg && !org.platformAdminOrg && (
+              <button onClick={() => onFeeSettings(org)}
+                title="Who pays the Food POS convenience fee, and how much"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg hover:bg-blue-100 transition">
+                <DollarSign size={12} />Fee Settings
               </button>
             )}
             {!isOwnOrg && !org.platformAdminOrg && (
@@ -633,6 +739,8 @@ function SuperAdmin() {
   const [billingExemptTarget, setBillingExemptTarget] = useState(null);
   const [settingBillingExempt, setSettingBillingExempt] = useState(false);
   const [foodOrderCleanupTarget, setFoodOrderCleanupTarget] = useState(null);
+  const [feeSettingsTarget, setFeeSettingsTarget] = useState(null);
+  const [savingFeeSettings, setSavingFeeSettings] = useState(false);
   const [deleteTarget, setDeleteTarget]   = useState(null);
   const [deleting, setDeleting]           = useState(false);
   const [currentOrgId, setCurrentOrgId]  = useState(null);
@@ -826,6 +934,18 @@ function SuperAdmin() {
     } catch (err) {
       showToast(err.response?.data?.message || "Failed to update test org flag.", "error");
     }
+  };
+
+  const doUpdateFeeSettings = async (payload) => {
+    setSavingFeeSettings(true);
+    try {
+      const res = await api.put(`/api/superadmin/organisations/${feeSettingsTarget.id}/convenience-fee-settings`, payload);
+      setOrgs(prev => prev.map(o => o.id === feeSettingsTarget.id ? res.data : o));
+      showToast(`Fee settings updated for ${feeSettingsTarget.name}`);
+      setFeeSettingsTarget(null);
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to update fee settings.", "error");
+    } finally { setSavingFeeSettings(false); }
   };
 
   const doGenerateApiKey = async (org) => {
@@ -1478,6 +1598,7 @@ function SuperAdmin() {
                         onRemoveBillingExempt={doRemoveBillingExempt}
                         onToggleTestOrg={doToggleTestOrg}
                         onWipeFoodOrders={setFoodOrderCleanupTarget}
+                        onFeeSettings={setFeeSettingsTarget}
                         onGenerateApiKey={doGenerateApiKey}
                       />
                     ))}
@@ -4286,6 +4407,8 @@ function SuperAdmin() {
       <Toast {...toast} onClose={() => setToast({ ...toast, visible: false })} />
       <SuspendModal org={suspendTarget} onConfirm={doSuspend} onCancel={() => setSuspendTarget(null)} loading={suspending} />
       <BillingExemptModal org={billingExemptTarget} onConfirm={doSetBillingExempt} onCancel={() => setBillingExemptTarget(null)} loading={settingBillingExempt} />
+      <FeeSettingsModal key={feeSettingsTarget?.id || "none"} org={feeSettingsTarget} onConfirm={doUpdateFeeSettings}
+        onCancel={() => setFeeSettingsTarget(null)} loading={savingFeeSettings} />
       <FoodOrderCleanupModal org={foodOrderCleanupTarget}
         onCancel={() => setFoodOrderCleanupTarget(null)}
         onDone={(msg) => { showToast(msg); setFoodOrderCleanupTarget(null); }} />
