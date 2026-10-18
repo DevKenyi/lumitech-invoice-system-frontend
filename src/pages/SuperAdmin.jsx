@@ -258,7 +258,7 @@ function FeeSettingsModal({ org, onConfirm, onCancel, loading }) {
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">Fee Type</label>
           <div className="flex gap-2">
             {[["PERCENT", "Percentage"], ["FIXED", "Fixed Amount"]].map(([val, label]) => (
-              <button key={val} onClick={() => setFeeType(val)}
+              <button key={val} onClick={() => { setFeeType(val); setValue(""); }}
                 className={`flex-1 px-3 py-2 rounded-xl text-sm font-medium border transition ${
                   feeType === val
                     ? "bg-blue-600 text-white border-blue-600"
