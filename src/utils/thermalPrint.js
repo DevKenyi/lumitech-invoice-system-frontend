@@ -436,6 +436,13 @@ export function printFoodOrderBrowser(order, orgName, currency = "", existingWin
     </tr>`;
   }).join("");
 
+  // order.convenienceFee is what's owed to Lumitech either way (see ConvenienceFeePayer) — it's
+  // NOT necessarily what the customer paid. Deriving the actually-charged fee from the real
+  // numbers (total minus items minus pack fee) means an absorbed fee never leaks onto a
+  // customer's receipt, and the printed "Subtotal" line stays correct either way.
+  const itemsSubtotal = (order.items || []).reduce((s, i) => s + Number(i.subtotal || 0), 0);
+  const chargedFee = Math.max(0, Math.round((Number(order.total) - itemsSubtotal - Number(order.packFee || 0)) * 100) / 100);
+
   const kitchenItems = (order.items || []).map(i => {
     const badge = hasMixed
       ? i.toGo
@@ -478,9 +485,9 @@ export function printFoodOrderBrowser(order, orgName, currency = "", existingWin
       <table>${customerItems}</table>
       <div class="divider"></div>
       <table>
-        ${(order.convenienceFee && Number(order.convenienceFee) > 0) || (order.packFee && Number(order.packFee) > 0) ? `
-        <tr><td style="font-size:11px;color:#555">Subtotal</td><td style="text-align:right;font-size:11px;color:#555">${fmtAmt(Number(order.total) - Number(order.convenienceFee || 0) - Number(order.packFee || 0))}</td></tr>
-        ${order.convenienceFee && Number(order.convenienceFee) > 0 ? `<tr><td style="font-size:11px;color:#555">Convenience fee (5%)</td><td style="text-align:right;font-size:11px;color:#555">${fmtAmt(order.convenienceFee)}</td></tr>` : ""}
+        ${chargedFee > 0 || (order.packFee && Number(order.packFee) > 0) ? `
+        <tr><td style="font-size:11px;color:#555">Subtotal</td><td style="text-align:right;font-size:11px;color:#555">${fmtAmt(itemsSubtotal)}</td></tr>
+        ${chargedFee > 0 ? `<tr><td style="font-size:11px;color:#555">Convenience fee</td><td style="text-align:right;font-size:11px;color:#555">${fmtAmt(chargedFee)}</td></tr>` : ""}
         ${order.packFee && Number(order.packFee) > 0 ? `<tr><td style="font-size:11px;color:#555">Pack</td><td style="text-align:right;font-size:11px;color:#555">${fmtAmt(order.packFee)}</td></tr>` : ""}
         ` : ""}
         <tr class="total"><td>TOTAL</td><td style="text-align:right">${fmtAmt(order.total)}</td></tr>
@@ -592,13 +599,15 @@ function buildFoodEscPos(order, orgName, currency = "") {
 
   hr();
 
-  // Fee breakdown
-  const hasConvenience = order.convenienceFee && Number(order.convenienceFee) > 0;
+  // Fee breakdown. order.convenienceFee is what's owed to Lumitech either way (see
+  // ConvenienceFeePayer) — not necessarily what the customer paid. Derive the actually-charged
+  // fee from the real numbers so an absorbed fee never leaks onto the customer's receipt.
+  const itemsSubtotalAmt = (order.items || []).reduce((s, i) => s + Number(i.subtotal || 0), 0);
+  const chargedFeeAmt = Math.max(0, Math.round((Number(order.total) - itemsSubtotalAmt - Number(order.packFee || 0)) * 100) / 100);
   const hasPackFee = order.packFee && Number(order.packFee) > 0;
-  if (hasConvenience || hasPackFee) {
-    const subtotalAmt = Number(order.total) - Number(order.convenienceFee || 0) - Number(order.packFee || 0);
-    text("Subtotal       : " + fmtShort(subtotalAmt)); nl();
-    if (hasConvenience) { text("Convenience(5%): " + fmtShort(order.convenienceFee)); nl(); }
+  if (chargedFeeAmt > 0 || hasPackFee) {
+    text("Subtotal       : " + fmtShort(itemsSubtotalAmt)); nl();
+    if (chargedFeeAmt > 0) { text("Convenience fee: " + fmtShort(chargedFeeAmt)); nl(); }
     if (hasPackFee) { text("Pack           : " + fmtShort(order.packFee)); nl(); }
     hr();
   }

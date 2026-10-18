@@ -47,6 +47,8 @@ export default function FoodPOS() {
   const [showCartSheet, setShowCartSheet] = useState(false);
   const [movaraSlug, setMovaraSlug] = useState(null);
   const [convenienceFeeFlatAmount, setConvenienceFeeFlatAmount] = useState(null);
+  const [convenienceFeePercent, setConvenienceFeePercent] = useState(null);
+  const [convenienceFeePayer, setConvenienceFeePayer] = useState("CUSTOMER");
   const [packFee, setPackFee] = useState("");
   const [showPackInput, setShowPackInput] = useState(false);
   const [pendingOrders, setPendingOrders] = useState([]);
@@ -199,6 +201,10 @@ export default function FoodPOS() {
       setConvenienceFeeFlatAmount(
         orgRes.data.convenienceFeeFlatAmount != null ? parseFloat(orgRes.data.convenienceFeeFlatAmount) : null
       );
+      setConvenienceFeePercent(
+        orgRes.data.convenienceFeePercent != null ? parseFloat(orgRes.data.convenienceFeePercent) : null
+      );
+      setConvenienceFeePayer(orgRes.data.convenienceFeePayer || "CUSTOMER");
 
       // Pull Movara's latest menu into our own Menu Management first — Food POS always
       // displays (and orders against) the local menu, never Movara's raw dish ids directly,
@@ -305,9 +311,15 @@ export default function FoodPOS() {
   }
 
   const subtotal = cart.reduce((s, ci) => s + ci.unitPrice * ci.qty, 0);
-  const convenienceFee = convenienceFeeFlatAmount != null
+  // Computed the same way regardless of who bears it — flat amount takes priority over percent,
+  // matching the backend's own precedence. What changes based on convenienceFeePayer is only
+  // whether this gets added to what the customer pays; it's always sent to the server either way
+  // so Lumitech's own billing stays correct even when the restaurant is absorbing it.
+  const convenienceFeeOwed = convenienceFeeFlatAmount != null
     ? convenienceFeeFlatAmount
-    : Math.round(subtotal * 0.05 * 100) / 100;
+    : Math.round(subtotal * ((convenienceFeePercent ?? 5) / 100) * 100) / 100;
+  const customerPaysFee = convenienceFeePayer !== "RESTAURANT";
+  const convenienceFee = customerPaysFee ? convenienceFeeOwed : 0;
   const packFeeAmount = parseFloat(packFee) || 0;
   const total = subtotal + convenienceFee + packFeeAmount;
 
@@ -330,7 +342,9 @@ export default function FoodPOS() {
       channel: "IN_STORE",
       paymentMethod,
       notes,
-      convenienceFee,
+      // Always the real amount owed, regardless of payer — the backend decides whether it
+      // affects the customer-facing total based on the org's own convenienceFeePayer setting.
+      convenienceFee: convenienceFeeOwed,
       packFee: packFeeAmount,
       clientOrderId,
       items: cart.map(ci => ({
@@ -790,7 +804,7 @@ export default function FoodPOS() {
           )}
           {cart.length > 0 && convenienceFee > 0 && (
             <div className="flex justify-between items-center text-sm text-slate-500 dark:text-slate-400">
-              <span>✅ Convenience{convenienceFeeFlatAmount == null ? " (5%)" : ""}</span>
+              <span>✅ Convenience{convenienceFeeFlatAmount == null ? ` (${convenienceFeePercent ?? 5}%)` : ""}</span>
               <span>{fmt(convenienceFee, currency)}</span>
             </div>
           )}
