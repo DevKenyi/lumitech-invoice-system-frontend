@@ -487,7 +487,7 @@ export function printFoodOrderBrowser(order, orgName, currency = "", existingWin
       <table>
         ${chargedFee > 0 || (order.packFee && Number(order.packFee) > 0) ? `
         <tr><td style="font-size:11px;color:#555">Subtotal</td><td style="text-align:right;font-size:11px;color:#555">${fmtAmt(itemsSubtotal)}</td></tr>
-        ${chargedFee > 0 ? `<tr><td style="font-size:11px;color:#555">Convenience fee</td><td style="text-align:right;font-size:11px;color:#555">${fmtAmt(chargedFee)}</td></tr>` : ""}
+        ${chargedFee > 0 ? `<tr><td style="font-size:11px;color:#555">Service fee</td><td style="text-align:right;font-size:11px;color:#555">${fmtAmt(chargedFee)}</td></tr>` : ""}
         ${order.packFee && Number(order.packFee) > 0 ? `<tr><td style="font-size:11px;color:#555">Pack</td><td style="text-align:right;font-size:11px;color:#555">${fmtAmt(order.packFee)}</td></tr>` : ""}
         ` : ""}
         <tr class="total"><td>TOTAL</td><td style="text-align:right">${fmtAmt(order.total)}</td></tr>
@@ -607,7 +607,7 @@ function buildFoodEscPos(order, orgName, currency = "") {
   const hasPackFee = order.packFee && Number(order.packFee) > 0;
   if (chargedFeeAmt > 0 || hasPackFee) {
     text("Subtotal       : " + fmtShort(itemsSubtotalAmt)); nl();
-    if (chargedFeeAmt > 0) { text("Convenience fee: " + fmtShort(chargedFeeAmt)); nl(); }
+    if (chargedFeeAmt > 0) { text("Service fee    : " + fmtShort(chargedFeeAmt)); nl(); }
     if (hasPackFee) { text("Pack           : " + fmtShort(order.packFee)); nl(); }
     hr();
   }
