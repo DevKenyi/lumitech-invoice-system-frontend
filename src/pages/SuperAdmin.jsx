@@ -731,6 +731,9 @@ function SuperAdmin() {
   const [feeRecommendations, setFeeRecommendations] = useState([]);
   const [feeIntelLoading, setFeeIntelLoading] = useState(false);
   const [feeOrgDetail, setFeeOrgDetail] = useState(null); // {orgId, orgName, data, loading}
+  const [feeBackfillPreview, setFeeBackfillPreview] = useState(null); // {rows, loading}
+  const [feeBackfillApplying, setFeeBackfillApplying] = useState(false);
+  const [feeBackfillResult, setFeeBackfillResult] = useState(null);
   const [pendingNotifs, setPendingNotifs] = useState([]);
   const [confirmingNotif, setConfirmingNotif] = useState(null);
   const [savingPricing, setSavingPricing] = useState(false);
@@ -866,6 +869,33 @@ function SuperAdmin() {
       await api.post(`/api/superadmin/fee-intelligence/recommendations/${encodeURIComponent(key)}/dismiss`, { reason: "" });
       setFeeRecommendations(prev => prev.map(r => r.key === key ? { ...r, dismissed: true } : r));
     } catch { showToast("Failed to dismiss recommendation.", "error"); }
+  };
+
+  const previewFeeBackfill = async () => {
+    setFeeBackfillPreview({ rows: null, loading: true });
+    setFeeBackfillResult(null);
+    try {
+      const res = await api.get("/api/superadmin/fee-intelligence/backfill/preview?range=today");
+      setFeeBackfillPreview({ rows: res.data, loading: false });
+    } catch (err) {
+      setFeeBackfillPreview(null);
+      showToast(err.response?.data?.message || "Failed to load backfill preview.", "error");
+    }
+  };
+
+  const applyFeeBackfill = async () => {
+    setFeeBackfillApplying(true);
+    try {
+      const res = await api.post("/api/superadmin/fee-intelligence/backfill/apply?range=today");
+      setFeeBackfillResult(res.data);
+      setFeeBackfillPreview(null);
+      showToast(`Backfilled ${res.data.ordersUpdated} orders, added ₦${Number(res.data.totalFeeAdded).toLocaleString("en", { minimumFractionDigits: 2 })} in fees.`);
+      setFeeIntelRange(r => ({ ...r }));
+    } catch (err) {
+      showToast(err.response?.data?.message || "Backfill failed.", "error");
+    } finally {
+      setFeeBackfillApplying(false);
+    }
   };
 
   if (!isPlatformAdmin) return <Navigate to="/dashboard" replace />;
@@ -4134,6 +4164,75 @@ function SuperAdmin() {
               <StatCard label="Effective Fee Rate" value={feeOverview?.effectiveFeeRatePercent != null ? `${feeOverview.effectiveFeeRatePercent.toFixed(2)}%` : "—"} icon={Tag} color="bg-pink-500" />
               <StatCard label="Collection Rate" value={feeOverview?.collectionRatePercent != null ? `${feeOverview.collectionRatePercent.toFixed(1)}%` : "—"} icon={CheckSquare} color="bg-teal-500" />
               <StatCard label="Reconciliation" value={feeOverview ? `${feeOverview.reconciledCount} ok / ${feeOverview.unreconciledCount + feeOverview.partiallyReconciledCount + feeOverview.exceptionCount} flagged` : "—"} icon={Clock} color="bg-slate-500" />
+            </div>
+
+            {/* Fee backfill — recovers online orders that recorded 0 fee before the server-side fallback shipped */}
+            <div className="bg-amber-50 dark:bg-amber-900/20 backdrop-blur-sm rounded-2xl shadow-sm border border-amber-200 dark:border-amber-800 p-5">
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300 mb-1 flex items-center gap-2">
+                <AlertTriangle size={16} /> Backfill today's missing online fees
+              </p>
+              <p className="text-xs text-amber-700/80 dark:text-amber-400/80 mb-4">
+                Movara/online orders placed before the fix recorded ₦0 convenience fee. This recomputes and sets the fee
+                for today's affected orders only — it never changes what the customer already paid.
+              </p>
+              {feeBackfillResult && (
+                <p className="text-sm text-emerald-700 dark:text-emerald-400 mb-3">
+                  ✅ Updated {feeBackfillResult.ordersUpdated} orders, added ₦{Number(feeBackfillResult.totalFeeAdded).toLocaleString("en", { minimumFractionDigits: 2 })} in fees.
+                </p>
+              )}
+              {!feeBackfillPreview && (
+                <button onClick={previewFeeBackfill}
+                        className="px-4 py-2 text-sm font-medium rounded-lg bg-amber-600 text-white hover:bg-amber-700">
+                  Preview today's affected orders
+                </button>
+              )}
+              {feeBackfillPreview?.loading && <div className="flex justify-center py-4"><Spinner /></div>}
+              {feeBackfillPreview && !feeBackfillPreview.loading && (
+                <div>
+                  {feeBackfillPreview.rows.length === 0 ? (
+                    <p className="text-sm text-slate-500 dark:text-slate-400">No affected orders found for today.</p>
+                  ) : (
+                    <>
+                      <div className="overflow-x-auto max-h-64 mb-3 border border-amber-200 dark:border-amber-800 rounded-lg">
+                        <table className="w-full text-xs">
+                          <thead className="bg-amber-100 dark:bg-amber-900/40 sticky top-0">
+                            <tr>
+                              <th className="px-3 py-2 text-left">Order</th>
+                              <th className="px-3 py-2 text-left">Org</th>
+                              <th className="px-3 py-2 text-right">Subtotal</th>
+                              <th className="px-3 py-2 text-right">Fee to add</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {feeBackfillPreview.rows.map(row => (
+                              <tr key={row.orderId} className="border-t border-amber-100 dark:border-amber-900/40">
+                                <td className="px-3 py-1.5">{row.orderNumber}</td>
+                                <td className="px-3 py-1.5">{row.orgName}</td>
+                                <td className="px-3 py-1.5 text-right">₦{Number(row.subtotal).toLocaleString("en", { minimumFractionDigits: 2 })}</td>
+                                <td className="px-3 py-1.5 text-right font-semibold">₦{Number(row.computedFee).toLocaleString("en", { minimumFractionDigits: 2 })}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <p className="text-sm font-medium text-amber-800 dark:text-amber-300 mb-3">
+                        Total fee to add: ₦{feeBackfillPreview.rows.reduce((s, r) => s + Number(r.computedFee), 0).toLocaleString("en", { minimumFractionDigits: 2 })}
+                        {" "}across {feeBackfillPreview.rows.length} orders
+                      </p>
+                      <div className="flex gap-2">
+                        <button onClick={applyFeeBackfill} disabled={feeBackfillApplying}
+                                className="px-4 py-2 text-sm font-medium rounded-lg bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50">
+                          {feeBackfillApplying ? "Applying…" : "Apply backfill"}
+                        </button>
+                        <button onClick={() => setFeeBackfillPreview(null)} disabled={feeBackfillApplying}
+                                className="px-4 py-2 text-sm font-medium rounded-lg border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400">
+                          Cancel
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Ask Lumi Insights */}
