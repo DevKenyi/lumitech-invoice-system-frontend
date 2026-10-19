@@ -294,21 +294,28 @@ function FeeSettingsModal({ org, onConfirm, onCancel, loading }) {
 // notifications) for one org — for test/staging Food POS orgs polluting real platform revenue
 // figures. Same preview-then-type-to-confirm shape as the Payroll Danger Zone tool.
 function FoodOrderCleanupModal({ org, onDone, onCancel }) {
+  const [date, setDate] = useState("");
   const [preview, setPreview] = useState(null);
   const [loadingPreview, setLoadingPreview] = useState(true);
   const [confirmText, setConfirmText] = useState("");
   const [executing, setExecuting] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
+  const loadPreview = (d) => {
     if (!org) return;
     setLoadingPreview(true);
     setError(null);
-    api.get(`/api/superadmin/organisations/${org.id}/food-order-cleanup/preview`)
+    setConfirmText("");
+    const url = d
+      ? `/api/superadmin/organisations/${org.id}/food-order-cleanup/preview-date?date=${d}`
+      : `/api/superadmin/organisations/${org.id}/food-order-cleanup/preview`;
+    api.get(url)
       .then(res => setPreview(res.data))
       .catch(() => setError("Failed to load cleanup preview"))
       .finally(() => setLoadingPreview(false));
-  }, [org]);
+  };
+
+  useEffect(() => { loadPreview(""); }, [org]);
 
   if (!org) return null;
 
@@ -316,8 +323,11 @@ function FoodOrderCleanupModal({ org, onDone, onCancel }) {
     if (!preview || confirmText !== preview.organisationName) return;
     setExecuting(true);
     try {
-      await api.post(`/api/superadmin/organisations/${org.id}/food-order-cleanup/execute`, { confirmOrganisationName: confirmText });
-      onDone(`Deleted ${preview.orderCount} food order(s) for ${preview.organisationName}.`);
+      const url = date
+        ? `/api/superadmin/organisations/${org.id}/food-order-cleanup/execute-date?date=${date}`
+        : `/api/superadmin/organisations/${org.id}/food-order-cleanup/execute`;
+      await api.post(url, { confirmOrganisationName: confirmText });
+      onDone(`Deleted ${preview.orderCount} food order(s) for ${preview.organisationName}${date ? ` on ${date}` : ""}.`);
     } catch (e) {
       setError(e.response?.data?.message || "Failed to delete food order data");
     } finally {
@@ -340,11 +350,20 @@ function FoodOrderCleanupModal({ org, onDone, onCancel }) {
           </button>
         </div>
 
-        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-          Permanently deletes every food order, journal entry those orders posted, and
-          convenience-fee settlement/notification record for <span className="font-semibold text-slate-700 dark:text-slate-200">{org.name}</span>.
-          For cleaning up test/staging activity — there is no undo. Ingredient stock movements are not touched.
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+          Permanently deletes food order(s), the journal entries they posted, and the matching
+          convenience-fee settlement for <span className="font-semibold text-slate-700 dark:text-slate-200">{org.name}</span>.
+          There is no undo. Ingredient stock movements are not touched.
         </p>
+
+        <div className="mb-4">
+          <label className="text-xs font-medium text-slate-600 dark:text-slate-300 block mb-1">
+            Limit to one day (leave blank to wipe all history)
+          </label>
+          <input type="date" value={date}
+            onChange={e => { setDate(e.target.value); loadPreview(e.target.value); }}
+            className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 dark:text-white text-sm" />
+        </div>
 
         {loadingPreview ? (
           <div className="flex items-center justify-center py-6"><Loader2 size={20} className="animate-spin text-rose-500" /></div>
