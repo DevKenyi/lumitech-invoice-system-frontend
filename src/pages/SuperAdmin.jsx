@@ -70,7 +70,7 @@ function StatCard({ label, value, icon: Icon, color, sub, badge }) {
           </span>
         )}
       </div>
-      <p className="text-3xl font-bold text-slate-900 dark:text-white">{value ?? "—"}</p>
+      <p className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 dark:text-white break-words">{value ?? "—"}</p>
       <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">{label}</p>
       {sub && <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5 font-medium">{sub}</p>}
     </div>
@@ -4174,7 +4174,7 @@ function SuperAdmin() {
             <DateRangeFilter value={feeIntelRange} onChange={(r) => { setFeeIntelRange(r); setFeeOrgsPage(0); }} />
 
             {/* KPI overview */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               <StatCard label="Total Fees Generated" value={feeOverview ? `₦${fmtMoney(feeOverview.totalEarned)}` : "—"} icon={DollarSign} color="bg-blue-500" />
               <StatCard label="Fees Received" value={feeOverview ? `₦${fmtMoney(feeOverview.totalCollected)}` : "—"} icon={CheckCircle} color="bg-emerald-500" />
               <StatCard label="Outstanding Fees" value={feeOverview ? `₦${fmtMoney(feeOverview.totalOutstanding)}` : "—"} icon={AlertTriangle} color="bg-amber-500" />
