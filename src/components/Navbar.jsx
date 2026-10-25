@@ -466,7 +466,6 @@ function Navbar({ onClose }) {
     ...(isAccountantPro || !plan || plan === "FREE" ? [{ path: "/expenses", label: "Expenses",    icon: Receipt,    info: "Manage staff expense claims" }] : []),
     ...(isAccountantPro || !plan || plan === "FREE" ? [{ path: "/audit",    label: "Audit Trail", icon: ShieldCheck, info: "Full log of every action in your account" }] : []),
     ...(canAccessGrowthFeatures ? [{ path: "/activity-reports/manage", label: "Team Reports", icon: ClipboardList, info: "Review weekly activity reports from your team" }] : []),
-    ...(isPlatformAdmin ? [{ path: "/admin", label: "Platform Admin", icon: ShieldCheck, info: "System-wide administration" }] : []),
     { path: "/referrals", label: "Referral Programme", icon: Gift, info: "Earn ₦ by referring businesses to LumiLedger" },
     { path: "/vault", label: "My Vault", icon: Lock, info: "Private, PIN-locked personal budget — only you can see it" },
     { path: "/lumiflow", label: "LumiFlow", icon: PiggyBank, info: "Auto-split your salary and control your spending allowance" },
@@ -497,6 +496,7 @@ function Navbar({ onClose }) {
   // ── Sections config ───────────────────────────────────────────────────────
   // For collapsed (icon-only) mode, collect all items in a flat list
   const allItemsFlat = [
+    ...(isPlatformAdmin ? [{ path: "/admin", label: "Platform Admin", icon: ShieldCheck, info: "System-wide administration" }] : []),
     ...(adminSectionVisible("sales")      ? salesItems      : []),
     ...(adminSectionVisible("purchases")  ? purchasesItems  : []),
     ...(isAccountant && adminSectionVisible("accounting") ? accountingItems : []),
@@ -508,6 +508,7 @@ function Navbar({ onClose }) {
   // All items with section labels for the command palette
   const paletteItems = isStaff ? staffItems.map(i => ({ ...i, section: "Menu" })) : [
     { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard, section: "Home" },
+    ...(isPlatformAdmin ? [{ path: "/admin", label: "Platform Admin", icon: ShieldCheck, section: "Home" }] : []),
     ...(adminSectionVisible("sales")      ? salesItems.map(i => ({ ...i, section: "Sales & Invoicing" }))    : []),
     ...(adminSectionVisible("purchases")  ? purchasesItems.map(i => ({ ...i, section: "Bills & Purchases" })) : []),
     ...(isAccountant && adminSectionVisible("accounting") ? accountingItems.map(i => ({ ...i, section: "Accounting" })) : []),
@@ -609,6 +610,17 @@ function Navbar({ onClose }) {
             {!isStaff && (
               <NavLink
                 item={{ path: "/dashboard", label: "Dashboard", icon: LayoutDashboard, info: "Real-time snapshot of your business" }}
+                collapsed={false}
+                onClick={onClose}
+                isActive={isActive}
+                isMobile={isMobile}
+              />
+            )}
+
+            {/* Platform Admin — standalone, top-level for PLATFORM_ADMIN users */}
+            {isPlatformAdmin && (
+              <NavLink
+                item={{ path: "/admin", label: "Platform Admin", icon: ShieldCheck, info: "System-wide administration" }}
                 collapsed={false}
                 onClick={onClose}
                 isActive={isActive}

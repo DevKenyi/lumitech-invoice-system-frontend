@@ -57,7 +57,12 @@ function Login() {
       // Without this, the gate stays open from the no-token check on mount.
       window.dispatchEvent(new CustomEvent("user-logged-in"));
 
-      if (role === "STAFF" || role === "STAFF_EXPENSE") {
+      const isPlatformAdmin = role === "PLATFORM_ADMIN" ||
+        (Array.isArray(user?.roles) && user.roles.includes("PLATFORM_ADMIN"));
+
+      if (isPlatformAdmin) {
+        navigate("/admin");
+      } else if (role === "STAFF" || role === "STAFF_EXPENSE") {
         navigate("/staff-home");
       } else {
         navigate("/dashboard");
