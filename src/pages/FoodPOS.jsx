@@ -8,7 +8,7 @@ import {
   ShoppingCart, Plus, Minus, X, Loader2,
   UtensilsCrossed, ToggleLeft, ToggleRight, RefreshCw,
   Printer, Users, ShoppingBag, Package, Usb, Bluetooth, Wifi, CheckCircle,
-  WifiOff, CloudOff, History, ShieldAlert, Mail, Receipt,
+  WifiOff, CloudOff, History, ShieldAlert, Mail, Receipt, Search,
 } from "lucide-react";
 import {
   printFoodOrderBrowser, printFoodOrderUSB, printFoodOrderBluetooth, printFoodOrderNativeUSB,
@@ -32,6 +32,7 @@ export default function FoodPOS() {
   const [categories, setCategories] = useState([]);
   const [items, setItems] = useState([]);
   const [activeCat, setActiveCat] = useState(null);
+  const [menuSearch, setMenuSearch] = useState("");
   const [cart, setCart] = useState([]);
   const [orderType, setOrderType] = useState("DINE_IN");
   const [paymentMethod, setPaymentMethod] = useState("CASH");
@@ -255,9 +256,12 @@ export default function FoodPOS() {
     }
   }
 
-  const visibleItems = activeCat
-    ? items.filter(i => i.categoryId === activeCat)
-    : items;
+  const trimmedSearch = menuSearch.trim().toLowerCase();
+  const visibleItems = trimmedSearch
+    ? items.filter(i => i.name.toLowerCase().includes(trimmedSearch))
+    : activeCat
+      ? items.filter(i => i.categoryId === activeCat)
+      : items;
 
   async function toggleAvail(item, e) {
     e.stopPropagation();
@@ -483,6 +487,26 @@ export default function FoodPOS() {
 
       {/* Left: Menu */}
       <div className="flex-1 flex flex-col overflow-hidden border-r border-slate-200 dark:border-slate-700">
+        {/* Menu search */}
+        <div className="px-3 pt-3 shrink-0 bg-white dark:bg-slate-800">
+          <div className="relative">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={menuSearch}
+              onChange={(e) => setMenuSearch(e.target.value)}
+              placeholder="Search menu…"
+              className="w-full pl-9 pr-8 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            {menuSearch && (
+              <button onClick={() => setMenuSearch("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                <X size={15} />
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* Category tabs */}
         <div className="flex gap-2 p-3 overflow-x-auto shrink-0 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
           <button onClick={() => setActiveCat(null)}
@@ -612,7 +636,7 @@ export default function FoodPOS() {
           {visibleItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-slate-400">
               <UtensilsCrossed size={40} className="mb-2 opacity-30" />
-              <p>No items in this category</p>
+              <p>{trimmedSearch ? `No items match "${menuSearch.trim()}"` : "No items in this category"}</p>
             </div>
           ) : (
             <div className="grid grid-cols-[repeat(auto-fill,minmax(130px,1fr))] gap-3">
