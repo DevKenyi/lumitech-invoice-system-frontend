@@ -4311,7 +4311,7 @@ function SuperAdmin() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/60">
-                      {["Organisation", "Arrangement", "Sales", "Orders", "Avg Order", "Avg Orders/Wk", "Earned", "Received", "Outstanding", "Collection %", "Trend", "Status", ""].map(h => (
+                      {["Organisation", "Arrangement", "Sales", "Orders", "Avg Order", "Avg Orders/Wk", "Avg Sales/Wk", "Earned", "Received", "Outstanding", "Collection %", "Trend", "Status", ""].map(h => (
                         <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -4325,6 +4325,7 @@ function SuperAdmin() {
                         <td className="px-4 py-3 whitespace-nowrap">{row.totalOrders}</td>
                         <td className="px-4 py-3 whitespace-nowrap">₦{fmtMoney(row.avgOrderValue)}</td>
                         <td className="px-4 py-3 whitespace-nowrap">{row.avgOrdersPerWeek != null ? row.avgOrdersPerWeek.toFixed(1) : "—"}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">₦{fmtMoney(row.avgSalesPerWeek)}</td>
                         <td className="px-4 py-3 whitespace-nowrap">₦{fmtMoney(row.feesEarned)}</td>
                         <td className="px-4 py-3 whitespace-nowrap text-emerald-600 dark:text-emerald-400">₦{fmtMoney(row.feesReceived)}</td>
                         <td className="px-4 py-3 whitespace-nowrap text-amber-600 dark:text-amber-400">₦{fmtMoney(row.outstanding)}</td>
@@ -4344,7 +4345,7 @@ function SuperAdmin() {
                       </tr>
                     ))}
                     {(feeOrgs?.content ?? []).length === 0 && (
-                      <tr><td colSpan={13} className="px-4 py-10 text-center text-slate-400 text-sm">
+                      <tr><td colSpan={14} className="px-4 py-10 text-center text-slate-400 text-sm">
                         {feeIntelLoading ? "Loading…" : "No fee-generating organisations in this period."}
                       </td></tr>
                     )}
