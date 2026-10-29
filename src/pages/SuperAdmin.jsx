@@ -3367,6 +3367,16 @@ function SuperAdmin() {
                           </button>
                           <button
                             onClick={() => {
+                              const url = `${window.location.origin}/register?ref=${bm.referralCode}`;
+                              navigator.clipboard.writeText(url).then(() => showToast("Registration link copied."));
+                            }}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition"
+                            title="Copy registration link"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => {
                               const url = `${window.location.origin}/commission/${bm.viewToken}`;
                               navigator.clipboard.writeText(url).then(() => showToast("Earnings link copied."));
                             }}
