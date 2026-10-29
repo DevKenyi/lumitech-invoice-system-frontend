@@ -672,7 +672,11 @@ function SuperAdmin() {
   const [bms, setBms] = useState([]);
   const [bmsLoaded, setBmsLoaded] = useState(false);
   const [bmModal, setBmModal] = useState(null); // null | { mode: "create"|"edit", bm?: {} }
-  const [bmForm, setBmForm] = useState({ name: "", email: "", phone: "", referralCode: "", commissionRate: "0.08" });
+  const [bmForm, setBmForm] = useState({
+    name: "", email: "", phone: "", referralCode: "", commissionRate: "0.08",
+    discountType: "NONE", discountValue: "", discountMaxAmount: "", discountEligiblePlans: "",
+    discountActive: false, discountStartDate: "", discountEndDate: "",
+  });
   const [bmSaving, setBmSaving] = useState(false);
   const [bmEarnings, setBmEarnings] = useState(null); // null | { bmId, data }
   const [bmDeleteTarget, setBmDeleteTarget] = useState(null);
@@ -3057,6 +3061,96 @@ function SuperAdmin() {
                       </p>
                     </div>
                   )}
+
+                  <div className="border-t border-slate-100 dark:border-slate-700 pt-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Registration discount</label>
+                      <label className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                        <input
+                          type="checkbox"
+                          checked={bmForm.discountActive}
+                          onChange={e => setBmForm(prev => ({ ...prev, discountActive: e.target.checked }))}
+                          className="rounded"
+                        />
+                        Active
+                      </label>
+                    </div>
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500 -mt-2">
+                      Applies to this partner's referred org's first billing cycle only — renewals bill at full price.
+                    </p>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Discount Type</label>
+                        <select
+                          value={bmForm.discountType}
+                          onChange={e => setBmForm(prev => ({ ...prev, discountType: e.target.value }))}
+                          className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="NONE">None</option>
+                          <option value="PERCENTAGE">Percentage</option>
+                          <option value="FIXED_AMOUNT">Fixed Amount</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+                          {bmForm.discountType === "FIXED_AMOUNT" ? "Amount" : "Percent (e.g. 20)"}
+                        </label>
+                        <input
+                          type="number" step="0.01"
+                          value={bmForm.discountValue}
+                          onChange={e => setBmForm(prev => ({ ...prev, discountValue: e.target.value }))}
+                          disabled={bmForm.discountType === "NONE"}
+                          className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+
+                    {bmForm.discountType === "PERCENTAGE" && (
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Max Discount Amount (optional cap)</label>
+                        <input
+                          type="number" step="0.01"
+                          value={bmForm.discountMaxAmount}
+                          onChange={e => setBmForm(prev => ({ ...prev, discountMaxAmount: e.target.value }))}
+                          placeholder="No cap"
+                          className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Eligible Plans</label>
+                      <input
+                        type="text"
+                        value={bmForm.discountEligiblePlans}
+                        onChange={e => setBmForm(prev => ({ ...prev, discountEligiblePlans: e.target.value }))}
+                        placeholder="Blank = all plans. Or e.g. GROWTH|PRO"
+                        className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Start Date (optional)</label>
+                        <input
+                          type="date"
+                          value={bmForm.discountStartDate}
+                          onChange={e => setBmForm(prev => ({ ...prev, discountStartDate: e.target.value }))}
+                          className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">End Date (optional)</label>
+                        <input
+                          type="date"
+                          value={bmForm.discountEndDate}
+                          onChange={e => setBmForm(prev => ({ ...prev, discountEndDate: e.target.value }))}
+                          className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 <div className="px-6 pb-6 flex gap-2 justify-end">
                   <button onClick={() => setBmModal(null)} className="px-4 py-2 text-sm text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition">Cancel</button>
@@ -3065,7 +3159,14 @@ function SuperAdmin() {
                     onClick={async () => {
                       setBmSaving(true);
                       try {
-                        const payload = { ...bmForm, commissionRate: parseFloat(bmForm.commissionRate) };
+                        const payload = {
+                          ...bmForm,
+                          commissionRate: parseFloat(bmForm.commissionRate),
+                          discountValue: bmForm.discountValue !== "" ? parseFloat(bmForm.discountValue) : null,
+                          discountMaxAmount: bmForm.discountMaxAmount !== "" ? parseFloat(bmForm.discountMaxAmount) : null,
+                          discountStartDate: bmForm.discountStartDate || null,
+                          discountEndDate: bmForm.discountEndDate || null,
+                        };
                         if (bmModal.mode === "create") {
                           const r = await api.post("/api/superadmin/business-managers", payload);
                           setBms(prev => [r.data, ...prev]);
@@ -3122,7 +3223,12 @@ function SuperAdmin() {
                             </div>
                             <div className="text-right flex items-center gap-3">
                               <div>
-                                <p className="text-xs text-slate-500">{r.currency} {Number(r.paymentAmount).toLocaleString("en-NG",{minimumFractionDigits:2})}</p>
+                                <p className="text-xs text-slate-500">
+                                  {r.currency} {Number(r.paymentAmount).toLocaleString("en-NG",{minimumFractionDigits:2})}
+                                  {r.discountAmount > 0 && (
+                                    <span className="ml-1 text-emerald-600 dark:text-emerald-400">(−{r.currency} {Number(r.discountAmount).toLocaleString("en-NG",{minimumFractionDigits:2})} discount)</span>
+                                  )}
+                                </p>
                                 <p className="text-sm font-bold text-blue-600">+{r.currency} {Number(r.commissionAmount).toLocaleString("en-NG",{minimumFractionDigits:2})}</p>
                               </div>
                               {r.payoutStatus === "PENDING" && (
@@ -3167,7 +3273,11 @@ function SuperAdmin() {
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold text-slate-900 dark:text-white">Business Managers</h2>
             <button
-              onClick={() => { setBmForm({ name: "", email: "", phone: "", referralCode: "", commissionRate: "0.08" }); setBmModal({ mode: "create" }); }}
+              onClick={() => { setBmForm({
+                name: "", email: "", phone: "", referralCode: "", commissionRate: "0.08",
+                discountType: "NONE", discountValue: "", discountMaxAmount: "", discountEligiblePlans: "",
+                discountActive: false, discountStartDate: "", discountEndDate: "",
+              }); setBmModal({ mode: "create" }); }}
               className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition"
             >
               <Plus size={13} /> Add Manager
@@ -3220,7 +3330,17 @@ function SuperAdmin() {
                           </button>
                           <button
                             onClick={() => {
-                              setBmForm({ name: bm.name, email: bm.email, phone: bm.phone || "", referralCode: bm.referralCode, commissionRate: String(bm.commissionRate) });
+                              setBmForm({
+                                name: bm.name, email: bm.email, phone: bm.phone || "", referralCode: bm.referralCode,
+                                commissionRate: String(bm.commissionRate),
+                                discountType: bm.discountType || "NONE",
+                                discountValue: bm.discountValue != null ? String(bm.discountValue) : "",
+                                discountMaxAmount: bm.discountMaxAmount != null ? String(bm.discountMaxAmount) : "",
+                                discountEligiblePlans: bm.discountEligiblePlans || "",
+                                discountActive: !!bm.discountActive,
+                                discountStartDate: bm.discountStartDate || "",
+                                discountEndDate: bm.discountEndDate || "",
+                              });
                               setBmModal({ mode: "edit", bm });
                             }}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition"
