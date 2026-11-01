@@ -4131,6 +4131,7 @@ function SuperAdmin() {
               <div className="text-center py-16 text-slate-400 text-sm">No convenience fee records found.</div>
             ) : (
               <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-100 dark:border-slate-700 text-left">
@@ -4203,6 +4204,7 @@ function SuperAdmin() {
                     })}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </div>
