@@ -218,6 +218,7 @@ function Billing() {
                   "Owner capital tracking",
                   "Client payment portal",
                   "PDF export",
+                  "10 WhatsApp messages (trial)",
                 ].map(f => (
                   <li key={f} className="flex items-start gap-2 text-xs text-slate-600">
                     <CheckCircle className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0 mt-0.5" />
@@ -262,6 +263,7 @@ function Billing() {
                   "Capital tracking",
                   "Up to 50 clients",
                   "Email reminders",
+                  "50 WhatsApp messages/month",
                 ].map(f => (
                   <li key={f} className="flex items-start gap-2 text-xs text-white">
                     <CheckCircle className="w-3.5 h-3.5 text-blue-200 flex-shrink-0 mt-0.5" />
@@ -323,6 +325,7 @@ function Billing() {
                   "Advanced reports",
                   "Chart of Accounts",
                   "Journal Entries",
+                  "350 WhatsApp messages/month",
                 ].map(f => (
                   <li key={f} className="flex items-start gap-2 text-xs text-slate-300">
                     <CheckCircle className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0 mt-0.5" />
@@ -375,6 +378,7 @@ function Billing() {
               <ul className="space-y-2.5 mb-6 flex-1">
                 {[
                   "Everything in Business",
+                  "✦ Unlimited WhatsApp messages",
                   "✦ Expense reporting & claims",
                   "Receipt upload & approval flow",
                   "Audit Trail (full activity log)",

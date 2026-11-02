@@ -80,7 +80,7 @@ export default function PricingSection() {
             </div>
             <p className="text-slate-400 text-sm mb-5">For business owners managing their finances</p>
             <ul className="space-y-2.5 mb-6 flex-1">
-              {["Invoicing & payments", "Financial reports", "Capital tracking", "Up to 50 clients", "Email reminders"].map(f => (
+              {["Invoicing & payments", "Financial reports", "Capital tracking", "Up to 50 clients", "Email reminders", "50 WhatsApp messages/month"].map(f => (
                 <li key={f} className="flex items-start gap-2 text-sm text-slate-300">
                   <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />{f}
                 </li>
@@ -109,7 +109,7 @@ export default function PricingSection() {
             </div>
             <p className="text-blue-200 text-sm mb-5">For growing businesses that need more</p>
             <ul className="space-y-2.5 mb-6 flex-1">
-              {["Everything in Essential", "Unlimited clients", "Multi-user access", "Advanced reports", "Automatic bookkeeping behind the scenes", "Matches your bank transactions automatically", "Tracks what your equipment is worth over time"].map(f => (
+              {["Everything in Essential", "Unlimited clients", "Multi-user access", "Advanced reports", "Automatic bookkeeping behind the scenes", "Matches your bank transactions automatically", "Tracks what your equipment is worth over time", "350 WhatsApp messages/month"].map(f => (
                 <li key={f} className="flex items-start gap-2 text-sm text-white">
                   <CheckCircle className="w-4 h-4 text-blue-200 flex-shrink-0 mt-0.5" />{f}
                 </li>
@@ -137,6 +137,7 @@ export default function PricingSection() {
             <ul className="space-y-2.5 mb-6 flex-1">
               {[
                 "Everything in Business",
+                "✦ Unlimited WhatsApp messages",
                 `✦ Payroll & ${config.taxBody === "GRA" ? "SSNIT/PAYE" : config.taxBody === "SARS" ? "PAYE/UIF/SDL" : "PAYE/Pension/NHF"}`,
                 "✦ Multi-currency (13 currencies)",
                 "✦ Budget vs Actual",
