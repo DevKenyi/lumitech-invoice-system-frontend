@@ -158,6 +158,16 @@ function Billing() {
                       Renews {new Date(billing.trialEndsAt).toLocaleDateString("en-NG", { day: "2-digit", month: "short", year: "numeric" })}
                     </p>
                   )}
+                  {billing?.planStartedAt && (() => {
+                    const started = new Date(billing.planStartedAt);
+                    const months = Math.max(0,
+                      (new Date().getFullYear() - started.getFullYear()) * 12 + (new Date().getMonth() - started.getMonth()));
+                    return (
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Subscribed since {started.toLocaleDateString("en-NG", { month: "short", year: "numeric" })} ({months} month{months !== 1 ? "s" : ""})
+                      </p>
+                    );
+                  })()}
                 </div>
               </div>
               {isTrial && (

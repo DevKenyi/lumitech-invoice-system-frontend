@@ -686,7 +686,7 @@ function SuperAdmin() {
   const [customBillingLoaded, setCustomBillingLoaded] = useState(false);
   const [customUnpaid, setCustomUnpaid] = useState([]);
   const [customEnableModal, setCustomEnableModal] = useState(null); // null | { orgId, orgName, existing? }
-  const [customForm, setCustomForm] = useState({ monthlyPrice: "", planLabel: "", clientEmail: "", clientName: "", graceDays: "7" });
+  const [customForm, setCustomForm] = useState({ monthlyPrice: "", planLabel: "", clientEmail: "", clientName: "", graceDays: "7", whatsappQuotaOverride: "" });
   const [customSaving, setCustomSaving] = useState(false);
   const [customMarkingPaid, setCustomMarkingPaid] = useState(null); // recordId being marked
   const [customSuspendTarget, setCustomSuspendTarget] = useState(null);
@@ -2528,6 +2528,7 @@ function SuperAdmin() {
               clientEmail: customForm.clientEmail,
               clientName: customForm.clientName,
               graceDays: parseInt(customForm.graceDays) || 7,
+              whatsappQuotaOverride: customForm.whatsappQuotaOverride !== "" ? parseInt(customForm.whatsappQuotaOverride) : null,
             });
             showToast("Custom pricing enabled.");
             setCustomEnableModal(null);
@@ -2550,7 +2551,7 @@ function SuperAdmin() {
                 <button
                   onClick={() => {
                     const org = orgs.find(o => true); // placeholder — user picks from org list below
-                    setCustomForm({ monthlyPrice: "", planLabel: "", clientEmail: "", clientName: "", graceDays: "7" });
+                    setCustomForm({ monthlyPrice: "", planLabel: "", clientEmail: "", clientName: "", graceDays: "7", whatsappQuotaOverride: "" });
                     setCustomEnableModal({ orgId: null, orgName: "" });
                   }}
                   className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition"
@@ -2617,6 +2618,7 @@ function SuperAdmin() {
                                       clientEmail: org.customPricingClientEmail ?? "",
                                       clientName: org.customPricingClientName ?? "",
                                       graceDays: "7",
+                                      whatsappQuotaOverride: org.whatsappQuotaOverride != null ? String(org.whatsappQuotaOverride) : "",
                                     });
                                     setCustomEnableModal({ orgId: org.id, orgName: org.name });
                                   }}
@@ -2823,6 +2825,15 @@ function SuperAdmin() {
                       <input type="number" min="1" max="30" value={customForm.graceDays}
                         onChange={e => setCustomForm(p => ({ ...p, graceDays: e.target.value }))}
                         className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
+                        Monthly WhatsApp Quota Override
+                      </label>
+                      <input type="number" min="-1" placeholder="Blank = use plan default. -1 = unlimited" value={customForm.whatsappQuotaOverride}
+                        onChange={e => setCustomForm(p => ({ ...p, whatsappQuotaOverride: e.target.value }))}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                      <p className="text-[11px] text-slate-400 mt-1">For high-traffic brands negotiated outside the standard plan tiers.</p>
                     </div>
                   </div>
                   <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-700 flex gap-3 justify-end">
