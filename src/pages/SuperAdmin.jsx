@@ -1,5 +1,5 @@
 // SuperAdmin.jsx — Platform Admin Dashboard (PLATFORM_ADMIN only)
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { Navigate } from "react-router-dom";
 import api, { getUserFromToken } from "../services/api";
 import {
@@ -9,7 +9,7 @@ import {
   PhoneCall, Mail, Search, RefreshCw, Download, Copy, Link2, MessageSquare, RotateCcw,
   BookOpen, ExternalLink, Lightbulb, Plus, Edit2, Handshake, Gift,
   Tag, DollarSign, CheckSquare, Clock,
-  Monitor, Printer, ChevronRight, Eye, KeyRound, FlaskConical, Loader2,
+  Monitor, Printer, ChevronRight, Eye, KeyRound, FlaskConical, Loader2, MoreVertical,
 } from "lucide-react";
 import Toast from "../components/Toast";
 import ConfirmModal from "../components/ConfirmModal";
@@ -428,6 +428,15 @@ function OrgRow({ org, isOwnOrg, onSuspend, onUnsuspend, onDelete, onPlanChange,
   const [expanded, setExpanded] = useState(false);
   const [users, setUsers]       = useState(null);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [menuOpen]);
 
   const toggleUsers = async () => {
     if (!expanded && users === null) {
@@ -507,81 +516,90 @@ function OrgRow({ org, isOwnOrg, onSuspend, onUnsuspend, onDelete, onPlanChange,
         <td className="px-4 py-4 text-center text-slate-600 dark:text-slate-300 hidden lg:table-cell">{org.clientCount ?? "—"}</td>
         <td className="px-4 py-4 text-center text-slate-600 dark:text-slate-300 hidden lg:table-cell">{org.invoiceCount ?? "—"}</td>
         <td className="px-4 py-4">
-          <div className="flex items-center gap-1.5 justify-end flex-wrap">
-            <button onClick={toggleUsers} title="View users" className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-600 transition">
-              <Users size={12} />{expanded ? "Hide" : "Users"}
-            </button>
-            {!isOwnOrg && !org.platformAdminOrg && (
-              org.billingExempt ? (
-                <button onClick={() => onRemoveBillingExempt(org)} title={org.billingExemptNote || ""} className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg hover:bg-purple-100 transition">
-                  <Gift size={12} />Remove Exemption
-                </button>
-              ) : (
-                <button onClick={() => onBillingExempt(org)} className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-600 transition">
-                  <Gift size={12} />Exempt Billing
-                </button>
-              )
-            )}
-            <button onClick={() => onGenerateApiKey(org)}
-              title={org.hasExternalInvoiceApiKey ? "Rotate the external invoice API key (invalidates the old one)" : "Generate an API key for an external app to create invoices in this org"}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-700 rounded-lg hover:bg-indigo-100 transition">
-              <KeyRound size={12} />{org.hasExternalInvoiceApiKey ? "Rotate Key" : "API Key"}
-            </button>
-            {!isOwnOrg && !org.platformAdminOrg && (
-              <button onClick={() => onToggleTestOrg(org)}
-                title="Exclude this org's revenue/fees from platform figures without deleting any data"
-                className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg border transition ${
-                  org.testOrg
-                    ? "text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-700 hover:bg-amber-100"
-                    : "text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600"
-                }`}>
-                <FlaskConical size={12} />{org.testOrg ? "Unmark Test" : "Mark as Test"}
-              </button>
-            )}
-            <button onClick={() => onToggleWhatsappDisabled(org)}
-              title="Completely stops WhatsApp sends for this org, regardless of plan quota — e.g. an internal test account"
-              className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg border transition ${
-                org.whatsappDisabled
-                  ? "text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/30 border-rose-200 dark:border-rose-700 hover:bg-rose-100"
-                  : "text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600"
-              }`}>
-              <MessageSquare size={12} />{org.whatsappDisabled ? "WhatsApp Off" : "Disable WhatsApp"}
-            </button>
-            {!isOwnOrg && !org.platformAdminOrg && (
-              <button onClick={() => onFeeSettings(org)}
-                title="Who pays the Food POS convenience fee, and how much"
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg hover:bg-blue-100 transition">
-                <DollarSign size={12} />Fee Settings
-              </button>
-            )}
-            {!isOwnOrg && !org.platformAdminOrg && (
-              <button onClick={() => onWipeFoodOrders(org)}
-                title="Permanently delete every food order (and related journal/fee records) for this org"
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-700 rounded-lg hover:bg-rose-100 transition">
-                <Trash2 size={12} />Wipe Food Orders
-              </button>
-            )}
+          <div className="flex items-center gap-1.5 justify-end">
             {isOwnOrg || org.platformAdminOrg ? (
               <span className="text-xs text-slate-400 italic px-2">{org.platformAdminOrg ? "Platform Admin" : "Your org"}</span>
             ) : isSuspended ? (
-              <>
-                <button onClick={() => onUnsuspend(org)} className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 rounded-lg hover:bg-emerald-100 transition">
-                  <CheckCircle size={12} />Restore
-                </button>
-                <button onClick={() => onDelete(org)} className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-700 rounded-lg hover:bg-rose-100 transition">
-                  <Trash2 size={12} />Delete
-                </button>
-              </>
+              <button onClick={() => onUnsuspend(org)} className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 rounded-lg hover:bg-emerald-100 transition">
+                <CheckCircle size={12} />Restore
+              </button>
             ) : (
-              <>
-                <button onClick={() => onSuspend(org)} className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg hover:bg-amber-100 transition">
-                  <XCircle size={12} />Suspend
-                </button>
-                <button onClick={() => onDelete(org)} className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-700 rounded-lg hover:bg-rose-100 transition">
-                  <Trash2 size={12} />Delete
-                </button>
-              </>
+              <button onClick={() => onSuspend(org)} className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg hover:bg-amber-100 transition">
+                <XCircle size={12} />Suspend
+              </button>
             )}
+
+            <div className="relative" ref={menuRef}>
+              <button onClick={() => setMenuOpen(v => !v)} title="More actions"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                <MoreVertical size={16} />
+              </button>
+              {menuOpen && (
+                <div className="absolute right-0 top-full mt-1 w-56 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-20 overflow-hidden py-1">
+                  <button onClick={() => { toggleUsers(); setMenuOpen(false); }}
+                    className="w-full flex items-center gap-2 px-3.5 py-2 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+                    <Users size={13} />{expanded ? "Hide users" : "View users"}
+                  </button>
+
+                  {!isOwnOrg && !org.platformAdminOrg && (
+                    org.billingExempt ? (
+                      <button onClick={() => { onRemoveBillingExempt(org); setMenuOpen(false); }} title={org.billingExemptNote || ""}
+                        className="w-full flex items-center gap-2 px-3.5 py-2 text-xs text-purple-700 dark:text-purple-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+                        <Gift size={13} />Remove billing exemption
+                      </button>
+                    ) : (
+                      <button onClick={() => { onBillingExempt(org); setMenuOpen(false); }}
+                        className="w-full flex items-center gap-2 px-3.5 py-2 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+                        <Gift size={13} />Exempt billing
+                      </button>
+                    )
+                  )}
+
+                  <button onClick={() => { onGenerateApiKey(org); setMenuOpen(false); }}
+                    className="w-full flex items-center gap-2 px-3.5 py-2 text-xs text-indigo-700 dark:text-indigo-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+                    <KeyRound size={13} />{org.hasExternalInvoiceApiKey ? "Rotate API key" : "Generate API key"}
+                  </button>
+
+                  {!isOwnOrg && !org.platformAdminOrg && (
+                    <button onClick={() => { onToggleTestOrg(org); setMenuOpen(false); }}
+                      title="Exclude this org's revenue/fees from platform figures without deleting any data"
+                      className="w-full flex items-center gap-2 px-3.5 py-2 text-xs text-amber-700 dark:text-amber-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+                      <FlaskConical size={13} />{org.testOrg ? "Unmark as test" : "Mark as test"}
+                    </button>
+                  )}
+
+                  <button onClick={() => { onToggleWhatsappDisabled(org); setMenuOpen(false); }}
+                    title="Completely stops WhatsApp sends for this org, regardless of plan quota"
+                    className="w-full flex items-center gap-2 px-3.5 py-2 text-xs text-rose-700 dark:text-rose-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+                    <MessageSquare size={13} />{org.whatsappDisabled ? "Re-enable WhatsApp" : "Disable WhatsApp"}
+                  </button>
+
+                  {!isOwnOrg && !org.platformAdminOrg && (
+                    <button onClick={() => { onFeeSettings(org); setMenuOpen(false); }}
+                      className="w-full flex items-center gap-2 px-3.5 py-2 text-xs text-blue-700 dark:text-blue-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+                      <DollarSign size={13} />Fee settings
+                    </button>
+                  )}
+
+                  {!isOwnOrg && !org.platformAdminOrg && (
+                    <button onClick={() => { onWipeFoodOrders(org); setMenuOpen(false); }}
+                      className="w-full flex items-center gap-2 px-3.5 py-2 text-xs text-rose-700 dark:text-rose-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+                      <Trash2 size={13} />Wipe food orders
+                    </button>
+                  )}
+
+                  {!isOwnOrg && !org.platformAdminOrg && (
+                    <>
+                      <div className="my-1 border-t border-slate-100 dark:border-slate-700" />
+                      <button onClick={() => { onDelete(org); setMenuOpen(false); }}
+                        className="w-full flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition">
+                        <Trash2 size={13} />Delete organisation
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </td>
       </tr>
@@ -785,6 +803,7 @@ function SuperAdmin() {
   const [deleting, setDeleting]           = useState(false);
   const [currentOrgId, setCurrentOrgId]  = useState(null);
   const [orgSearch, setOrgSearch]        = useState("");
+  const [orgStatusFilter, setOrgStatusFilter] = useState("ALL"); // ALL | ACTIVE | SUSPENDED
   const [toast, setToast] = useState({ visible: false, message: "", type: "info" });
 
   const showToast = (message, type = "success") => setToast({ visible: true, message, type });
@@ -1097,13 +1116,15 @@ function SuperAdmin() {
 
   const filteredOrgs = useMemo(() => {
     const q = orgSearch.toLowerCase();
-    if (!q) return orgs;
-    return orgs.filter(o =>
-      o.name?.toLowerCase().includes(q) ||
-      o.email?.toLowerCase().includes(q) ||
-      o.ownerPhone?.includes(q)
-    );
-  }, [orgs, orgSearch]);
+    return orgs.filter(o => {
+      if (orgStatusFilter === "ACTIVE" && o.suspended) return false;
+      if (orgStatusFilter === "SUSPENDED" && !o.suspended) return false;
+      if (!q) return true;
+      return o.name?.toLowerCase().includes(q) ||
+        o.email?.toLowerCase().includes(q) ||
+        o.ownerPhone?.includes(q);
+    });
+  }, [orgs, orgSearch, orgStatusFilter]);
 
   const followUp = dashboard?.followUpList ?? [];
   const highCount = followUp.filter(f => f.priority === "HIGH").length;
@@ -1625,7 +1646,7 @@ function SuperAdmin() {
       {/* ── ORGANISATIONS TAB ────────────────────────────────────────────────── */}
       {tab === "organisations" && (
         <div className="space-y-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
@@ -1635,6 +1656,25 @@ function SuperAdmin() {
                 onChange={e => setOrgSearch(e.target.value)}
                 className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
               />
+            </div>
+            <div className="inline-flex rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 p-0.5">
+              {[
+                { key: "ALL", label: "All" },
+                { key: "ACTIVE", label: "Active" },
+                { key: "SUSPENDED", label: "Suspended" },
+              ].map(f => (
+                <button
+                  key={f.key}
+                  onClick={() => setOrgStatusFilter(f.key)}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition ${
+                    orgStatusFilter === f.key
+                      ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
             </div>
             <span className="text-xs text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700">
               {filteredOrgs.length} / {orgs.length}
