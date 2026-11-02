@@ -424,7 +424,7 @@ function FoodOrderCleanupModal({ org, onDone, onCancel }) {
 }
 
 // ── Org row (All Organisations table) ─────────────────────────────────────────
-function OrgRow({ org, isOwnOrg, onSuspend, onUnsuspend, onDelete, onPlanChange, onBillingExempt, onRemoveBillingExempt, onToggleTestOrg, onWipeFoodOrders, onFeeSettings, onGenerateApiKey }) {
+function OrgRow({ org, isOwnOrg, onSuspend, onUnsuspend, onDelete, onPlanChange, onBillingExempt, onRemoveBillingExempt, onToggleTestOrg, onToggleWhatsappDisabled, onWipeFoodOrders, onFeeSettings, onGenerateApiKey }) {
   const [expanded, setExpanded] = useState(false);
   const [users, setUsers]       = useState(null);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -461,6 +461,11 @@ function OrgRow({ org, isOwnOrg, onSuspend, onUnsuspend, onDelete, onPlanChange,
                 {org.testOrg && (
                   <span title="Excluded from revenue/fee figures and org-count stats" className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">
                     <FlaskConical size={9} />Test
+                  </span>
+                )}
+                {org.whatsappDisabled && (
+                  <span title="WhatsApp sends are disabled for this org" className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300">
+                    <MessageSquare size={9} />No WhatsApp
                   </span>
                 )}
                 {org.hasExternalInvoiceApiKey && (
@@ -533,6 +538,15 @@ function OrgRow({ org, isOwnOrg, onSuspend, onUnsuspend, onDelete, onPlanChange,
                 <FlaskConical size={12} />{org.testOrg ? "Unmark Test" : "Mark as Test"}
               </button>
             )}
+            <button onClick={() => onToggleWhatsappDisabled(org)}
+              title="Completely stops WhatsApp sends for this org, regardless of plan quota — e.g. an internal test account"
+              className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg border transition ${
+                org.whatsappDisabled
+                  ? "text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/30 border-rose-200 dark:border-rose-700 hover:bg-rose-100"
+                  : "text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600"
+              }`}>
+              <MessageSquare size={12} />{org.whatsappDisabled ? "WhatsApp Off" : "Disable WhatsApp"}
+            </button>
             {!isOwnOrg && !org.platformAdminOrg && (
               <button onClick={() => onFeeSettings(org)}
                 title="Who pays the Food POS convenience fee, and how much"
@@ -986,6 +1000,17 @@ function SuperAdmin() {
       showToast(`${org.name} ${next ? "marked" : "unmarked"} as test org`);
     } catch (err) {
       showToast(err.response?.data?.message || "Failed to update test org flag.", "error");
+    }
+  };
+
+  const doToggleWhatsappDisabled = async (org) => {
+    const next = !org.whatsappDisabled;
+    try {
+      await api.post(`/api/superadmin/organisations/${org.id}/whatsapp-disabled`, { whatsappDisabled: next });
+      setOrgs(prev => prev.map(o => o.id === org.id ? { ...o, whatsappDisabled: next } : o));
+      showToast(`WhatsApp ${next ? "disabled" : "re-enabled"} for ${org.name}`);
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to update WhatsApp setting.", "error");
     }
   };
 
@@ -1650,6 +1675,7 @@ function SuperAdmin() {
                         onBillingExempt={setBillingExemptTarget}
                         onRemoveBillingExempt={doRemoveBillingExempt}
                         onToggleTestOrg={doToggleTestOrg}
+                        onToggleWhatsappDisabled={doToggleWhatsappDisabled}
                         onWipeFoodOrders={setFoodOrderCleanupTarget}
                         onFeeSettings={setFeeSettingsTarget}
                         onGenerateApiKey={doGenerateApiKey}
