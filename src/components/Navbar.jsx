@@ -15,6 +15,7 @@ import api, { getUserFromToken } from "../services/api";
 import { getUserType, setUserType, getRegisteredAs, USER_TYPES, paymentLabel } from "../utils/userType";
 import posthog from 'posthog-js';
 import NotificationBell from "./NotificationBell";
+import WhatsNewBell from "./WhatsNewBell";
 
 // ── Command Palette ───────────────────────────────────────────────────────────
 function CommandPalette({ items, onClose }) {
@@ -544,6 +545,7 @@ function Navbar({ onClose }) {
             </button>
           )}
           <div className="hidden lg:flex items-center gap-1">
+            {!effectiveCollapsed && <WhatsNewBell align="left" />}
             {!effectiveCollapsed && <NotificationBell align="left" />}
             <button onClick={() => setCollapsed(!collapsed)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition">
               {effectiveCollapsed

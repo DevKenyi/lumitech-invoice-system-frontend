@@ -4,6 +4,7 @@ import { useLocation, Link } from "react-router-dom";
 import Navbar from "./Navbar";
 import TrialBanner from "./TrialBanner";
 import NotificationBell from "./NotificationBell";
+import WhatsNewBell from "./WhatsNewBell";
 import AiChat from "./AiChat";
 import { Menu, Lock, Search } from "lucide-react";
 import api from "../services/api";
@@ -166,6 +167,7 @@ function Layout({ children }) {
           >
             <Search size={18} className="text-slate-500 dark:text-slate-400" />
           </button>
+          <WhatsNewBell />
           <NotificationBell />
         </div>
 
