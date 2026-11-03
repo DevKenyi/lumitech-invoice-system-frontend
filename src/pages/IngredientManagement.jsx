@@ -16,7 +16,7 @@ import {
 } from "recharts";
 
 const STOCK_UNITS = ["g", "kg", "ml", "l", "pcs", "pack", "bottle", "bag", "box"];
-const CATEGORIES = ["Grains", "Vegetables", "Meat", "Seafood", "Dairy", "Cooking Oil", "Spices", "Beverages", "Packaging", "Other"];
+const CATEGORIES = ["Grains", "Vegetables", "Meat", "Seafood", "Dairy", "Cooking Oil", "Spices", "Beverages", "Soft Drinks", "Pastries", "Soup", "Swallow", "Packaging", "Other"];
 
 const inputCls = "w-full px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition";
 
@@ -478,7 +478,7 @@ export default function IngredientManagement() {
               </button>
               <button onClick={openCreate}
                 className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-600 text-white rounded-xl font-semibold text-sm hover:bg-amber-700 transition">
-                <Plus className="w-4 h-4" /> Add Ingredient
+                <Plus className="w-4 h-4" /> Add Item/Ingredient
               </button>
             </>
           )}
@@ -848,7 +848,7 @@ export default function IngredientManagement() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700">
-              <h2 className="font-bold text-slate-900 dark:text-white text-lg">{editing ? "Edit Ingredient" : "Add Ingredient"}</h2>
+              <h2 className="font-bold text-slate-900 dark:text-white text-lg">{editing ? "Edit Ingredient" : "Add Item/Ingredient"}</h2>
               <button onClick={() => setShowForm(false)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
                 <X className="w-5 h-5 text-slate-400" />
               </button>
@@ -973,7 +973,7 @@ export default function IngredientManagement() {
                 <button onClick={handleSave} disabled={saving}
                   className="flex-1 px-4 py-2.5 bg-amber-600 text-white rounded-xl text-sm font-semibold hover:bg-amber-700 disabled:opacity-60 transition flex items-center justify-center gap-2">
                   {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                  {editing ? "Save Changes" : "Add Ingredient"}
+                  {editing ? "Save Changes" : "Add Item/Ingredient"}
                 </button>
               </div>
             </div>
