@@ -468,8 +468,7 @@ function Navbar({ onClose }) {
     ...(isAccountantPro || !plan || plan === "FREE" ? [{ path: "/audit",    label: "Audit Trail", icon: ShieldCheck, info: "Full log of every action in your account" }] : []),
     ...(canAccessGrowthFeatures ? [{ path: "/activity-reports/manage", label: "Team Reports", icon: ClipboardList, info: "Review weekly activity reports from your team" }] : []),
     { path: "/referrals", label: "Referral Programme", icon: Gift, info: "Earn ₦ by referring businesses to LumiLedger" },
-    { path: "/vault", label: "My Vault", icon: Lock, info: "Private, PIN-locked personal budget — only you can see it" },
-    { path: "/lumiflow", label: "LumiFlow", icon: PiggyBank, info: "Auto-split your salary and control your spending allowance" },
+    { path: "/vault", label: "My Vault", icon: Lock, info: "Private, PIN-locked personal budget and salary auto-split — only you can see it" },
   ];
   const settingsActive = settingsItems.some(i => cur === i.path);
 
@@ -490,8 +489,7 @@ function Navbar({ onClose }) {
     ...(staffFeatureAllowed("manage_expenses") ? [{ path: "/expenses/manage", label: "Manage Expenses", icon: FolderOpen,        info: "Review and approve expense reports" }] : []),
     ...(staffFeatureAllowed("activity_report") ? [{ path: "/activity-reports", label: "Weekly Report",  icon: ClipboardList,     info: "Submit your weekly activity report" }] : []),
     { path: "/settings/org",    label: "Preferences",     icon: SlidersHorizontal, info: "Change your display preferences" },
-    { path: "/vault", label: "My Vault", icon: Lock, info: "Private, PIN-locked personal budget — only you can see it" },
-    { path: "/lumiflow", label: "LumiFlow", icon: PiggyBank, info: "Auto-split your salary and control your spending allowance" },
+    { path: "/vault", label: "My Vault", icon: Lock, info: "Private, PIN-locked personal budget and salary auto-split — only you can see it" },
   ];
 
   // ── Sections config ───────────────────────────────────────────────────────
