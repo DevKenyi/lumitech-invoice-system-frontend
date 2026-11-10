@@ -8,6 +8,7 @@ import {
   CreditCard, FileText, Trash2, Loader2, Wallet, ShieldCheck, BadgeAlert,
 } from "lucide-react";
 import Toast from "../components/Toast";
+import SearchableSelect from "../components/SearchableSelect";
 import { useOrg } from "../context/OrgContext";
 
 
@@ -1246,18 +1247,18 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
                   {banksLoading ? (
                     <div className="flex items-center gap-2 text-xs text-slate-400 py-2"><Loader2 className="w-4 h-4 animate-spin" /> Loading banks…</div>
                   ) : banks.length > 0 ? (
-                    <select
+                    <SearchableSelect
+                      options={banks.map(b => ({ value: b.code, label: b.name }))}
                       value={empForm.bankCode}
-                      onChange={(e) => {
-                        const selected = banks.find(b => b.code === e.target.value);
-                        setEmpForm(f => ({ ...f, bankCode: e.target.value, bankName: selected?.name ?? "" }));
+                      onChange={(code) => {
+                        const selected = banks.find(b => b.code === code);
+                        setEmpForm(f => ({ ...f, bankCode: code, bankName: selected?.name ?? "" }));
                         setVerifiedName("");
                       }}
+                      placeholder="Select bank…"
+                      searchPlaceholder="Search banks…"
                       className={inputCls}
-                    >
-                      <option value="">Select bank…</option>
-                      {banks.map(b => <option key={b.code} value={b.code}>{b.name}</option>)}
-                    </select>
+                    />
                   ) : (
                     <input
                       value={empForm.bankName}
