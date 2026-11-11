@@ -268,6 +268,10 @@ function ActionCard({ action, onConfirm, onCancel, status, actionResult }) {
 
 export default function AiChat() {
   const [open, setOpen] = useState(false);
+  // Dismissed for this tab/session only — sometimes the floating button sits over page
+  // content, so give an easy way to get it out of the way without a permanent setting.
+  // Comes back on next page load/refresh.
+  const [hidden, setHidden] = useState(() => sessionStorage.getItem("aiChatHidden") === "true");
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -287,6 +291,7 @@ export default function AiChat() {
   useEffect(() => {
     const handler = (e) => {
       setOpen(true);
+      setHidden(false);
       if (e.detail?.message) setPendingMsg(e.detail.message);
     };
     window.addEventListener("open-ai-chat", handler);
@@ -411,16 +416,31 @@ export default function AiChat() {
   return (
     <>
       {/* Floating trigger button */}
-      {!open && (
-        <button
-          onClick={() => setOpen(true)}
-          aria-label="Ask Lumi AI"
-          className="fixed right-5 z-50 flex items-center gap-2 px-4 py-3 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 shadow-xl shadow-indigo-500/40 hover:shadow-2xl hover:shadow-indigo-500/50 hover:scale-105 active:scale-95 transition-all duration-150"
+      {!open && !hidden && (
+        <div
+          className="fixed right-5 z-50 flex items-center gap-1 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 shadow-xl shadow-indigo-500/40 hover:shadow-2xl hover:shadow-indigo-500/50 transition-shadow duration-150"
           style={{ bottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
         >
-          <Sparkles className="w-4 h-4 text-white shrink-0" />
-          <span className="text-sm font-semibold text-white pr-0.5">Ask Lumi</span>
-        </button>
+          <button
+            onClick={() => setOpen(true)}
+            aria-label="Ask Lumi AI"
+            className="flex items-center gap-2 pl-4 pr-2 py-3 hover:scale-105 active:scale-95 transition-transform duration-150"
+          >
+            <Sparkles className="w-4 h-4 text-white shrink-0" />
+            <span className="text-sm font-semibold text-white">Ask Lumi</span>
+          </button>
+          <button
+            onClick={() => {
+              setHidden(true);
+              sessionStorage.setItem("aiChatHidden", "true");
+            }}
+            aria-label="Hide Ask Lumi for now"
+            title="Hide for now — comes back when you reload the page"
+            className="p-1.5 mr-2 rounded-full hover:bg-white/20 text-white/80 hover:text-white transition-colors"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
       )}
 
       {/* Chat window — full screen on mobile, floating panel on desktop */}
