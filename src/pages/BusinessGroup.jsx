@@ -124,18 +124,31 @@ export default function BusinessGroup() {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">Request to View Another Business</h3>
-          <p className="text-xs text-slate-400 mb-3">Enter their Business Link Code. They'll need to accept before you see anything.</p>
-          <form onSubmit={sendRequest} className="flex items-center gap-2">
-            <input value={targetCode} onChange={e => setTargetCode(e.target.value)}
-              placeholder="e.g. ALPHA1B2C3" className={inputCls} />
-            <button type="submit" disabled={requesting}
-              className="inline-flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition disabled:opacity-60 flex-shrink-0">
-              <Plus size={14} />{requesting ? "Sending…" : "Request"}
-            </button>
-          </form>
-        </div>
+        {data.canRequestLinks ? (
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">Request to View Another Business</h3>
+            <p className="text-xs text-slate-400 mb-3">Enter their Business Link Code. They'll need to accept before you see anything.</p>
+            <form onSubmit={sendRequest} className="flex items-center gap-2">
+              <input value={targetCode} onChange={e => setTargetCode(e.target.value)}
+                placeholder="e.g. ALPHA1B2C3" className={inputCls} />
+              <button type="submit" disabled={requesting}
+                className="inline-flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition disabled:opacity-60 flex-shrink-0">
+                <Plus size={14} />{requesting ? "Sending…" : "Request"}
+              </button>
+            </form>
+          </div>
+        ) : (
+          <div className="bg-violet-50 dark:bg-violet-900/10 rounded-2xl border border-violet-200 dark:border-violet-800 p-5 flex flex-col">
+            <h3 className="text-sm font-semibold text-violet-800 dark:text-violet-300 mb-1">Want to view other businesses?</h3>
+            <p className="text-xs text-violet-700/80 dark:text-violet-300/70 mb-3 flex-1">
+              Requesting to view another business's summary — and seeing it once they accept — is an Accountant Pro feature.
+              Anyone can still share their own summary with you on any plan.
+            </p>
+            <a href="/settings/billing" className="text-xs font-semibold text-violet-700 dark:text-violet-300 hover:underline">
+              Upgrade to Accountant Pro →
+            </a>
+          </div>
+        )}
       </div>
 
       {/* Incoming requests — need my response */}

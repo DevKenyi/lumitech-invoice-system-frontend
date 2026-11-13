@@ -468,8 +468,9 @@ function Navbar({ onClose }) {
     ...(isAccountantPro || !plan || plan === "FREE" ? [{ path: "/audit",    label: "Audit Trail", icon: ShieldCheck, info: "Full log of every action in your account" }] : []),
     ...(canAccessGrowthFeatures ? [{ path: "/activity-reports/manage", label: "Team Reports", icon: ClipboardList, info: "Review weekly activity reports from your team" }] : []),
     { path: "/referrals", label: "Referral Programme", icon: Gift, info: "Earn ₦ by referring businesses to LumiLedger" },
-    // Accountant Pro only — "multi-business management" is sold specifically on that tier
-    ...(isAccountantPro || !plan || plan === "FREE" ? [{ path: "/business-group", label: "Business Group", icon: GitBranch, info: "See a combined summary across businesses that have agreed to share with you" }] : []),
+    // Visible to everyone — any org can get its own code and respond to being watched.
+    // Requesting to watch *other* orgs is Accountant-Pro-only, gated inside the page itself.
+    { path: "/business-group", label: "Business Group", icon: GitBranch, info: "Share a read-only summary with another business, or (Accountant Pro) view others that share with you" },
     { path: "/vault", label: "My Vault", icon: Lock, info: "Private, PIN-locked personal budget and salary auto-split — only you can see it" },
   ];
   const settingsActive = settingsItems.some(i => cur === i.path);
