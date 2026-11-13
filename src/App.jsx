@@ -81,6 +81,7 @@ import MonnifyTransactions from "./pages/MonnifyTransactions";
 import MoniepointPosTransactions from "./pages/MoniepointPosTransactions";
 import MyFees from "./pages/MyFees";
 import Vault from "./pages/Vault";
+import BusinessGroup from "./pages/BusinessGroup";
 
 // Shown instead of the full app when the account is suspended or trial has ended.
 // Lives inside OrgProvider so <Billing /> can use OrgContext.
@@ -643,6 +644,11 @@ function App() {
           } />
           {/* Old standalone LumiFlow link — keep working, just land on the LumiFlow tab. */}
           <Route path="/lumiflow" element={<Navigate to="/vault?tab=lumiflow" replace />} />
+
+          {/* BUSINESS GROUP — consent-based, read-only visibility across separate orgs. */}
+          <Route path="/business-group" element={
+            <ProtectedRoute><Layout><BusinessGroup /></Layout></ProtectedRoute>
+          } />
 
           {/* ACTIVITY REPORTS — /activity-reports = staff submit, /activity-reports/manage = admin review */}
           <Route path="/activity-reports" element={
