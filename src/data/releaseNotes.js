@@ -7,6 +7,14 @@
 
 const releaseNotes = [
   {
+    date: "2026-11-14",
+    title: "Subsidiaries",
+    bullets: [
+      "Running more than one business? Create daughter companies under your account, control what each one can do, and check in on their sales, expenses and POS activity without paying for a separate account per business.",
+      "Assign your Moniepoint POS terminals to specific subsidiaries so each terminal's sales post straight to the right business's books.",
+    ],
+  },
+  {
     date: "2026-11-04",
     title: "Movara sync",
     bullets: [
