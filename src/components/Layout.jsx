@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useLocation, Link } from "react-router-dom";
 import Navbar from "./Navbar";
 import TrialBanner from "./TrialBanner";
+import SubsidiaryViewBanner from "./SubsidiaryViewBanner";
 import NotificationBell from "./NotificationBell";
 import WhatsNewBell from "./WhatsNewBell";
 import AiChat from "./AiChat";
@@ -172,6 +173,7 @@ function Layout({ children }) {
         </div>
 
         <TrialBanner />
+        <SubsidiaryViewBanner />
         <main
           className="flex-1 p-4 md:p-6"
           style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}

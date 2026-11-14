@@ -8,7 +8,7 @@ import {
   Info, SlidersHorizontal, Package, ShoppingCart, BarChart2,
   FileCheck, Repeat, Undo2, FileMinus, ClipboardCheck,
   Warehouse, Target, UserCog, GitBranch, BookMarked, TrendingDown, History,
-  Tag, ShoppingBag, UtensilsCrossed, Search, Gift, Monitor, Zap, Wheat,
+  Tag, ShoppingBag, UtensilsCrossed, Search, Gift, Monitor, Zap, Wheat, Network,
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import api, { getUserFromToken } from "../services/api";
@@ -279,6 +279,14 @@ function Navbar({ onClose }) {
     catch { return new Set(); }
   });
   const [posType, setPosType] = useState(() => localStorage.getItem("lumi_pos_type") || null);
+  const [subStatus, setSubStatus] = useState(null); // { isSubsidiary, parentOrgName, invoicing, expenses, ... } or null while loading/not-applicable
+  useEffect(() => {
+    if (isStaffRole) return;
+    api.get("/api/subsidiaries/my-status").then(res => {
+      setSubStatus(res.data.isSubsidiary ? res.data : null);
+    }).catch(() => {});
+  }, [isStaffRole]);
+  const subFeature = (key) => !subStatus || subStatus[key] !== false; // visible unless explicitly disabled
   useEffect(() => {
     if (isStaffRole) {
       api.get("/api/org").then(res => {
@@ -385,14 +393,16 @@ function Navbar({ onClose }) {
 
   // ── Section: Sales & Invoicing ─────────────────────────────────────────────
   const salesItems = [
-    { path: "/invoices",           label: "Invoices",          icon: FileText,       info: "View and manage all invoices" },
-    { path: "/create",             label: "New Invoice",       icon: PlusCircle,     info: "Create and send a new invoice" },
-    { path: "/quick-invoice",      label: "Quick Invoice",     icon: Zap,            info: "Instant sale — type customer name and mark paid immediately" },
+    ...(subFeature("invoicing") ? [
+      { path: "/invoices",           label: "Invoices",          icon: FileText,       info: "View and manage all invoices" },
+      { path: "/create",             label: "New Invoice",       icon: PlusCircle,     info: "Create and send a new invoice" },
+      { path: "/quick-invoice",      label: "Quick Invoice",     icon: Zap,            info: "Instant sale — type customer name and mark paid immediately" },
+      { path: "/quotes",             label: "Quotes",            icon: FileCheck,      info: "Create estimates and convert to invoices" },
+      { path: "/proforma",           label: "Proforma Invoices", icon: GitBranch,      info: "Preliminary invoices for customs or pre-delivery" },
+      { path: "/invoices/recurring", label: "Recurring",         icon: Repeat,         info: "Auto-send invoices on a schedule" },
+    ] : []),
     { path: "/monnify/transactions", label: "Monnify Payments",  icon: Banknote,       info: "Payments received on your Moniepoint account — auto-recorded" },
     { path: "/moniepoint-pos/transactions", label: "Moniepoint POS Sales", icon: CreditCard, info: "Sales taken on your Moniepoint POS terminal — auto-recorded" },
-    { path: "/quotes",             label: "Quotes",            icon: FileCheck,      info: "Create estimates and convert to invoices" },
-    { path: "/proforma",           label: "Proforma Invoices", icon: GitBranch,      info: "Preliminary invoices for customs or pre-delivery" },
-    { path: "/invoices/recurring", label: "Recurring",         icon: Repeat,         info: "Auto-send invoices on a schedule" },
     { path: "/clients",            label: "Customers",         icon: Users,          info: "Manage clients and payment history" },
     { path: "/projects",           label: "Projects",          icon: FolderOpen,     info: "Track billable projects and link to invoices" },
     { path: "/finance",            label: paymentLabel("module"), icon: Banknote,    info: "Track incoming payments and collections" },
@@ -416,28 +426,30 @@ function Navbar({ onClose }) {
     { path: "/accounting/accounts",         label: "Chart of Accounts", icon: BookOpen,      info: "Master list of all bookkeeping accounts" },
     { path: "/accounting/entries",          label: "Journal Entries",   icon: BookOpenCheck, info: "Record financial transactions" },
     { path: "/accounting/opening-balances", label: "Opening Balances",  icon: Scale,         info: "Set starting account balances" },
-    { path: "/accounting/reconciliation",   label: "Reconciliation",    icon: ArrowLeftRight, info: "Match bank transactions to journal entries" },
+    ...(subFeature("bankConnections") ? [{ path: "/accounting/reconciliation", label: "Reconciliation", icon: ArrowLeftRight, info: "Match bank transactions to journal entries" }] : []),
     { path: "/accounting/ledger",           label: "Account Ledger",    icon: BookMarked,    info: "Full transaction history for any account" },
     { path: "/fixed-assets",               label: "Fixed Assets",      icon: Warehouse,     info: "Track and depreciate fixed assets" },
     { path: "/accounting/budget",          label: "Budget vs Actual",  icon: Target,        info: "Compare budgeted to actual spend" },
     { path: "/payroll",                    label: "Payroll & PAYE",    icon: UserCog,       info: "Employee salaries and statutory deductions" },
-    ...(["SUPER_ADMIN", "ADMIN"].includes(role) ? [{ path: "/accounting/import", label: "Import Statement", icon: Landmark, info: "Upload bank statement to auto-create entries" }] : []),
+    ...(["SUPER_ADMIN", "ADMIN"].includes(role) && subFeature("bankConnections") ? [{ path: "/accounting/import", label: "Import Statement", icon: Landmark, info: "Upload bank statement to auto-create entries" }] : []),
   ];
   const accountingActive = accountingItems.some(i => cur.startsWith(i.path));
 
   // ── Section: Reports ──────────────────────────────────────────────────────
   const reportItems = [
-    { path: "/invoices/reports/aging",           label: "Aging Report",      icon: ClipboardList, info: "Overdue invoices and how long unpaid" },
-    { path: "/accounting/reports/profit-loss",   label: "Profit & Loss",     icon: TrendingUp,    info: "Income, expenses and net profit" },
-    { path: "/accounting/reports/balance-sheet", label: "Balance Sheet",     icon: LayoutList,    info: "Snapshot of assets, liabilities and equity" },
-    { path: "/accounting/reports/cash-flow",     label: "Cash Flow",         icon: TrendingDown,  info: "Operating, investing and financing flows" },
+    ...(subFeature("invoicing") ? [{ path: "/invoices/reports/aging", label: "Aging Report", icon: ClipboardList, info: "Overdue invoices and how long unpaid" }] : []),
+    ...(subFeature("reports") ? [
+      { path: "/accounting/reports/profit-loss",   label: "Profit & Loss",     icon: TrendingUp,    info: "Income, expenses and net profit" },
+      { path: "/accounting/reports/balance-sheet", label: "Balance Sheet",     icon: LayoutList,    info: "Snapshot of assets, liabilities and equity" },
+      { path: "/accounting/reports/cash-flow",     label: "Cash Flow",         icon: TrendingDown,  info: "Operating, investing and financing flows" },
+    ] : []),
     // GROWTH+ only reports
-    ...(canAccessGrowthFeatures ? [
+    ...(canAccessGrowthFeatures && subFeature("reports") ? [
       { path: "/accounting/reports/trial-balance",      label: "Trial Balance",  icon: Scale,    info: "Check debits and credits are balanced" },
       { path: "/accounting/reports/cash-flow-forecast", label: "Cash Forecast",  icon: History,  info: "Project future cash from invoices and bills" },
     ] : []),
     // Accountant Pro + free trial only
-    ...(isAccountantPro || !plan || plan === "FREE" ? [{ path: "/invoices/reports/tax", label: "Tax Report", icon: Calculator, info: "VAT and WHT breakdown for tax filing" }] : []),
+    ...(isAccountantPro || !plan || plan === "FREE" ? (subFeature("invoicing") ? [{ path: "/invoices/reports/tax", label: "Tax Report", icon: Calculator, info: "VAT and WHT breakdown for tax filing" }] : []) : []),
   ];
   const reportsActive = reportItems.some(i => cur.startsWith(i.path));
 
@@ -450,7 +462,7 @@ function Navbar({ onClose }) {
     ...(navVisible("nav_menu")         ? [{ path: "/menu",         label: "Menu",              icon: Tag,             info: "Manage food menu categories and items" }] : []),
     ...(navVisible("nav_ingredients")  ? [{ path: "/ingredients",  label: "Restaurant Inventory", icon: Wheat,        info: "Track beef, fish, drinks & more — auto-deducted on sale" }] : []),
     ...(navVisible("nav_orders")       ? [{ path: "/orders",       label: "Order Fulfillment", icon: ClipboardList,   info: "View and fulfil incoming orders" }] : []),
-    ...(navVisible("nav_inventory")    ? [{ path: "/inventory",    label: "Inventory",         icon: Package,         info: "Manage products, stock and prices" }] : []),
+    ...(navVisible("nav_inventory") && subFeature("inventory") ? [{ path: "/inventory", label: "Inventory", icon: Package, info: "Manage products, stock and prices" }] : []),
     ...(navVisible("nav_sales_report") ? [{ path: "/sales/report", label: "Sales Reports",     icon: BarChart2,       info: "Revenue, transactions and performance" }] : []),
     ...(posType ? [{ path: "/my-devices", label: "My Devices", icon: Monitor, info: "Track your Lumitech tablet and printer" }] : []),
   ];
@@ -459,18 +471,19 @@ function Navbar({ onClose }) {
   // ── Section: Settings ─────────────────────────────────────────────────────
   const settingsItems = [
     // Team (multi-user) is GROWTH+ only
-    ...(canAccessGrowthFeatures ? [{ path: "/team", label: "Team", icon: UsersRound, info: "Invite and manage team members" }] : []),
+    ...(canAccessGrowthFeatures && subFeature("userManagement") ? [{ path: "/team", label: "Team", icon: UsersRound, info: "Invite and manage team members" }] : []),
     { path: "/settings/org",              label: "Org Settings",     icon: SlidersHorizontal, info: "Organisation details, logo and payment settings" },
     { path: "/settings/billing",          label: "Billing",          icon: CreditCard,        info: "View and manage your subscription" },
-    { path: "/settings/bank-connections", label: "Bank Connections", icon: Building2,          info: "Connect your bank account for automatic transaction import" },
+    ...(subFeature("bankConnections") ? [{ path: "/settings/bank-connections", label: "Bank Connections", icon: Building2, info: "Connect your bank account for automatic transaction import" }] : []),
     // Expenses & Audit Trail — Accountant Pro + free trial only
-    ...(isAccountantPro || !plan || plan === "FREE" ? [{ path: "/expenses", label: "Expenses",    icon: Receipt,    info: "Manage staff expense claims" }] : []),
+    ...(isAccountantPro || !plan || plan === "FREE" ? (subFeature("expenses") ? [{ path: "/expenses", label: "Expenses", icon: Receipt, info: "Manage staff expense claims" }] : []) : []),
     ...(isAccountantPro || !plan || plan === "FREE" ? [{ path: "/audit",    label: "Audit Trail", icon: ShieldCheck, info: "Full log of every action in your account" }] : []),
     ...(canAccessGrowthFeatures ? [{ path: "/activity-reports/manage", label: "Team Reports", icon: ClipboardList, info: "Review weekly activity reports from your team" }] : []),
     { path: "/referrals", label: "Referral Programme", icon: Gift, info: "Earn ₦ by referring businesses to LumiLedger" },
     // Visible to everyone — any org can get its own code and respond to being watched.
     // Requesting to watch *other* orgs is Accountant-Pro-only, gated inside the page itself.
     { path: "/business-group", label: "Business Group", icon: GitBranch, info: "Share a read-only summary with another business, or (Accountant Pro) view others that share with you" },
+    { path: "/subsidiaries", label: "Subsidiaries", icon: Network, info: "Create and manage daughter businesses, assign POS terminals, and monitor their activity" },
     { path: "/vault", label: "My Vault", icon: Lock, info: "Private, PIN-locked personal budget and salary auto-split — only you can see it" },
   ];
   const settingsActive = settingsItems.some(i => cur === i.path);
@@ -581,6 +594,16 @@ function Navbar({ onClose }) {
           >
             <Search size={16} className="text-slate-400 dark:text-slate-500" />
           </button>
+        </div>
+      )}
+
+      {/* Subsidiary note */}
+      {subStatus && !effectiveCollapsed && (
+        <div className="px-3 py-2 border-b border-slate-200/60 dark:border-slate-700/60 flex-shrink-0">
+          <p className="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+            <Network size={12} className="flex-shrink-0" />
+            Managed by <span className="font-medium text-slate-500 dark:text-slate-400">{subStatus.parentOrgName}</span>
+          </p>
         </div>
       )}
 

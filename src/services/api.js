@@ -12,10 +12,22 @@ const api = axios.create({
   withCredentials: true
 });
 
+// Subsidiaries "View as parent" drill-in — set via SubsidiaryViewContext, read here so every
+// request (not just the few pages that know about drill-in) carries orgId. The backend
+// re-validates this against a real parent->child relationship on every call; it's never trusted
+// client-side, so there's no risk in appending it broadly.
+let drillInOrgId = null;
+export function setDrillInOrgId(orgId) {
+  drillInOrgId = orgId || null;
+}
+
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  if (drillInOrgId && !config.params?.orgId) {
+    config.params = { ...config.params, orgId: drillInOrgId };
   }
   return config;
 });

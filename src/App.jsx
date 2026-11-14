@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { getUserFromToken } from "./services/api";
 import { OrgProvider } from "./context/OrgContext";
+import { SubsidiaryViewProvider } from "./context/SubsidiaryViewContext";
 
 import Dashboard from "./pages/Dashboard";
 import CreateInvoice from "./pages/CreateInvoice";
@@ -82,6 +83,7 @@ import MoniepointPosTransactions from "./pages/MoniepointPosTransactions";
 import MyFees from "./pages/MyFees";
 import Vault from "./pages/Vault";
 import BusinessGroup from "./pages/BusinessGroup";
+import Subsidiaries from "./pages/Subsidiaries";
 
 // Shown instead of the full app when the account is suspended or trial has ended.
 // Lives inside OrgProvider so <Billing /> can use OrgContext.
@@ -336,6 +338,7 @@ function App() {
       )}
 
       <OrgProvider>
+      <SubsidiaryViewProvider>
       <BrowserRouter>
       <SuspendGate>
         <Routes>
@@ -650,6 +653,11 @@ function App() {
             <ProtectedRoute><Layout><BusinessGroup /></Layout></ProtectedRoute>
           } />
 
+          {/* SUBSIDIARIES — parent-controlled daughter companies under one account. */}
+          <Route path="/subsidiaries" element={
+            <ProtectedRoute><Layout><Subsidiaries /></Layout></ProtectedRoute>
+          } />
+
           {/* ACTIVITY REPORTS — /activity-reports = staff submit, /activity-reports/manage = admin review */}
           <Route path="/activity-reports" element={
             <ProtectedRoute><Layout><ActivityReports view="submit" /></Layout></ProtectedRoute>
@@ -765,6 +773,7 @@ function App() {
         </Routes>
       </SuspendGate>
       </BrowserRouter>
+      </SubsidiaryViewProvider>
       </OrgProvider>
     </>
   );
