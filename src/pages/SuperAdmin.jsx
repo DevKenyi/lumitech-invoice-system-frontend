@@ -9,7 +9,7 @@ import {
   PhoneCall, Mail, Search, RefreshCw, Download, Copy, Link2, MessageSquare, RotateCcw,
   BookOpen, ExternalLink, Lightbulb, Plus, Edit2, Handshake, Gift,
   Tag, DollarSign, CheckSquare, Clock,
-  Monitor, Printer, ChevronRight, Eye, KeyRound, FlaskConical, Loader2, MoreVertical,
+  Monitor, Printer, ChevronRight, Eye, KeyRound, FlaskConical, Loader2, MoreVertical, Network,
 } from "lucide-react";
 import Toast from "../components/Toast";
 import ConfirmModal from "../components/ConfirmModal";
@@ -424,7 +424,7 @@ function FoodOrderCleanupModal({ org, onDone, onCancel }) {
 }
 
 // ── Org row (All Organisations table) ─────────────────────────────────────────
-function OrgRow({ org, isOwnOrg, onSuspend, onUnsuspend, onDelete, onPlanChange, onBillingExempt, onRemoveBillingExempt, onToggleTestOrg, onToggleWhatsappDisabled, onWipeFoodOrders, onFeeSettings, onGenerateApiKey }) {
+function OrgRow({ org, isOwnOrg, onSuspend, onUnsuspend, onDelete, onPlanChange, onBillingExempt, onRemoveBillingExempt, onToggleTestOrg, onToggleWhatsappDisabled, onToggleSubsidiariesEnabled, onWipeFoodOrders, onFeeSettings, onGenerateApiKey }) {
   const [expanded, setExpanded] = useState(false);
   const [users, setUsers]       = useState(null);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -475,6 +475,11 @@ function OrgRow({ org, isOwnOrg, onSuspend, onUnsuspend, onDelete, onPlanChange,
                 {org.whatsappDisabled && (
                   <span title="WhatsApp sends are disabled for this org" className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300">
                     <MessageSquare size={9} />No WhatsApp
+                  </span>
+                )}
+                {org.subsidiariesEnabled && (
+                  <span title="Subsidiaries feature enabled for this org" className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">
+                    <Network size={9} />Subsidiaries
                   </span>
                 )}
                 {org.hasExternalInvoiceApiKey && (
@@ -572,6 +577,12 @@ function OrgRow({ org, isOwnOrg, onSuspend, onUnsuspend, onDelete, onPlanChange,
                     title="Completely stops WhatsApp sends for this org, regardless of plan quota"
                     className="w-full flex items-center gap-2 px-3.5 py-2 text-xs text-rose-700 dark:text-rose-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition">
                     <MessageSquare size={13} />{org.whatsappDisabled ? "Re-enable WhatsApp" : "Disable WhatsApp"}
+                  </button>
+
+                  <button onClick={() => { onToggleSubsidiariesEnabled(org); setMenuOpen(false); }}
+                    title="Subsidiaries has no self-serve upgrade path yet — this is the only way to turn it on"
+                    className="w-full flex items-center gap-2 px-3.5 py-2 text-xs text-blue-700 dark:text-blue-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+                    <Network size={13} />{org.subsidiariesEnabled ? "Disable Subsidiaries" : "Enable Subsidiaries"}
                   </button>
 
                   {!isOwnOrg && !org.platformAdminOrg && (
@@ -1030,6 +1041,17 @@ function SuperAdmin() {
       showToast(`WhatsApp ${next ? "disabled" : "re-enabled"} for ${org.name}`);
     } catch (err) {
       showToast(err.response?.data?.message || "Failed to update WhatsApp setting.", "error");
+    }
+  };
+
+  const doToggleSubsidiariesEnabled = async (org) => {
+    const next = !org.subsidiariesEnabled;
+    try {
+      await api.post(`/api/superadmin/organisations/${org.id}/subsidiaries-enabled`, { subsidiariesEnabled: next });
+      setOrgs(prev => prev.map(o => o.id === org.id ? { ...o, subsidiariesEnabled: next } : o));
+      showToast(`Subsidiaries ${next ? "enabled" : "disabled"} for ${org.name}`);
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to update Subsidiaries setting.", "error");
     }
   };
 
@@ -1716,6 +1738,7 @@ function SuperAdmin() {
                         onRemoveBillingExempt={doRemoveBillingExempt}
                         onToggleTestOrg={doToggleTestOrg}
                         onToggleWhatsappDisabled={doToggleWhatsappDisabled}
+                        onToggleSubsidiariesEnabled={doToggleSubsidiariesEnabled}
                         onWipeFoodOrders={setFoodOrderCleanupTarget}
                         onFeeSettings={setFeeSettingsTarget}
                         onGenerateApiKey={doGenerateApiKey}
