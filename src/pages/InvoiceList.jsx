@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api, { getUserFromToken } from "../services/api";
+import { useSubsidiaryView } from "../context/SubsidiaryViewContext";
 
 const exportCsv = async (endpoint, filename) => {
   const res = await api.get(endpoint, { responseType: "blob" });
@@ -38,6 +39,7 @@ import PaymentFollowup from "./PaymentFollowup";
 
 function InvoiceList() {
   const { fmt } = useOrg();
+  const { stopViewingChild } = useSubsidiaryView();
   const [invoices, setInvoices] = useState([]);
   const [stats, setStats] = useState({ revenue: 0, paid: 0, pending: 0, overdue: 0, revenueTrend: null });
   const [loading, setLoading] = useState(true);
@@ -105,6 +107,7 @@ function InvoiceList() {
 
   const handleLogout = () => {
     localStorage.removeItem("token");
+    stopViewingChild();
     navigate("/login");
   };
 

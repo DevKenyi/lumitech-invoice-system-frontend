@@ -388,6 +388,7 @@ function Navbar({ onClose }) {
   const handleLogout = () => {
     posthog.reset();
     localStorage.removeItem("token");
+    sessionStorage.removeItem("subsidiaryDrillIn");
     window.location.href = "/login";
   };
 

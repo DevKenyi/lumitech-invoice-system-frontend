@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import api, { getUserFromToken } from "../services/api";
 import { useOrg } from "../context/OrgContext";
+import { useSubsidiaryView } from "../context/SubsidiaryViewContext";
 import { setUserType, setRegisteredAs } from "../utils/userType";
 import posthog from 'posthog-js';
 import axios from "axios";
@@ -12,6 +13,7 @@ const BASE_URL = import.meta.env.VITE_API_URL ||
   (import.meta.env.DEV ? "http://localhost:8081" : "https://ledgerapi.lumitechsystems.com");
 
 function Login() {
+  const { stopViewingChild } = useSubsidiaryView();
   const [form, setForm] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -32,6 +34,11 @@ function Login() {
     try {
       const res = await api.post("/api/auth/login", form);
       localStorage.setItem("token", res.data.token);
+      // A previous session's subsidiary drill-in otherwise survives across a logout/login as a
+      // different account in the same tab (sessionStorage isn't tied to who's logged in, and
+      // this page navigates client-side rather than reloading) — showing a stale "Viewing X as
+      // parent" banner, and sending that org's id on every request, for whoever logs in next.
+      stopViewingChild();
       const user = getUserFromToken();
       const role = user?.role || (Array.isArray(user?.roles) ? user.roles[0] : null);
 

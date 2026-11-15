@@ -218,7 +218,7 @@ function SuspendGate({ children }) {
 
             <div className="px-6 pb-6">
               <button
-                onClick={() => { localStorage.removeItem("token"); window.location.href = "/login"; }}
+                onClick={() => { localStorage.removeItem("token"); sessionStorage.removeItem("subsidiaryDrillIn"); window.location.href = "/login"; }}
                 className="w-full py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition"
               >
                 Sign out
@@ -241,7 +241,7 @@ function SuspendGate({ children }) {
               Lumi<span className="text-blue-600">Ledger</span>
             </span>
             <button
-              onClick={() => { localStorage.removeItem("token"); window.location.href = "/login"; }}
+              onClick={() => { localStorage.removeItem("token"); sessionStorage.removeItem("subsidiaryDrillIn"); window.location.href = "/login"; }}
               className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
             >
               Sign out

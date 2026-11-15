@@ -64,6 +64,7 @@ api.interceptors.response.use(
 
     if (status === 401 && !isVaultAuthCall) {
       localStorage.removeItem("token");
+      sessionStorage.removeItem("subsidiaryDrillIn");
       if (window.location.pathname !== "/login") {
         window.location.href = "/login";
       }
