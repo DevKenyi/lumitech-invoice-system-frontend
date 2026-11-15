@@ -204,6 +204,7 @@ export default function Subsidiaries() {
       preset: sub.preset || "STANDARD",
       invoicing: sub.invoicing, expenses: sub.expenses, inventory: sub.inventory, reports: sub.reports,
       userManagement: sub.userManagement, chartOfAccountsEdit: sub.chartOfAccountsEdit, bankConnections: sub.bankConnections,
+      parentCanEdit: sub.parentCanEdit,
     });
     setPermissionsModal(sub);
   };
@@ -358,7 +359,7 @@ export default function Subsidiaries() {
                 )}
 
                 <div className="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-700">
-                  <button onClick={() => startViewingChild({ id: sub.childOrgId, name: sub.childOrgName })}
+                  <button onClick={() => startViewingChild({ id: sub.childOrgId, name: sub.childOrgName, canEdit: sub.parentCanEdit })}
                     className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition">
                     <Eye size={13} />View
                   </button>
@@ -533,6 +534,20 @@ export default function Subsidiaries() {
                     </label>
                   ))}
                 </div>
+              </div>
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-700">
+                <label className="flex items-start justify-between gap-3 text-sm text-slate-700 dark:text-slate-200">
+                  <span>
+                    Allow me to edit
+                    <span className="block text-xs text-slate-400 mt-0.5">
+                      When viewing {permissionsModal.childOrgName} as parent, let me create and edit things
+                      (invoices, journal entries, sales, etc.) instead of view-only.
+                    </span>
+                  </span>
+                  <input type="checkbox" checked={Boolean(permForm.parentCanEdit)}
+                    onChange={e => setPermForm(f => ({ ...f, parentCanEdit: e.target.checked }))}
+                    className="rounded mt-0.5 flex-shrink-0" />
+                </label>
               </div>
               <div className="flex justify-end gap-3 pt-1">
                 <button type="button" onClick={() => setPermissionsModal(null)} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-600 transition">Cancel</button>
