@@ -150,6 +150,7 @@ function SuspendModal({ org, onConfirm, onCancel, loading }) {
 // ── Billing exemption modal ─────────────────────────────────────────────────────
 function BillingExemptModal({ org, onConfirm, onCancel, loading }) {
   const [note, setNote] = useState("");
+  const [durationMonths, setDurationMonths] = useState("3");
   if (!org) return null;
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -166,8 +167,28 @@ function BillingExemptModal({ org, onConfirm, onCancel, loading }) {
           </button>
         </div>
         <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">
-          <span className="font-semibold text-slate-900 dark:text-white">{org.name}</span> will never be charged, suspended for trial expiry, or sent billing reminders — for as long as this stays on.
+          <span className="font-semibold text-slate-900 dark:text-white">{org.name}</span> will never be charged, suspended for trial expiry, or sent billing reminders — until the duration below lapses (or indefinitely, if set).
         </p>
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
+            Duration
+          </label>
+          <select
+            value={durationMonths}
+            onChange={e => setDurationMonths(e.target.value)}
+            className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-xl text-sm bg-white dark:bg-slate-700/50 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 transition"
+          >
+            <option value="1">1 month</option>
+            <option value="2">2 months</option>
+            <option value="3">3 months</option>
+            <option value="6">6 months</option>
+            <option value="12">12 months</option>
+            <option value="">Indefinite</option>
+          </select>
+          <p className="text-xs text-slate-400 mt-1">
+            After this lapses, the org falls back to normal trial/subscription enforcement — you'll need to renegotiate and re-apply it here.
+          </p>
+        </div>
         <div className="mb-5">
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
             Reason <span className="text-slate-400 font-normal">(e.g. special arrangement)</span>
@@ -176,13 +197,13 @@ function BillingExemptModal({ org, onConfirm, onCancel, loading }) {
             rows={3}
             value={note}
             onChange={e => setNote(e.target.value)}
-            placeholder="e.g., Special arrangement — Chydec Food POS"
+            placeholder="e.g., Paid 3 months in advance — Nov 2026"
             className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-xl text-sm bg-white dark:bg-slate-700/50 dark:text-white dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 resize-none transition"
           />
         </div>
         <div className="flex justify-end gap-3">
           <button onClick={onCancel} disabled={loading} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-600 transition">Cancel</button>
-          <button onClick={() => onConfirm(note)} disabled={loading} className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-xl hover:bg-purple-700 transition disabled:opacity-60">
+          <button onClick={() => onConfirm(note, durationMonths ? Number(durationMonths) : null)} disabled={loading} className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-xl hover:bg-purple-700 transition disabled:opacity-60">
             {loading ? "Saving…" : "Mark Exempt"}
           </button>
         </div>
@@ -462,11 +483,21 @@ function OrgRow({ org, isOwnOrg, onSuspend, onUnsuspend, onDelete, onPlanChange,
             <div>
               <div className="flex items-center gap-1.5">
                 <p className="font-medium text-slate-900 dark:text-white">{org.name}</p>
-                {org.billingExempt && (
-                  <span title={org.billingExemptNote || "Exempt from billing"} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300">
-                    <Gift size={9} />Exempt
-                  </span>
-                )}
+                {org.billingExempt && (() => {
+                  const until = org.billingExemptUntil ? new Date(org.billingExemptUntil) : null;
+                  const expired = until && until < new Date();
+                  const label = expired
+                    ? `Exempt expired ${until.toLocaleDateString()}`
+                    : until
+                      ? `Exempt until ${until.toLocaleDateString()}`
+                      : "Exempt (indefinite)";
+                  return (
+                    <span title={org.billingExemptNote ? `${org.billingExemptNote} — ${label}` : label}
+                      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${expired ? "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300" : "bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300"}`}>
+                      <Gift size={9} />{expired ? "Exempt (needs renewal)" : "Exempt"}
+                    </span>
+                  );
+                })()}
                 {org.testOrg && (
                   <span title="Excluded from revenue/fee figures and org-count stats" className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">
                     <FlaskConical size={9} />Test
@@ -1000,11 +1031,13 @@ function SuperAdmin() {
     }
   };
 
-  const doSetBillingExempt = async (note) => {
+  const doSetBillingExempt = async (note, durationMonths) => {
     setSettingBillingExempt(true);
     try {
-      await api.post(`/api/superadmin/organisations/${billingExemptTarget.id}/billing-exempt`, { exempt: true, note });
-      setOrgs(prev => prev.map(o => o.id === billingExemptTarget.id ? { ...o, billingExempt: true, billingExemptNote: note } : o));
+      const res = await api.post(`/api/superadmin/organisations/${billingExemptTarget.id}/billing-exempt`, { exempt: true, note, durationMonths });
+      setOrgs(prev => prev.map(o => o.id === billingExemptTarget.id
+        ? { ...o, billingExempt: true, billingExemptNote: note, billingExemptUntil: res.data.billingExemptUntil }
+        : o));
       showToast(`${billingExemptTarget.name} exempted from billing`);
       setBillingExemptTarget(null);
     } catch (err) {
@@ -1015,7 +1048,7 @@ function SuperAdmin() {
   const doRemoveBillingExempt = async (org) => {
     try {
       await api.post(`/api/superadmin/organisations/${org.id}/billing-exempt`, { exempt: false });
-      setOrgs(prev => prev.map(o => o.id === org.id ? { ...o, billingExempt: false, billingExemptNote: null } : o));
+      setOrgs(prev => prev.map(o => o.id === org.id ? { ...o, billingExempt: false, billingExemptNote: null, billingExemptUntil: null } : o));
       showToast(`${org.name} billing exemption removed`);
     } catch (err) {
       showToast(err.response?.data?.message || "Failed to remove billing exemption.", "error");
