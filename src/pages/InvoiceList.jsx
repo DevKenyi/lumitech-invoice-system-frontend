@@ -194,9 +194,7 @@ function InvoiceList() {
           <div className="flex items-center justify-between">
             {/* Logo & Title */}
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow-lg shadow-blue-600/20">
-                <FileText className="w-5 h-5 text-white" />
-              </div>
+              <img src="/sparkle-mark.png" alt="" className="w-9 h-9 flex-shrink-0" />
               <div>
                 <h1 className="text-xl font-semibold text-slate-900 dark:text-white">
                   {orgName ? <>{orgName} <span className="text-blue-600">Invoices</span></> : <span className="text-blue-600">Invoices</span>}

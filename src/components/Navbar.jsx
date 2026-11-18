@@ -544,12 +544,10 @@ function Navbar({ onClose }) {
         style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top))" }}
       >
         <div className={`flex items-center gap-2 ${effectiveCollapsed ? "justify-center w-full" : ""}`}>
-          <div className="p-2 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow-lg shadow-blue-600/20 flex-shrink-0">
-            <FileText className="w-4 h-4 text-white" />
-          </div>
+          <img src="/sparkle-mark.png" alt="" className="w-7 h-7 flex-shrink-0" />
           {!effectiveCollapsed && (
             <span className="font-bold text-base text-slate-900 dark:text-white truncate">
-              LumiLedger<span className="text-blue-600">.</span>
+              LumiLedger<span className="text-indigo-600">.</span>
             </span>
           )}
         </div>

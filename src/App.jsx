@@ -162,7 +162,7 @@ function SuspendGate({ children }) {
           {/* Logo */}
           <div className="text-center mb-8">
             <span className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-              Lumi<span className="text-blue-600">Ledger</span>
+              Lumi<span className="text-indigo-600">Ledger</span>
             </span>
           </div>
 
@@ -238,7 +238,7 @@ function SuspendGate({ children }) {
           {/* Minimal header */}
           <div className="flex items-center justify-between mb-6">
             <span className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
-              Lumi<span className="text-blue-600">Ledger</span>
+              Lumi<span className="text-indigo-600">Ledger</span>
             </span>
             <button
               onClick={() => { localStorage.removeItem("token"); sessionStorage.removeItem("subsidiaryDrillIn"); window.location.href = "/login"; }}

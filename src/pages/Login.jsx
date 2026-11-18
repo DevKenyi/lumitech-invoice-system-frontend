@@ -115,11 +115,9 @@ function Login() {
       <div className="w-full max-w-md">
         {/* Logo / Branding */}
         <div className="text-center mb-8">
-          <div className="inline-flex p-3 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl shadow-lg shadow-blue-600/20 mb-4">
-            <LogIn className="w-8 h-8 text-white" />
-          </div>
+          <img src="/sparkle-mark.png" alt="" className="w-14 h-14 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-            Lumi<span className="text-blue-600">Ledger</span>
+            Lumi<span className="text-indigo-600">Ledger</span>
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Sign in to your account

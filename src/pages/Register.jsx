@@ -110,8 +110,9 @@ export default function Register() {
 
         {/* Logo */}
         <div className="text-center mb-6">
+          <img src="/sparkle-mark.png" alt="" className="w-12 h-12 mx-auto mb-3" />
           <h1 className="text-2xl font-bold text-slate-900">
-            Lumi<span className="text-blue-600">Ledger</span>
+            Lumi<span className="text-indigo-600">Ledger</span>
           </h1>
           <p className="text-sm text-slate-400 mt-1">Free for 7 days — no card needed</p>
         </div>
