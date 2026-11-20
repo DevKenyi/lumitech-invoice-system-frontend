@@ -2,9 +2,10 @@ import { useState } from "react";
 import { Lock } from "lucide-react";
 import api from "../services/api";
 
-// Re-verifies the current user's login password before revealing something sensitive (e.g. a
-// Flutterwave wallet balance) — mirrors the pattern already used in OrgSettings for secret keys.
-function ConfirmPasswordModal({ open, title, subtitle, onVerified, onCancel }) {
+// Re-verifies a password before revealing something sensitive — defaults to the current user's
+// login password (mirrors the pattern already used in OrgSettings for secret keys), but accepts
+// a different endpoint (e.g. the dedicated wallet-balance reveal password) via the `endpoint` prop.
+function ConfirmPasswordModal({ open, title, subtitle, endpoint = "/api/auth/confirm-password", onVerified, onCancel }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [checking, setChecking] = useState(false);
@@ -17,11 +18,11 @@ function ConfirmPasswordModal({ open, title, subtitle, onVerified, onCancel }) {
     if (!password) { setError("Please enter your password"); return; }
     setChecking(true); setError("");
     try {
-      await api.post("/api/auth/confirm-password", { password });
+      await api.post(endpoint, { password });
       setPassword("");
       onVerified();
-    } catch {
-      setError("Incorrect password. Please try again.");
+    } catch (err) {
+      setError(err.response?.data?.message || "Incorrect password. Please try again.");
     } finally {
       setChecking(false);
     }

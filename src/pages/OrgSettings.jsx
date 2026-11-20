@@ -504,6 +504,12 @@ function OrgSettings() {
   const [pwInput, setPwInput] = useState("");
   const [pwError, setPwError] = useState("");
   const [pwChecking, setPwChecking] = useState(false);
+  // Wallet balance reveal password — separate from everyone's login password
+  const [editingWalletPw, setEditingWalletPw] = useState(false);
+  const [walletPwValue, setWalletPwValue] = useState("");
+  const [walletPwConfirm, setWalletPwConfirm] = useState("");
+  const [walletPwError, setWalletPwError] = useState("");
+  const [savingWalletPw, setSavingWalletPw] = useState(false);
   const [toast, setToast] = useState({ visible: false, message: "", type: "info" });
   const { theme, setTheme } = useTheme();
   const fileInputRef = useRef(null);
@@ -614,6 +620,25 @@ function OrgSettings() {
       setPwError("Incorrect password. Please try again.");
     } finally {
       setPwChecking(false);
+    }
+  };
+
+  const handleSaveWalletBalancePassword = async () => {
+    if (!walletPwValue) { setWalletPwError("Please enter a password"); return; }
+    if (walletPwValue !== walletPwConfirm) { setWalletPwError("Passwords do not match"); return; }
+    setSavingWalletPw(true); setWalletPwError("");
+    try {
+      const res = await api.post("/api/org/wallet-balance-password", {
+        password: walletPwValue, confirmPassword: walletPwConfirm,
+      });
+      setForm(f => ({ ...f, walletBalancePasswordSet: res.data.walletBalancePasswordSet }));
+      setEditingWalletPw(false);
+      setWalletPwValue(""); setWalletPwConfirm("");
+      setToast({ visible: true, message: "Wallet balance password saved.", type: "success" });
+    } catch (err) {
+      setWalletPwError(err.response?.data?.message || "Failed to save password.");
+    } finally {
+      setSavingWalletPw(false);
     }
   };
 
@@ -1003,6 +1028,65 @@ function OrgSettings() {
                   />
                 )}
               </div>
+            </div>
+
+            {/* Wallet Balance Password */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Lock className="w-4 h-4 text-sky-600" />
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Wallet Balance Password</p>
+              </div>
+              <p className="text-xs text-slate-400 dark:text-slate-500 -mt-2">
+                A separate password (not your login password) required to reveal the Flutterwave wallet
+                balance on the Dashboard and Payroll pages. There's no recovery flow — whoever sets it
+                controls who can see the balance.
+              </p>
+
+              {!editingWalletPw ? (
+                form.walletBalancePasswordSet ? (
+                  <div className="flex items-center gap-3 px-4 py-2.5 border border-emerald-200 dark:border-emerald-800 rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <span className="text-sm text-emerald-700 dark:text-emerald-400 flex-1">Password is set</span>
+                    <button type="button" onClick={() => { setEditingWalletPw(true); setWalletPwError(""); }}
+                      className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-sky-600 dark:hover:text-sky-400 transition">
+                      <Pencil size={12} /> Change
+                    </button>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => { setEditingWalletPw(true); setWalletPwError(""); }}
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-800 rounded-xl hover:bg-sky-100 dark:hover:bg-sky-900/40 transition">
+                    <Lock size={14} /> Set password for viewing balance
+                  </button>
+                )
+              ) : (
+                <div className="space-y-2.5">
+                  <input
+                    type="password" value={walletPwValue}
+                    onChange={e => { setWalletPwValue(e.target.value); setWalletPwError(""); }}
+                    placeholder="New password"
+                    autoFocus
+                    className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700/50 text-slate-900 dark:text-white placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition"
+                  />
+                  <input
+                    type="password" value={walletPwConfirm}
+                    onChange={e => { setWalletPwConfirm(e.target.value); setWalletPwError(""); }}
+                    placeholder="Confirm password"
+                    className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700/50 text-slate-900 dark:text-white placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition"
+                  />
+                  {walletPwError && <p className="text-xs text-rose-600">{walletPwError}</p>}
+                  <div className="flex gap-2">
+                    <button type="button"
+                      onClick={() => { setEditingWalletPw(false); setWalletPwValue(""); setWalletPwConfirm(""); setWalletPwError(""); }}
+                      className="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 transition">
+                      Cancel
+                    </button>
+                    <button type="button" onClick={handleSaveWalletBalancePassword} disabled={savingWalletPw}
+                      className="px-4 py-2 text-xs font-medium text-white bg-sky-600 rounded-xl hover:bg-sky-700 transition disabled:opacity-50">
+                      {savingWalletPw ? "Saving…" : "Save password"}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Monnify / Moniepoint */}

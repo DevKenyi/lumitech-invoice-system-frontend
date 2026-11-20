@@ -5,7 +5,7 @@ import {
   Users, CheckCircle, DollarSign, TrendingUp,
   PlayCircle, ClipboardList, Pencil, Upload, Download,
   AlertCircle, CheckCircle2, Briefcase, Milestone,
-  CreditCard, FileText, Trash2, Loader2, Wallet, ShieldCheck, BadgeAlert, Eye, EyeOff,
+  CreditCard, FileText, Trash2, Loader2, Wallet, ShieldCheck, BadgeAlert, EyeOff, Lock,
 } from "lucide-react";
 import Toast from "../components/Toast";
 import ConfirmPasswordModal from "../components/ConfirmPasswordModal";
@@ -775,17 +775,24 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
               {walletLoading ? (
                 <Loader2 className="w-5 h-5 animate-spin text-white/70" />
               ) : walletBalance ? (
-                <div className="flex items-center gap-2">
-                  <p className="text-3xl font-extrabold">
-                    {balanceRevealed ? fmt(walletBalance.balance) : "₦ ••••••••"}
-                  </p>
+                balanceRevealed ? (
+                  <div className="flex items-center gap-2">
+                    <p className="text-3xl font-extrabold">{fmt(walletBalance.balance)}</p>
+                    <button
+                      onClick={() => setBalanceRevealed(false)}
+                      className="text-white/70 hover:text-white transition"
+                      title="Hide balance">
+                      <EyeOff size={18} />
+                    </button>
+                  </div>
+                ) : (
                   <button
-                    onClick={() => balanceRevealed ? setBalanceRevealed(false) : setBalancePwModal(true)}
-                    className="text-white/70 hover:text-white transition"
-                    title={balanceRevealed ? "Hide balance" : "Enter password to reveal"}>
-                    {balanceRevealed ? <EyeOff size={18} /> : <Eye size={18} />}
+                    onClick={() => setBalancePwModal(true)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl backdrop-blur-md bg-white/15 border border-white/30 hover:bg-white/25 transition">
+                    <Lock size={16} className="text-white/90" />
+                    <span className="text-sm font-semibold text-white/90">Tap to reveal balance</span>
                   </button>
-                </div>
+                )
               ) : (
                 <p className="text-sm text-indigo-200">Add your Flutterwave secret key in Settings → Payments</p>
               )}
@@ -1872,7 +1879,9 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
 
       <ConfirmPasswordModal
         open={balancePwModal}
-        subtitle="Enter your password to reveal the Flutterwave wallet balance"
+        endpoint="/api/org/wallet-balance-password/verify"
+        title="Confirm wallet balance password"
+        subtitle="Enter the wallet balance password to reveal it"
         onVerified={() => { setBalancePwModal(false); setBalanceRevealed(true); }}
         onCancel={() => setBalancePwModal(false)}
       />
