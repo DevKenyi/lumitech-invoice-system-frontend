@@ -6,7 +6,7 @@ import api from "../services/api";
 import {
   TrendingUp, CheckCircle, AlertCircle, Clock, DollarSign,
   BarChart3, X, Wallet, Plus, BookOpenCheck, LayoutList, Scale, Sparkles, ArrowRight,
-  FileText, ChevronRight, Users, RefreshCw,
+  FileText, ChevronRight, Users, RefreshCw, Eye, EyeOff,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -17,6 +17,7 @@ import { getUserType, capitalLabel, USER_TYPES } from "../utils/userType";
 import TourOverlay from "../components/TourOverlay";
 import OnboardingBanner from "../components/OnboardingBanner";
 import DailyBrief from "../components/DailyBrief";
+import ConfirmPasswordModal from "../components/ConfirmPasswordModal";
 import NumericInput from "../components/NumericInput";
 import { useOrg } from "../context/OrgContext";
 
@@ -40,6 +41,8 @@ const Dashboard = () => {
   const [foodStats, setFoodStats] = useState(null);
   const [walletBalance, setWalletBalance] = useState(null);
   const [walletLoading, setWalletLoading] = useState(false);
+  const [balanceRevealed, setBalanceRevealed] = useState(false);
+  const [balancePwModal, setBalancePwModal] = useState(false);
   const [employeeCount, setEmployeeCount] = useState(null);
 
   const isAccountant = userType === USER_TYPES.ACCOUNTANT;
@@ -337,9 +340,19 @@ const Dashboard = () => {
                   <RefreshCw className={`w-3 h-3 text-slate-400 ${walletLoading ? "animate-spin" : ""}`} />
                 </button>
               </div>
-              <p className="text-lg font-bold text-slate-900 dark:text-white mt-1">
-                {walletBalance ? fmt(walletBalance.balance) : "—"}
-              </p>
+              <div className="flex items-center gap-1.5 mt-1">
+                <p className="text-lg font-bold text-slate-900 dark:text-white">
+                  {balanceRevealed ? (walletBalance ? fmt(walletBalance.balance) : "—") : "₦ ••••••"}
+                </p>
+                {walletBalance && (
+                  <button
+                    onClick={() => balanceRevealed ? setBalanceRevealed(false) : setBalancePwModal(true)}
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
+                    title={balanceRevealed ? "Hide balance" : "Enter password to reveal"}>
+                    {balanceRevealed ? <EyeOff size={13} /> : <Eye size={13} />}
+                  </button>
+                )}
+              </div>
             </div>
             <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3">
               <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
@@ -726,6 +739,13 @@ const Dashboard = () => {
           </div>
         </div>
       )}
+
+      <ConfirmPasswordModal
+        open={balancePwModal}
+        subtitle="Enter your password to reveal the Flutterwave wallet balance"
+        onVerified={() => { setBalancePwModal(false); setBalanceRevealed(true); }}
+        onCancel={() => setBalancePwModal(false)}
+      />
     </div>
   );
 };

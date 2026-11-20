@@ -5,9 +5,10 @@ import {
   Users, CheckCircle, DollarSign, TrendingUp,
   PlayCircle, ClipboardList, Pencil, Upload, Download,
   AlertCircle, CheckCircle2, Briefcase, Milestone,
-  CreditCard, FileText, Trash2, Loader2, Wallet, ShieldCheck, BadgeAlert,
+  CreditCard, FileText, Trash2, Loader2, Wallet, ShieldCheck, BadgeAlert, Eye, EyeOff,
 } from "lucide-react";
 import Toast from "../components/Toast";
+import ConfirmPasswordModal from "../components/ConfirmPasswordModal";
 import SearchableSelect from "../components/SearchableSelect";
 import { useOrg } from "../context/OrgContext";
 
@@ -124,6 +125,8 @@ export default function Payroll() {
   const [verifiedName, setVerifiedName] = useState("");
   const [walletBalance, setWalletBalance] = useState(null);
   const [walletLoading, setWalletLoading] = useState(false);
+  const [balanceRevealed, setBalanceRevealed] = useState(false);
+  const [balancePwModal, setBalancePwModal] = useState(false);
   const [disburseRunId, setDisburseRunId] = useState(null);
   const [disbursing, setDisbursing] = useState(false);
   const [payingEntryId, setPayingEntryId] = useState(null);
@@ -772,7 +775,17 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
               {walletLoading ? (
                 <Loader2 className="w-5 h-5 animate-spin text-white/70" />
               ) : walletBalance ? (
-                <p className="text-3xl font-extrabold">{fmt(walletBalance.balance)}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-3xl font-extrabold">
+                    {balanceRevealed ? fmt(walletBalance.balance) : "₦ ••••••••"}
+                  </p>
+                  <button
+                    onClick={() => balanceRevealed ? setBalanceRevealed(false) : setBalancePwModal(true)}
+                    className="text-white/70 hover:text-white transition"
+                    title={balanceRevealed ? "Hide balance" : "Enter password to reveal"}>
+                    {balanceRevealed ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               ) : (
                 <p className="text-sm text-indigo-200">Add your Flutterwave secret key in Settings → Payments</p>
               )}
@@ -1855,6 +1868,13 @@ Jane,Smith,jane.smith@company.com,+2348111111111,,B7654321,GTBank,9876543210,HR,
         message={toast.message}
         type={toast.type}
         onClose={() => setToast((t) => ({ ...t, visible: false }))}
+      />
+
+      <ConfirmPasswordModal
+        open={balancePwModal}
+        subtitle="Enter your password to reveal the Flutterwave wallet balance"
+        onVerified={() => { setBalancePwModal(false); setBalanceRevealed(true); }}
+        onCancel={() => setBalancePwModal(false)}
       />
 
       {/* Delete confirmation modal */}
